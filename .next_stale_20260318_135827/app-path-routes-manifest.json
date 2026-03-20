@@ -1,0 +1,14 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/submissions/route": "/api/submissions",
+  "/api/progress/resume/route": "/api/progress/resume",
+  "/auth/signout/route": "/auth/signout",
+  "/auth/callback/route": "/auth/callback",
+  "/admin/page": "/admin",
+  "/learn/[courseSlug]/[lessonSlug]/page": "/learn/[courseSlug]/[lessonSlug]",
+  "/dashboard/page": "/dashboard",
+  "/learn/[courseSlug]/page": "/learn/[courseSlug]",
+  "/login/page": "/login",
+  "/pricing/page": "/pricing",
+  "/page": "/"
+}
