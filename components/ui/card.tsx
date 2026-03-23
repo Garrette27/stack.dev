@@ -20,7 +20,13 @@ export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDiv
 
 export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h3 className={cn("min-w-0 text-xl font-semibold leading-tight tracking-tight text-[var(--ink-strong)]", className)} {...props} />
+    <h3
+      className={cn(
+        "min-w-0 break-words text-xl font-semibold leading-tight tracking-tight text-[var(--ink-strong)] [overflow-wrap:anywhere]",
+        className
+      )}
+      {...props}
+    />
   )
 }
 

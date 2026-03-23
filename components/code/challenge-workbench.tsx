@@ -78,13 +78,13 @@ export function ChallengeWorkbench({
                 <Badge>{challenge.language}</Badge>
               </div>
               <CardTitle className="mt-4 font-serif text-4xl">Code editor</CardTitle>
-              <p className="mt-3 max-w-3xl text-base leading-7 text-[var(--ink-muted)]">
+              <p className="mt-3 max-w-3xl text-base leading-7 text-[var(--ink-muted)] [overflow-wrap:anywhere]">
                 Solve the prompt, run the hidden checks, and keep your place automatically.
               </p>
             </div>
 
             <div className="rounded-[1.75rem] border border-black/8 bg-[var(--ink-strong)] px-5 py-4 text-white shadow-[0_16px_40px_rgba(25,31,45,0.18)]">
-              <p className="text-xs uppercase tracking-[0.22em] text-white/60">Flow</p>
+              <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-white/60">Flow</p>
               <div className="mt-2 space-y-1.5">
                 <p className="text-sm font-medium text-white">Write solution</p>
                 <p className="text-sm font-medium text-white">Run hidden checks</p>
@@ -136,7 +136,7 @@ export function ChallengeWorkbench({
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,251,255,0.92))]">
           <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.72)] p-8 pb-6 sm:p-9 sm:pb-7">
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">Review</p>
+            <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Review</p>
             <CardTitle className="mt-3 flex items-center gap-2 font-serif text-3xl">
               <Terminal className="h-5 w-5 text-[var(--accent)]" />
               Latest result
@@ -191,7 +191,7 @@ export function ChallengeWorkbench({
 
         <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,247,241,0.92))]">
           <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.72)] p-8 pb-6 sm:p-9 sm:pb-7">
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">Check design</p>
+            <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Check design</p>
             <CardTitle className="mt-3 flex items-center gap-2 font-serif text-3xl">
               <ShieldCheck className="h-5 w-5 text-[var(--accent)]" />
               What the checker looks for
