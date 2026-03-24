@@ -9,26 +9,26 @@ export default function LoginPage() {
     <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-[1880px] items-center px-4 py-16 sm:px-6 xl:px-10">
       <div className="grid w-full gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div className="space-y-5">
-          <Badge>Google sign-in via Supabase Auth</Badge>
+          <Badge>Sign in</Badge>
           <h1 className="max-w-2xl font-serif text-5xl tracking-tight text-[var(--ink-strong)]">
             Sign in once and keep every lesson exactly where you left it.
           </h1>
           <p className="max-w-xl text-lg leading-8 text-[var(--ink)]">
-            You do not need Firebase for this. Supabase can use Google OAuth directly, and your progress tables can stay
-            in the same Postgres project.
+            Continue with Google to save your progress, return to your active lesson, and keep your learning history in one
+            place.
           </p>
           <div className="grid gap-3 text-sm text-[var(--ink)]">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-4 w-4 text-[var(--accent)]" />
-              <span>Google login handled by Supabase Auth</span>
+              <span>Pick up where you left off on any signed-in visit</span>
             </div>
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-4 w-4 text-[var(--accent)]" />
-              <span>Progress stored in the same Supabase Postgres database</span>
+              <span>Keep lesson progress and resume state synced to your account</span>
             </div>
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-4 w-4 text-[var(--accent)]" />
-              <span>Admin authoring unlocked by setting your profile role to admin</span>
+              <span>Open your dashboard immediately after sign-in</span>
             </div>
           </div>
         </div>
@@ -41,9 +41,7 @@ export default function LoginPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
-            <p className="text-sm leading-7 text-[var(--ink-muted)]">
-              Configure Google in Supabase Auth, set your callback URL, then use the button below.
-            </p>
+            <p className="text-sm leading-7 text-[var(--ink-muted)]">Use your Google account to continue.</p>
             <GoogleSignInButton />
           </CardContent>
         </Card>
