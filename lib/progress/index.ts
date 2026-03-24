@@ -1,3 +1,7 @@
+import "server-only"
+
+import { z } from "zod"
+
 import { hasSupabaseEnv } from "@/lib/env"
 import { mockResumeState } from "@/lib/mock-data"
 import { createClient as createServerClient } from "@/lib/supabase/server"
@@ -7,6 +11,100 @@ import { getCurrentUser } from "@/lib/auth"
 import { getContentSnapshot } from "@/lib/content"
 import { sortLessons } from "@/lib/content/shared"
 
+export const resumeSchema = z.object({
+  courseSlug: z.string().min(3),
+  lessonSlug: z.string().min(3)
+})
+
+export type ResumePayload = z.infer<typeof resumeSchema>
+
+type ResumeSaveResult = {
+  status: number
+  body: {
+    ok: boolean
+    preview?: boolean
+    message?: string
+  }
+}
+
+type ServerSupabaseClient = NonNullable<Awaited<ReturnType<typeof createServerClient>>>
+
+function mapResumeState(row: Record<string, unknown>): ResumeState {
+  return {
+    userId: String(row.user_id),
+    courseSlug: String(row.course_slug),
+    lessonSlug: String(row.lesson_slug),
+    updatedAt: String(row.updated_at)
+  }
+}
+
+async function upsertResumeState(client: ServerSupabaseClient, userId: string, payload: ResumePayload) {
+  await client.from("resume_state").upsert(
+    {
+      user_id: userId,
+      course_slug: payload.courseSlug,
+      lesson_slug: payload.lessonSlug,
+      updated_at: new Date().toISOString()
+    },
+    {
+      onConflict: "user_id"
+    }
+  )
+}
+
+/**
+ * Persists the current resume target for a known user id.
+ */
+export async function saveResumeStateForUser(
+  client: ServerSupabaseClient,
+  userId: string,
+  payload: ResumePayload
+): Promise<void> {
+  await upsertResumeState(client, userId, payload)
+}
+
+/**
+ * Persists the current resume target for the authenticated user behind a single
+ * progress-domain API used by routes.
+ */
+export async function saveResumeStateForCurrentUser(payload: ResumePayload): Promise<ResumeSaveResult> {
+  if (!hasSupabaseEnv()) {
+    return {
+      status: 200,
+      body: { ok: true, preview: true }
+    }
+  }
+
+  const supabase = await createServerClient()
+  if (!supabase) {
+    return {
+      status: 200,
+      body: { ok: true, preview: true }
+    }
+  }
+
+  const {
+    data: { user }
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return {
+      status: 401,
+      body: { ok: false, message: "Authentication required." }
+    }
+  }
+
+  await upsertResumeState(supabase, user.id, payload)
+
+  return {
+    status: 200,
+    body: { ok: true }
+  }
+}
+
+/**
+ * Returns the learner dashboard state with progress and resume information.
+ */
 export async function getDashboardState(): Promise<DashboardState> {
   const snapshot = await getContentSnapshot()
   const user = await getCurrentUser()
@@ -75,14 +173,7 @@ export async function getDashboardState(): Promise<DashboardState> {
     lessonCount: snapshot.lessons.length,
     completedLessons: progressValues.filter((item) => item.status === "completed").length,
     inProgressLessons: progressValues.filter((item) => item.status === "in_progress").length,
-    resumeTarget: resumeRow
-      ? ({
-          userId: String((resumeRow as Record<string, unknown>).user_id),
-          courseSlug: String((resumeRow as Record<string, unknown>).course_slug),
-          lessonSlug: String((resumeRow as Record<string, unknown>).lesson_slug),
-          updatedAt: String((resumeRow as Record<string, unknown>).updated_at)
-        } satisfies ResumeState)
-      : null,
+    resumeTarget: resumeRow ? mapResumeState(resumeRow as Record<string, unknown>) : null,
     recentLessons
   }
 }

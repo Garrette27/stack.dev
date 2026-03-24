@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import { getRunnerChallengeBySlug } from "@/lib/admin"
 import { hasJudge0Env, hasSupabaseEnv } from "@/lib/env"
+import { saveResumeStateForUser } from "@/lib/progress"
 import { createClient } from "@/lib/supabase/server"
 import type { SubmissionOutcome } from "@/lib/types"
 
@@ -222,17 +223,10 @@ async function persistSubmissionOutcome(payload: SubmissionPayload, outcome: Sub
     )
   }
 
-  await supabase!.from("resume_state").upsert(
-    {
-      user_id: user.id,
-      course_slug: payload.courseSlug,
-      lesson_slug: payload.lessonSlug,
-      updated_at: new Date().toISOString()
-    },
-    {
-      onConflict: "user_id"
-    }
-  )
+  await saveResumeStateForUser(supabase!, user.id, {
+    courseSlug: payload.courseSlug,
+    lessonSlug: payload.lessonSlug
+  })
 }
 
 /**
