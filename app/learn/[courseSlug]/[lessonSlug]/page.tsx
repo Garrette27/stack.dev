@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowLeft, BookMarked, Clock3, Sparkles } from "lucide-react"
+import { ArrowLeft, Clock3 } from "lucide-react"
 import { notFound } from "next/navigation"
 
 import { ChallengeWorkbench } from "@/components/code/challenge-workbench"
@@ -51,28 +51,16 @@ export default async function LessonPage({ params }: LessonPageProps) {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+          <div className="grid gap-4">
             <div className="rounded-[2rem] border border-black/8 bg-white/80 p-5 backdrop-blur">
               <div className="flex items-start gap-3">
                 <Clock3 className="mt-1 h-5 w-5 text-[var(--accent)]" />
                 <div>
-                  <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Cadence</p>
+                  <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Lesson time</p>
                   <p className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">
                     {formatRelativeMinutes(data.lesson.estimatedMinutes)}
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
-                    One focused session. Enough context to learn, enough constraint to finish.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-[2rem] border border-black/8 bg-[color:rgb(25_31_45/0.04)] p-5">
-              <div className="flex items-start gap-3">
-                <Sparkles className="mt-1 h-5 w-5 text-[var(--accent)]" />
-                <div>
-                  <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Next step</p>
-                  <p className="mt-2 text-lg font-semibold text-[var(--ink-strong)]">Read the lesson, then solve one task.</p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">Everything you need for this lesson is on this page.</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">Estimated time for this lesson.</p>
                 </div>
               </div>
             </div>
@@ -84,13 +72,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
         <Card className="h-fit overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,250,245,0.92))]">
           <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.72)] p-7 sm:p-8">
             <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Read first</p>
-                <CardTitle className="mt-3 flex items-center gap-2 font-serif text-3xl">
-                  <BookMarked className="h-5 w-5 text-[var(--accent)]" />
-                  Lesson text
-                </CardTitle>
-              </div>
+              <CardTitle className="font-serif text-3xl">{data.lesson.title}</CardTitle>
               <Badge>{data.course.title}</Badge>
             </div>
           </CardHeader>
@@ -103,15 +85,10 @@ export default async function LessonPage({ params }: LessonPageProps) {
           <div className="grid gap-6">
             <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,247,241,0.94))]">
               <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.78)] p-7 sm:p-8">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Badge className="bg-[color:rgb(25_31_45/0.08)] text-[var(--ink-strong)]">Do next</Badge>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <CardTitle className="font-serif text-4xl">{data.challenge.title}</CardTitle>
                   <Badge>{data.challenge.language}</Badge>
                 </div>
-                <p className="mt-4 text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Challenge brief</p>
-                <CardTitle className="mt-3 font-serif text-4xl">{data.challenge.title}</CardTitle>
-                <p className="mt-3 max-w-3xl text-base leading-7 text-[var(--ink-muted)] [overflow-wrap:anywhere]">
-                  Read the prompt, then solve it in the editor below.
-                </p>
               </CardHeader>
               <CardContent className="max-w-none p-7 sm:p-8">
                 <MdxRenderer source={data.challenge.promptMdx} />

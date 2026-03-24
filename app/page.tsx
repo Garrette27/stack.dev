@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, BookOpenText, ChartNoAxesColumn, PenSquare, ShieldCheck } from "lucide-react"
+import { ArrowRight, BookOpenText, ChartNoAxesColumn, ShieldCheck } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -44,7 +44,7 @@ export default async function HomePage() {
           <CardHeader>
             <CardTitle>Why learners stay with it</CardTitle>
             <CardDescription>
-              The platform is designed to keep the next step obvious, the study loop short, and progress easy to resume.
+              A practical study path for career shifters who need steady progress, not noise.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm leading-7 text-[var(--ink)]">
@@ -67,7 +67,7 @@ export default async function HomePage() {
       <section className="grid gap-6 lg:grid-cols-[0.7fr_1.3fr]">
         <Card className="bg-[var(--ink-strong)] text-white">
           <CardHeader>
-            <CardTitle className="text-white">The core product loop</CardTitle>
+            <CardTitle className="text-white">How the platform helps you keep going</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm leading-7 text-white/80">
             <div className="flex gap-3 rounded-[1.5rem] border border-white/10 bg-white/6 p-4">
@@ -89,13 +89,6 @@ export default async function HomePage() {
               <div>
                 <p className="font-semibold text-white">Never lose progress</p>
                 <p>Resume state and lesson completion are stored separately so returning feels instant.</p>
-              </div>
-            </div>
-            <div className="flex gap-3 rounded-[1.5rem] border border-white/10 bg-white/6 p-4">
-              <PenSquare className="mt-1 h-5 w-5 text-[var(--accent-soft)]" />
-              <div>
-                <p className="font-semibold text-white">Keep moving lesson by lesson</p>
-                <p>One clear next step keeps the path practical instead of overwhelming.</p>
               </div>
             </div>
           </CardContent>

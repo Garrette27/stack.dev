@@ -19,7 +19,7 @@ const sourceSerif = Source_Serif_4({
 
 export const metadata: Metadata = {
   title: "stack.dev.ph",
-  description: "A text-first coding practice scaffold inspired by the learning loop you want to build."
+  description: "A practical learning platform for career shifters moving into software."
 }
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

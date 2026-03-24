@@ -46,17 +46,17 @@ const lesson: Lesson = {
   estimatedMinutes: 12,
   bodyMdx: `# Build small loops that compound
 
-Boot.dev works because it keeps the loop tight: read a little, code a little, check a little, move on.
+Short practice sessions are easier to repeat than long study blocks.
 
-## What matters in your product
+## What you are practicing
 
-1. The lesson should be short enough to finish in one sitting.
-2. The challenge should verify one idea clearly.
-3. The progress system should make it obvious where to continue next.
+1. Read a small prompt carefully.
+2. Write a focused solution.
+3. Use feedback to improve the next attempt.
 
-## What you are practicing here
+## Why this matters
 
-You will write a tiny function and submit it to the checker. That sounds small, but that exact loop is the core of your future app.`,
+Consistent repetition matters more than one perfect study day. This lesson keeps the task small so you can finish it and move to the next step.`,
   challengeSlug: challenge.slug,
   orderIndex: 1,
   published: true
