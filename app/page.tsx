@@ -21,8 +21,8 @@ export default async function HomePage() {
               Read a short lesson. Solve one challenge. Save progress. Continue tomorrow.
             </h1>
             <p className="max-w-2xl text-lg leading-8 text-[var(--ink)]">
-              This scaffold is built around the exact product loop you chose. It keeps the learner experience focused
-              while giving you a simple internal authoring panel for adding new coding exams quickly.
+              Learn with short lessons, practical exercises, and a study flow built to help career shifters stay
+              consistent and keep moving.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -42,23 +42,23 @@ export default async function HomePage() {
 
         <Card className="overflow-hidden bg-[linear-gradient(160deg,rgba(255,255,255,0.94),rgba(255,243,232,0.96))]">
           <CardHeader>
-            <CardTitle>Why this stack fits your goal</CardTitle>
+            <CardTitle>Why learners stay with it</CardTitle>
             <CardDescription>
-              You can use it privately now, then harden and monetize it later for a focused Philippines audience.
+              The platform is designed to keep the next step obvious, the study loop short, and progress easy to resume.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm leading-7 text-[var(--ink)]">
             <div className="rounded-[1.5rem] bg-white/80 p-4 ring-1 ring-black/6">
-              <p className="font-semibold text-[var(--ink-strong)]">Learner experience first</p>
-              <p>Lesson text, code checks, and progress live in one loop instead of being spread across tools.</p>
+              <p className="font-semibold text-[var(--ink-strong)]">Short lessons that finish</p>
+              <p>Each lesson is small enough to complete in one sitting, even on a busy schedule.</p>
             </div>
             <div className="rounded-[1.5rem] bg-white/80 p-4 ring-1 ring-black/6">
-              <p className="font-semibold text-[var(--ink-strong)]">Admin kept intentionally simple</p>
-              <p>Raw MDX and code fields let you add new lessons fast before you invest in a polished CMS.</p>
+              <p className="font-semibold text-[var(--ink-strong)]">Practice over passive reading</p>
+              <p>Read the concept, solve a challenge, and get feedback without leaving the learning flow.</p>
             </div>
             <div className="rounded-[1.5rem] bg-white/80 p-4 ring-1 ring-black/6">
-              <p className="font-semibold text-[var(--ink-strong)]">Scales where it matters</p>
-              <p>Supabase handles auth and progress; the runner stays isolated behind an API boundary.</p>
+              <p className="font-semibold text-[var(--ink-strong)]">Progress that keeps up with you</p>
+              <p>Resume exactly where you stopped so your study habit does not break every time life gets busy.</p>
             </div>
           </CardContent>
         </Card>
@@ -94,8 +94,8 @@ export default async function HomePage() {
             <div className="flex gap-3 rounded-[1.5rem] border border-white/10 bg-white/6 p-4">
               <PenSquare className="mt-1 h-5 w-5 text-[var(--accent-soft)]" />
               <div>
-                <p className="font-semibold text-white">Author more exams easily</p>
-                <p>One admin form creates the course link, lesson text, prompt, starter code, and hidden tests.</p>
+                <p className="font-semibold text-white">Keep moving lesson by lesson</p>
+                <p>One clear next step keeps the path practical instead of overwhelming.</p>
               </div>
             </div>
           </CardContent>

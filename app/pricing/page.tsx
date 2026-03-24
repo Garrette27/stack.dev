@@ -9,7 +9,7 @@ const subscriptionHighlights = [
   "Short daily lessons built for working adults",
   "Hands-on coding practice with immediate feedback",
   "Resume exactly where you left off",
-  "Structured path for BPO agents shifting into tech"
+  "Structured path for career shifters moving into software"
 ]
 
 const reasonsToJoin = [
@@ -36,7 +36,7 @@ export default function PricingPage() {
       <section className="grid gap-6">
         <Badge>For career shifters</Badge>
         <h1 className="max-w-6xl font-serif text-5xl leading-[0.95] tracking-tight text-[var(--ink-strong)] sm:text-6xl">
-          A practical path from BPO work into software.
+          A practical path into software from any industry.
         </h1>
         <p className="max-w-4xl text-lg leading-8 text-[var(--ink)]">
           Learn with short structured lessons, real coding exercises, and a study flow built for working adults who want
@@ -124,7 +124,7 @@ export default function PricingPage() {
           <CardHeader>
             <CardTitle className="text-white">Who this is for</CardTitle>
             <CardDescription className="text-white/75">
-              For BPO agents, support professionals, and self-taught learners aiming for their first developer role.
+              For career shifters, working professionals, and self-taught learners aiming for their first developer role.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm leading-7 text-white/85">

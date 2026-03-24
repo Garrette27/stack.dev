@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react"
 
+import { SiteHeaderNav } from "@/components/navigation/site-header-nav"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser, isCurrentUserAdmin } from "@/lib/data"
 
@@ -15,30 +16,7 @@ export async function SiteHeader() {
           <Link href="/" className="text-lg font-semibold tracking-tight text-[var(--ink-strong)]">
             stack.dev.ph
           </Link>
-          <nav className="hidden items-center gap-5 text-sm text-[var(--ink-muted)] md:flex">
-            <Link href="/dashboard" className="transition hover:text-[var(--ink-strong)]">
-              Dashboard
-            </Link>
-            <Link href="/learn/backend-foundations" className="transition hover:text-[var(--ink-strong)]">
-              Learn
-            </Link>
-            <Link href="/pricing" className="transition hover:text-[var(--ink-strong)]">
-              Pricing
-            </Link>
-            <a
-              href="https://blog-app-flutter.vercel.app/"
-              target="_blank"
-              rel="noreferrer"
-              className="transition hover:text-[var(--ink-strong)]"
-            >
-              Blog
-            </a>
-            {user ? (
-              <Link href="/admin" className="transition hover:text-[var(--ink-strong)]">
-                {isAdmin ? "Admin" : "Authoring"}
-              </Link>
-            ) : null}
-          </nav>
+          <SiteHeaderNav showAuthoring={Boolean(user)} isAdmin={isAdmin} />
         </div>
 
         <div className="flex items-center gap-3">
