@@ -76,7 +76,9 @@ export default async function DashboardPage() {
               Total lessons
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-4xl font-semibold text-[var(--ink-strong)]">{state.lessonCount}</CardContent>
+          <CardContent className="text-4xl font-semibold text-[var(--ink-strong)]">
+            <p>{state.lessonCount}</p>
+          </CardContent>
         </Card>
         <Card className="h-full">
           <CardHeader>

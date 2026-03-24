@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
+      data-surface-card=""
       className={cn(
         "min-w-0 rounded-[2rem] border border-black/8 bg-white/90 shadow-[0_24px_60px_rgba(25,31,45,0.08)] backdrop-blur",
         className
