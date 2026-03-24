@@ -25,6 +25,14 @@ export async function SiteHeader() {
             <Link href="/pricing" className="transition hover:text-[var(--ink-strong)]">
               Pricing
             </Link>
+            <a
+              href="https://blog-app-flutter.vercel.app/"
+              target="_blank"
+              rel="noreferrer"
+              className="transition hover:text-[var(--ink-strong)]"
+            >
+              Blog
+            </a>
             {user ? (
               <Link href="/admin" className="transition hover:text-[var(--ink-strong)]">
                 {isAdmin ? "Admin" : "Authoring"}
