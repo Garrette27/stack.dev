@@ -2,44 +2,47 @@ import { cache } from "react"
 
 import { hasSupabaseEnv } from "@/lib/env"
 import { createClient as createServerClient } from "@/lib/supabase/server"
-import type { ContentSnapshot, CourseWithLessons, LessonBundle } from "@/lib/types"
+import type { CourseWithLessons, LessonBundle } from "@/lib/types"
 
-import { createMockSnapshot, mapChallenge, mapCourse, mapLesson, sortLessons } from "./shared"
+import { loadSnapshotFromRows } from "./snapshot-loader"
+import { sortLessons } from "./shared"
 
-async function getSupabaseContent(): Promise<ContentSnapshot> {
-  if (!hasSupabaseEnv()) {
-    return createMockSnapshot("Supabase browser env is missing, so the app is showing preview content.")
-  }
+async function getSupabaseContent() {
+  return loadSnapshotFromRows({
+    emptyMode: "mock",
+    emptyContentReason: "No published course and lesson rows were found, so the app is showing preview content.",
+    contentSourceReason: "Loaded published course, lesson, and challenge content from Supabase.",
+    loadRows: async () => {
+      if (!hasSupabaseEnv()) {
+        return {
+          rows: {},
+          fallbackReason: "Supabase browser env is missing, so the app is showing preview content."
+        }
+      }
 
-  const supabase = await createServerClient()
-  if (!supabase) {
-    return createMockSnapshot("Supabase server client could not be created, so the app is showing preview content.")
-  }
+      const supabase = await createServerClient()
+      if (!supabase) {
+        return {
+          rows: {},
+          fallbackReason: "Supabase server client could not be created, so the app is showing preview content."
+        }
+      }
 
-  const [{ data: courseRows }, { data: lessonRows }, { data: challengeRows }] = await Promise.all([
-    supabase.from("courses").select("*").eq("published", true).order("title"),
-    supabase.from("lessons").select("*").eq("published", true).order("order_index"),
-    supabase.from("challenges").select("*").eq("published", true).order("title")
-  ])
+      const [{ data: courseRows }, { data: lessonRows }, { data: challengeRows }] = await Promise.all([
+        supabase.from("courses").select("*").eq("published", true).order("title"),
+        supabase.from("lessons").select("*").eq("published", true).order("order_index"),
+        supabase.from("challenges").select("*").eq("published", true).order("title")
+      ])
 
-  if (!courseRows?.length || !lessonRows?.length) {
-    return createMockSnapshot("No published course and lesson rows were found, so the app is showing preview content.")
-  }
-
-  const courses = courseRows.map((row) => mapCourse(row as Record<string, unknown>))
-  const courseSlugById = new Map(courses.map((course) => [course.id, course.slug]))
-  const lessons = lessonRows.map((row) =>
-    mapLesson(row as Record<string, unknown>, courseSlugById.get(String((row as Record<string, unknown>).course_id)) ?? "")
-  )
-  const challenges = (challengeRows ?? []).map((row) => mapChallenge(row as Record<string, unknown>))
-
-  return {
-    courses,
-    lessons,
-    challenges,
-    contentSource: "database",
-    contentSourceReason: "Loaded published course, lesson, and challenge content from Supabase."
-  }
+      return {
+        rows: {
+          courseRows: (courseRows ?? []) as Record<string, unknown>[],
+          lessonRows: (lessonRows ?? []) as Record<string, unknown>[],
+          challengeRows: (challengeRows ?? []) as Record<string, unknown>[]
+        }
+      }
+    }
+  })
 }
 
 export const getContentSnapshot = cache(async () => {

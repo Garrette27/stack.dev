@@ -16,10 +16,10 @@ export default async function DashboardPage() {
           <CardHeader>
             <Badge className="w-fit bg-white/12 text-[var(--accent-soft)]">Dashboard</Badge>
             <CardTitle className="font-serif text-4xl text-white">
-              {user ? `Welcome back, ${user.user_metadata?.full_name ?? "builder"}.` : "Preview the progress experience."}
+              {user ? `Welcome back, ${user.user_metadata?.full_name ?? "learner"}.` : "Track your progress."}
             </CardTitle>
             <CardDescription className="text-white/70">
-              This page is focused on one job: show what you finished, what is active, and where to continue.
+              See what you have finished, what is active, and where to continue next.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
@@ -40,10 +40,8 @@ export default async function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Continue later, immediately</CardTitle>
-            <CardDescription>
-              Resume state is stored separately from completion so returning always feels quick.
-            </CardDescription>
+            <CardTitle>Continue where you left off</CardTitle>
+            <CardDescription>Jump back into your current lesson without searching through the course.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {state.resumeTarget ? (
@@ -96,9 +94,7 @@ export default async function DashboardPage() {
       <section className="grid gap-5">
         <div>
           <h2 className="font-serif text-3xl tracking-tight text-[var(--ink-strong)]">Recent lessons</h2>
-          <p className="mt-2 text-sm leading-7 text-[var(--ink-muted)]">
-            You only need enough context to continue. Avoid turning this page into a full LMS dashboard.
-          </p>
+          <p className="mt-2 text-sm leading-7 text-[var(--ink-muted)]">Open the next lesson directly from here.</p>
         </div>
         <div className="grid gap-4">
           {state.recentLessons.map((lesson) => (

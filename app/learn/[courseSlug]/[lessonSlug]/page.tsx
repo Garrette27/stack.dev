@@ -70,9 +70,9 @@ export default async function LessonPage({ params }: LessonPageProps) {
               <div className="flex items-start gap-3">
                 <Sparkles className="mt-1 h-5 w-5 text-[var(--accent)]" />
                 <div>
-                  <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Learning loop</p>
-                  <p className="mt-2 text-lg font-semibold text-[var(--ink-strong)]">Read, code, check, continue.</p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">Keep the loop short and obvious.</p>
+                  <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Next step</p>
+                  <p className="mt-2 text-lg font-semibold text-[var(--ink-strong)]">Read the lesson, then solve one task.</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">Everything you need for this lesson is on this page.</p>
                 </div>
               </div>
             </div>
@@ -130,7 +130,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
               <CardTitle>No challenge linked yet</CardTitle>
             </CardHeader>
             <CardContent className="text-sm leading-7 text-[var(--ink)]">
-              Add a challenge from the authoring page when you are ready to turn this lesson into practice.
+              Practice for this lesson will appear here when it is ready.
             </CardContent>
           </Card>
         )}

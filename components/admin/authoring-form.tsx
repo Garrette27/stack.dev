@@ -23,7 +23,7 @@ export function AuthoringForm() {
       <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.66)]">
         <CardTitle>Create lesson + challenge</CardTitle>
         <p className="text-sm leading-7 text-[var(--ink-muted)]">
-          Fill this once, save it, then open the learner page. The only public parts are the lesson text, question, and starter code.
+          Fill this once, save it, then open the learner page to verify the exact lesson and practice task you just created.
         </p>
       </CardHeader>
       <CardContent className="grid gap-8 p-6">
@@ -35,7 +35,7 @@ export function AuthoringForm() {
             </div>
             <div>
               <p className="font-semibold text-[var(--ink-strong)]">Private</p>
-              <p className="mt-1">Reference solution and hidden tests. Judge0 only matters when you run checks.</p>
+              <p className="mt-1">Reference solution and the checks used to score an answer.</p>
             </div>
           </section>
 
@@ -100,7 +100,7 @@ export function AuthoringForm() {
                 <option value="javascript">javascript</option>
               </select>
             </Field>
-            <Field label="Judge0 language id" hint="Needed only for real code execution. Python 3 is 71 in the current setup.">
+            <Field label="Checker language id" hint="Used when running answers. Python 3 is 71 in the current setup.">
               <Input name="judge0LanguageId" type="number" defaultValue="71" required />
             </Field>
           </section>

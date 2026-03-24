@@ -79,7 +79,7 @@ export function ChallengeWorkbench({
               </div>
               <CardTitle className="mt-4 font-serif text-4xl">Code editor</CardTitle>
               <p className="mt-3 max-w-3xl text-base leading-7 text-[var(--ink-muted)] [overflow-wrap:anywhere]">
-                Solve the prompt, run the hidden checks, and keep your place automatically.
+                Write your answer, run a check, and save your place automatically.
               </p>
             </div>
 
@@ -87,7 +87,7 @@ export function ChallengeWorkbench({
               <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-white/60">Flow</p>
               <div className="mt-2 space-y-1.5">
                 <p className="text-sm font-medium text-white">Write solution</p>
-                <p className="text-sm font-medium text-white">Run hidden checks</p>
+                <p className="text-sm font-medium text-white">Run a check</p>
                 <p className="text-sm font-medium text-white">Keep progress synced</p>
               </div>
             </div>
@@ -179,10 +179,10 @@ export function ChallengeWorkbench({
             ) : (
               <div className="space-y-4 text-sm leading-7 text-[var(--ink-muted)]">
                 <div className="rounded-[1.75rem] border border-dashed border-black/12 bg-[color:rgb(25_31_45/0.03)] px-5 py-4 text-[var(--ink)]">
-                  Run the checker to see whether the hidden tests pass.
+                  Run a check to see whether your answer passes.
                 </div>
                 <p className="rounded-[1.75rem] bg-[color:rgb(25_31_45/0.04)] px-5 py-4 text-[var(--ink)]">
-                  This panel shows pass/fail, stdout, and runtime errors after each submission.
+                  This panel shows pass/fail, output, and errors after each submission.
                 </p>
               </div>
             )}
@@ -194,15 +194,12 @@ export function ChallengeWorkbench({
             <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Check design</p>
             <CardTitle className="mt-3 flex items-center gap-2 font-serif text-3xl">
               <ShieldCheck className="h-5 w-5 text-[var(--accent)]" />
-              What the checker looks for
+              How answers are reviewed
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 p-8 pt-6 text-sm leading-7 text-[var(--ink)] sm:p-9 sm:pt-7">
-            <p>The public prompt stays visible. The hidden tests stay on the server.</p>
-            <p>The answer key stays private while the learner still gets a realistic practice loop.</p>
-            <p className="rounded-[1.75rem] bg-[color:rgb(25_31_45/0.05)] px-5 py-4">
-              Authoring rule: one lesson, one challenge, one idea.
-            </p>
+            <p>Your answer is checked on the server, so the expected answer stays private.</p>
+            <p>You still get direct feedback after each run without exposing the scoring logic in the page.</p>
           </CardContent>
         </Card>
       </div>

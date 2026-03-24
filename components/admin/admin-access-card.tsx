@@ -34,10 +34,10 @@ export function AdminAccessCard({ canClaimFirstAdmin }: AdminAccessCardProps) {
       <CardContent className="grid gap-4 text-sm leading-7 text-[var(--ink)]">
         {canClaimFirstAdmin ? (
           <>
-            <p>No admin account exists yet. Make this signed-in account the first admin, then start writing lessons immediately.</p>
+            <p>No author account exists yet. Make this signed-in account the first author to unlock lesson editing.</p>
             <form action={formAction} className="flex flex-wrap items-center gap-3">
               <Button type="submit" disabled={pending}>
-                {pending ? "Unlocking..." : "Make this account admin"}
+                {pending ? "Unlocking..." : "Make this account author"}
               </Button>
               {state.message ? (
                 <p className={state.success ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>{state.message}</p>
@@ -46,8 +46,8 @@ export function AdminAccessCard({ canClaimFirstAdmin }: AdminAccessCardProps) {
           </>
         ) : (
           <>
-            <p>An admin account already exists for this project.</p>
-            <p>Use that account to author content, or promote this account in the `profiles` table if you want it to write lessons too.</p>
+            <p>An author account already exists for this project.</p>
+            <p>Use that account to create or edit lessons.</p>
             {state.message ? <p className="text-sm text-rose-700">{state.message}</p> : null}
           </>
         )}
