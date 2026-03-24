@@ -14,6 +14,5 @@ Small Boot.dev-style scaffold for a text-first coding platform:
 - `Tailwind` styling with shadcn-style primitives
 - `Supabase` auth and Postgres content/progress model
 - `MDX` lesson and prompt rendering
-- sample learner flow and admin authoring form
-- sample SQL schema and seed data
+
 
