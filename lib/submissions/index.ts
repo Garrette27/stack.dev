@@ -43,10 +43,24 @@ function createOutcome(
   }
 }
 
+/**
+ * Builds the source Judge0 executes and keeps runner-specific plumbing hidden
+ * behind one entry point. JavaScript checks receive `stackOutput` so hidden
+ * tests can assert console output without re-executing user code.
+ */
 function buildRunnerSource(language: "python" | "javascript", sourceCode: string, hiddenTestCode: string) {
   if (language === "javascript") {
-    return `${sourceCode}
+    return `const __stackDevOutput = []
+const __stackDevConsoleLog = console.log.bind(console)
+console.log = (...args) => {
+  const line = args.map((value) => String(value)).join(" ")
+  __stackDevOutput.push(line)
+  __stackDevConsoleLog(...args)
+}
 
+${sourceCode}
+
+const stackOutput = __stackDevOutput.join("\\n")
 ${hiddenTestCode}
 console.log("${PASS_MARKER}")
 `

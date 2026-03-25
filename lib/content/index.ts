@@ -4,7 +4,7 @@ import { hasSupabaseEnv } from "@/lib/env"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import type { CourseWithLessons, LessonBundle } from "@/lib/types"
 
-import { loadSnapshotFromRows } from "./snapshot-loader"
+import { loadOptionalLessonChallengeRows, loadSnapshotFromRows } from "./snapshot-loader"
 import { sortLessons } from "./shared"
 
 async function getSupabaseContent() {
@@ -28,17 +28,30 @@ async function getSupabaseContent() {
         }
       }
 
-      const [{ data: courseRows }, { data: lessonRows }, { data: challengeRows }] = await Promise.all([
+      const [{ data: courseRows }, { data: lessonRows }, { data: challengeRows }, lessonChallengeRows] = await Promise.all([
         supabase.from("courses").select("*").eq("published", true).order("title"),
         supabase.from("lessons").select("*").eq("published", true).order("order_index"),
-        supabase.from("challenges").select("*").eq("published", true).order("title")
+        supabase.from("challenges").select("*").eq("published", true).order("title"),
+        loadOptionalLessonChallengeRows(async () => {
+          const result = await supabase
+            .from("lesson_challenges")
+            .select("lesson_id,challenge_id,order_index")
+            .order("lesson_id")
+            .order("order_index")
+
+          return {
+            data: (result.data ?? null) as Record<string, unknown>[] | null,
+            error: result.error ? { code: result.error.code, message: result.error.message } : null
+          }
+        })
       ])
 
       return {
         rows: {
           courseRows: (courseRows ?? []) as Record<string, unknown>[],
           lessonRows: (lessonRows ?? []) as Record<string, unknown>[],
-          challengeRows: (challengeRows ?? []) as Record<string, unknown>[]
+          challengeRows: (challengeRows ?? []) as Record<string, unknown>[],
+          lessonChallengeRows
         }
       }
     }
@@ -91,14 +104,14 @@ export const getLessonPageData = cache(async (courseSlug: string, lessonSlug: st
     return null
   }
 
-  const challenge = lesson.challengeSlug
-    ? snapshot.challenges.find((item) => item.slug === lesson.challengeSlug && item.published) ?? null
-    : null
+  const challenges = lesson.challengeIds
+    .map((challengeId) => snapshot.challenges.find((item) => item.id === challengeId && item.published) ?? null)
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
 
   return {
     course,
     lesson,
-    challenge,
+    challenges,
     contentSource: snapshot.contentSource,
     contentSourceReason: snapshot.contentSourceReason
   }

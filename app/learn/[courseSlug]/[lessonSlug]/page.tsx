@@ -81,25 +81,36 @@ export default async function LessonPage({ params }: LessonPageProps) {
           </CardContent>
         </Card>
 
-        {data.challenge ? (
+        {data.challenges.length ? (
           <div className="grid gap-6">
-            <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,247,241,0.94))]">
-              <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.78)] p-7 sm:p-8">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <CardTitle className="font-serif text-4xl">{data.challenge.title}</CardTitle>
-                  <Badge>{data.challenge.language}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="max-w-none p-7 sm:p-8">
-                <MdxRenderer source={data.challenge.promptMdx} />
-              </CardContent>
-            </Card>
-            <ChallengeWorkbench
-              challenge={data.challenge}
-              courseSlug={courseSlug}
-              lessonSlug={lessonSlug}
-              isAuthenticated={Boolean(user)}
-            />
+            {data.challenges.map((challenge, index) => (
+              <div key={challenge.id} className="grid gap-6">
+                <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,247,241,0.94))]">
+                  <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.78)] p-7 sm:p-8">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="space-y-3">
+                        {data.challenges.length > 1 ? (
+                          <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">
+                            Question {index + 1}
+                          </p>
+                        ) : null}
+                        <CardTitle className="font-serif text-4xl">{challenge.title}</CardTitle>
+                      </div>
+                      <Badge>{challenge.language}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="max-w-none p-7 sm:p-8">
+                    <MdxRenderer source={challenge.promptMdx} />
+                  </CardContent>
+                </Card>
+                <ChallengeWorkbench
+                  challenge={challenge}
+                  courseSlug={courseSlug}
+                  lessonSlug={lessonSlug}
+                  isAuthenticated={Boolean(user)}
+                />
+              </div>
+            ))}
           </div>
         ) : (
           <Card>

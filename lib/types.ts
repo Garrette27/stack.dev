@@ -17,7 +17,7 @@ export type Lesson = {
   summary: string
   estimatedMinutes: number
   bodyMdx: string
-  challengeSlug: string | null
+  challengeIds: string[]
   orderIndex: number
   published: boolean
 }
@@ -63,7 +63,7 @@ export type CourseWithLessons = {
 export type LessonBundle = {
   course: Course
   lesson: Lesson
-  challenge: Challenge | null
+  challenges: Challenge[]
   contentSource: "database" | "mock"
   contentSourceReason: string
 }

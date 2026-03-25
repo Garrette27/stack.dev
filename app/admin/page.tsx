@@ -17,12 +17,12 @@ export default async function AdminPage() {
           <CardHeader>
             <Badge className="w-fit bg-white/12 text-white">Authoring</Badge>
             <CardTitle className="max-w-4xl font-serif text-4xl leading-[1.05] text-white">
-              Write the next lesson, prompt, and checker in one place.
+              Write the next lesson and attach questions in one place.
             </CardTitle>
-            <CardDescription className="text-white/80">Create lessons quickly, then open the learner page to test them.</CardDescription>
+            <CardDescription className="text-white/80">Save content here, then open the learner page to test the exact result.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm leading-7 text-white/85">
-            <p>Each save updates the course, the lesson, and its attached practice question together.</p>
+            <p>Each save updates the course and lesson, then attaches the authored question to that lesson.</p>
             <p>Use this page to keep content moving without jumping between tools.</p>
           </CardContent>
         </Card>
@@ -83,6 +83,9 @@ export default async function AdminPage() {
                   <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{lesson.courseSlug}</p>
                   <p className="mt-2 text-lg font-semibold text-[var(--ink-strong)]">{lesson.title}</p>
                   <p className="mt-1 text-sm leading-6 text-[var(--ink)]">{lesson.summary}</p>
+                  <p className="mt-2 text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">
+                    {lesson.challengeIds.length} question{lesson.challengeIds.length === 1 ? "" : "s"}
+                  </p>
                   <Link
                     href={`/learn/${lesson.courseSlug}/${lesson.slug}`}
                     className="mt-3 inline-flex text-sm font-medium text-[var(--ink-strong)] underline decoration-[var(--accent)]"

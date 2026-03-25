@@ -18,7 +18,7 @@ export default async function HomePage() {
           <Badge>Text-first coding practice</Badge>
           <div className="space-y-5">
             <h1 className="max-w-4xl font-serif text-5xl tracking-tight text-[var(--ink-strong)] sm:text-6xl">
-              Read a short lesson. Solve one challenge. Save progress. Continue tomorrow.
+              Read a short lesson. Solve practical questions. Save progress. Continue tomorrow.
             </h1>
             <p className="max-w-2xl text-lg leading-8 text-[var(--ink)]">
               Learn with short lessons, practical exercises, and a study flow built to help career shifters stay

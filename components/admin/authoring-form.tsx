@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useActionState } from "react"
 
 import { upsertAuthoringBundleAction, type AuthoringActionState } from "@/app/admin/actions"
@@ -8,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { getDefaultJudge0LanguageId } from "@/lib/judge0/languages"
+import type { Challenge } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const initialState: AuthoringActionState = {
@@ -17,13 +20,15 @@ const initialState: AuthoringActionState = {
 
 export function AuthoringForm() {
   const [state, formAction, pending] = useActionState(upsertAuthoringBundleAction, initialState)
+  const [language, setLanguage] = useState<Challenge["language"]>("python")
+  const [judge0LanguageId, setJudge0LanguageId] = useState(String(getDefaultJudge0LanguageId("python")))
 
   return (
     <Card className="overflow-hidden">
       <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.66)]">
-        <CardTitle>Create lesson + challenge</CardTitle>
+        <CardTitle>Create lesson + question</CardTitle>
         <p className="text-sm leading-7 text-[var(--ink-muted)]">
-          Fill this once, save it, then open the learner page to verify the exact lesson and practice task you just created.
+          Save a lesson and question here, then open the learner page to verify the exact content you just authored.
         </p>
       </CardHeader>
       <CardContent className="grid gap-8 p-6">
@@ -38,6 +43,11 @@ export function AuthoringForm() {
               <p className="mt-1">Reference solution and the checks used to score an answer.</p>
             </div>
           </section>
+
+          <p className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] px-5 py-4 text-sm leading-7 text-[var(--ink)]">
+            Reuse the same course and lesson slugs to add another question to an existing lesson after the
+            `lesson_challenges` migration is applied.
+          </p>
 
           <section className="grid gap-4 md:grid-cols-2">
             <Field label="Course title">
@@ -83,7 +93,7 @@ export function AuthoringForm() {
               <Input name="challengeTitle" placeholder="Write a greeting function" required />
             </Field>
             <Field label="Question slug" hint="URL-safe id for the coding challenge.">
-              <Input name="challengeSlug" placeholder="python-greet-user" required />
+              <Input name="challengeSlug" placeholder="javascript-greet-user" required />
             </Field>
           </section>
 
@@ -91,7 +101,12 @@ export function AuthoringForm() {
             <Field label="Answer language" hint="Language the learner will write their answer in.">
               <select
                 name="language"
-                defaultValue="python"
+                value={language}
+                onChange={(event) => {
+                  const nextLanguage = event.target.value as Challenge["language"]
+                  setLanguage(nextLanguage)
+                  setJudge0LanguageId(String(getDefaultJudge0LanguageId(nextLanguage)))
+                }}
                 className={cn(
                   "flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
                 )}
@@ -100,8 +115,14 @@ export function AuthoringForm() {
                 <option value="javascript">javascript</option>
               </select>
             </Field>
-            <Field label="Checker language id" hint="Used when running answers. Python 3 is 71 in the current setup.">
-              <Input name="judge0LanguageId" type="number" defaultValue="71" required />
+            <Field label="Checker language id" hint="Auto-filled for the selected language.">
+              <Input
+                name="judge0LanguageId"
+                type="number"
+                value={judge0LanguageId}
+                onChange={(event) => setJudge0LanguageId(event.target.value)}
+                required
+              />
             </Field>
           </section>
 
@@ -150,7 +171,7 @@ export function AuthoringForm() {
 
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={pending}>
-              {pending ? "Saving..." : "Save question and lesson"}
+              {pending ? "Saving..." : "Save lesson and question"}
             </Button>
             {state.message ? (
               <p className={state.success ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>{state.message}</p>

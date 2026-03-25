@@ -25,7 +25,7 @@ export function mapCourse(row: Record<string, unknown>): Course {
   }
 }
 
-export function mapLesson(row: Record<string, unknown>, courseSlug: string): Lesson {
+export function mapLesson(row: Record<string, unknown>, courseSlug: string, challengeIds: string[]): Lesson {
   return {
     id: String(row.id),
     courseId: String(row.course_id),
@@ -35,7 +35,7 @@ export function mapLesson(row: Record<string, unknown>, courseSlug: string): Les
     summary: String(row.summary ?? ""),
     estimatedMinutes: Number(row.estimated_minutes ?? 10),
     bodyMdx: String(row.body_mdx ?? ""),
-    challengeSlug: row.challenge_slug ? String(row.challenge_slug) : null,
+    challengeIds,
     orderIndex: Number(row.order_index ?? 1),
     published: Boolean(row.published ?? true)
   }

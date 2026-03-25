@@ -12,25 +12,30 @@ const course: Course = {
 }
 
 const challenge: Challenge = {
-  id: "challenge-python-greet",
-  slug: "python-greet-user",
+  id: "challenge-javascript-greet",
+  slug: "javascript-greet-user",
   title: "Write a greeting function",
-  language: "python",
-  judge0LanguageId: 71,
+  language: "javascript",
+  judge0LanguageId: 102,
   promptMdx: `Create a function named \`greet\` that returns \`Hello, {name}!\`.
 
 - The function must accept a single string argument.
 - Return the greeting instead of printing it.
 - Keep the function body short and readable.`,
-  starterCode: `def greet(name):
-    # return the greeting string
-    raise NotImplementedError("write your solution here")
+  starterCode: `function greet(name) {
+  throw new Error("write your solution here")
+}
 `,
-  solutionCode: `def greet(name):
-    return f"Hello, {name}!"
+  solutionCode: `function greet(name) {
+  return \`Hello, \${name}!\`
+}
 `,
-  hiddenTestCode: `assert greet("Ada") == "Hello, Ada!"
-assert greet("Rico") == "Hello, Rico!"
+  hiddenTestCode: `if (greet("Ada") !== "Hello, Ada!") {
+  throw new Error("Ada greeting is incorrect")
+}
+if (greet("Rico") !== "Hello, Rico!") {
+  throw new Error("Rico greeting is incorrect")
+}
 `,
   published: true
 }
@@ -57,7 +62,7 @@ Short practice sessions are easier to repeat than long study blocks.
 ## Why this matters
 
 Consistent repetition matters more than one perfect study day. This lesson keeps the task small so you can finish it and move to the next step.`,
-  challengeSlug: challenge.slug,
+  challengeIds: [challenge.id],
   orderIndex: 1,
   published: true
 }

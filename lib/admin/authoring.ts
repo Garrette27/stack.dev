@@ -42,6 +42,10 @@ type ParsedAuthoringBundle =
       message: string
     }
 
+type RelationInsertResult = {
+  tableAvailable: boolean
+}
+
 /**
  * Parses and normalizes the authoring form into a single bundle payload.
  */
@@ -75,6 +79,47 @@ export function parseAuthoringBundleFormData(formData: FormData): ParsedAuthorin
     success: true,
     data: parsed.data
   }
+}
+
+/**
+ * Attaches a challenge to a lesson when the multi-question relation table is available.
+ * Older databases without the table keep using the legacy single challenge field.
+ */
+async function attachChallengeToLesson(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  lessonId: string,
+  challengeId: string
+): Promise<RelationInsertResult> {
+  const { data: relationRows, error: relationError } = await admin
+    .from("lesson_challenges")
+    .select("challenge_id, order_index")
+    .eq("lesson_id", lessonId)
+    .order("order_index")
+
+  if (relationError?.code === "42P01" || relationError?.code === "PGRST205") {
+    return { tableAvailable: false }
+  }
+
+  if (relationError) {
+    throw new Error(relationError.message)
+  }
+
+  const existingRelation = (relationRows ?? []).find((row) => String(row.challenge_id) === challengeId)
+
+  if (!existingRelation) {
+    const nextOrderIndex = (relationRows?.length ?? 0) + 1
+    const { error: insertError } = await admin.from("lesson_challenges").insert({
+      lesson_id: lessonId,
+      challenge_id: challengeId,
+      order_index: nextOrderIndex
+    })
+
+    if (insertError) {
+      throw new Error(insertError.message)
+    }
+  }
+
+  return { tableAvailable: true }
 }
 
 /**
@@ -131,7 +176,7 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
     }
   }
 
-  const { error: challengeError } = await admin!.from("challenges").upsert(
+  const { data: challengeRow, error: challengeError } = await admin!.from("challenges").upsert(
     {
       slug: payload.challengeSlug,
       title: payload.challengeTitle,
@@ -146,7 +191,8 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
     {
       onConflict: "slug"
     }
-  )
+  ).select("id")
+   .single()
 
   if (challengeError) {
     return {
@@ -156,11 +202,16 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   }
 
   const [{ data: existingLesson }, { count: lessonCount }] = await Promise.all([
-    admin!.from("lessons").select("order_index").eq("course_id", courseRow.id).eq("slug", payload.lessonSlug).maybeSingle(),
+    admin!
+      .from("lessons")
+      .select("id, order_index, challenge_slug")
+      .eq("course_id", courseRow.id)
+      .eq("slug", payload.lessonSlug)
+      .maybeSingle(),
     admin!.from("lessons").select("id", { count: "exact", head: true }).eq("course_id", courseRow.id)
   ])
 
-  const { error: lessonError } = await admin!.from("lessons").upsert(
+  const { data: lessonRow, error: lessonError } = await admin!.from("lessons").upsert(
     {
       course_id: courseRow.id,
       slug: payload.lessonSlug,
@@ -168,14 +219,15 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
       summary: payload.lessonSummary,
       estimated_minutes: payload.estimatedMinutes,
       body_mdx: payload.bodyMdx,
-      challenge_slug: payload.challengeSlug,
+      challenge_slug: existingLesson?.challenge_slug ?? payload.challengeSlug,
       order_index: existingLesson?.order_index ?? (lessonCount ?? 0) + 1,
       published: true
     },
     {
       onConflict: "course_id,slug"
     }
-  )
+  ).select("id")
+   .single()
 
   if (lessonError) {
     return {
@@ -184,8 +236,38 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
     }
   }
 
+  try {
+    const relationResult = await attachChallengeToLesson(admin!, lessonRow.id, challengeRow.id)
+
+    if (!relationResult.tableAvailable && existingLesson?.challenge_slug && existingLesson.challenge_slug !== payload.challengeSlug) {
+      return {
+        success: false,
+        message: "This database still supports one question per lesson. Apply the lesson_challenges migration first."
+      }
+    }
+
+    if (!relationResult.tableAvailable && !existingLesson?.challenge_slug) {
+      const { error: legacyLessonError } = await admin!
+        .from("lessons")
+        .update({ challenge_slug: payload.challengeSlug })
+        .eq("id", lessonRow.id)
+
+      if (legacyLessonError) {
+        return {
+          success: false,
+          message: legacyLessonError.message
+        }
+      }
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Unable to attach the question to the lesson."
+    }
+  }
+
   return {
     success: true,
-    message: "Lesson and challenge saved."
+    message: "Lesson and question saved."
   }
 }

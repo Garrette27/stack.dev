@@ -5,7 +5,7 @@ import { mockContent } from "@/lib/mock-data"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { Challenge, ContentSnapshot } from "@/lib/types"
 
-import { loadSnapshotFromRows } from "@/lib/content/snapshot-loader"
+import { loadOptionalLessonChallengeRows, loadSnapshotFromRows } from "@/lib/content/snapshot-loader"
 import { mapChallenge } from "@/lib/content/shared"
 
 /**
@@ -43,17 +43,30 @@ export async function getAdminSnapshot(): Promise<ContentSnapshot> {
       }
 
       const admin = createAdminClient()
-      const [{ data: courseRows }, { data: lessonRows }, { data: challengeRows }] = await Promise.all([
+      const [{ data: courseRows }, { data: lessonRows }, { data: challengeRows }, lessonChallengeRows] = await Promise.all([
         admin!.from("courses").select("*").order("title"),
         admin!.from("lessons").select("*").order("order_index"),
-        admin!.from("challenges").select("*").order("title")
+        admin!.from("challenges").select("*").order("title"),
+        loadOptionalLessonChallengeRows(async () => {
+          const result = await admin!
+            .from("lesson_challenges")
+            .select("lesson_id,challenge_id,order_index")
+            .order("lesson_id")
+            .order("order_index")
+
+          return {
+            data: (result.data ?? null) as Record<string, unknown>[] | null,
+            error: result.error ? { code: result.error.code, message: result.error.message } : null
+          }
+        })
       ])
 
       return {
         rows: {
           courseRows: (courseRows ?? []) as Record<string, unknown>[],
           lessonRows: (lessonRows ?? []) as Record<string, unknown>[],
-          challengeRows: (challengeRows ?? []) as Record<string, unknown>[]
+          challengeRows: (challengeRows ?? []) as Record<string, unknown>[],
+          lessonChallengeRows
         }
       }
     }
