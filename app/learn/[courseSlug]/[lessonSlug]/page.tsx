@@ -3,6 +3,7 @@ import { ArrowLeft, Clock3 } from "lucide-react"
 import { notFound } from "next/navigation"
 
 import { ChallengeWorkbench } from "@/components/code/challenge-workbench"
+import { CourseProgressStrip } from "@/components/learn/course-progress-strip"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getCurrentUser, getLessonPageData } from "@/lib/data"
@@ -26,6 +27,14 @@ export default async function LessonPage({ params }: LessonPageProps) {
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-10 sm:px-6 xl:px-10">
+      <CourseProgressStrip
+        courseSlug={data.course.slug}
+        courseTitle={data.course.title}
+        courseIndex={data.courseIndex}
+        courseLessons={data.courseLessons}
+        currentLessonIndex={data.currentLessonIndex}
+      />
+
       <section className="relative overflow-hidden rounded-[2.75rem] border border-black/8 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(255,244,236,0.98))] p-7 shadow-[0_28px_80px_rgba(25,31,45,0.08)] sm:p-10">
         <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-[color:rgb(201_111_54/0.16)] blur-3xl" />
         <div className="absolute bottom-0 right-[14%] h-24 w-24 rounded-full bg-[color:rgb(25_31_45/0.08)] blur-3xl" />
@@ -36,7 +45,8 @@ export default async function LessonPage({ params }: LessonPageProps) {
               Back to course
             </Link>
             <div className="flex flex-wrap items-center gap-3">
-              <Badge>{data.course.title}</Badge>
+              <Badge>{`CH${data.currentLessonIndex + 1}`}</Badge>
+              <Badge className="bg-white/85 text-[var(--ink-strong)] ring-1 ring-black/8">{`L${data.courseIndex}: ${data.course.title}`}</Badge>
               <Badge className="bg-white/85 text-[var(--ink-strong)] ring-1 ring-black/8">
                 {formatRelativeMinutes(data.lesson.estimatedMinutes)}
               </Badge>

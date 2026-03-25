@@ -64,6 +64,9 @@ export type LessonBundle = {
   course: Course
   lesson: Lesson
   challenges: Challenge[]
+  courseIndex: number
+  currentLessonIndex: number
+  courseLessons: Lesson[]
   contentSource: "database" | "mock"
   contentSourceReason: string
 }

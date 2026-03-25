@@ -35,7 +35,7 @@ export default async function CoursePage({ params }: CoursePageProps) {
           <Card key={lesson.id}>
             <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
               <div className="space-y-2">
-                <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">Lesson {index + 1}</p>
+                <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`CH${index + 1}`}</p>
                 <p className="text-xl font-semibold text-[var(--ink-strong)]">{lesson.title}</p>
                 <p className="max-w-2xl text-sm leading-7 text-[var(--ink)]">{lesson.summary}</p>
                 <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">
