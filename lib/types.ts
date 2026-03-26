@@ -67,6 +67,9 @@ export type LessonBundle = {
   courseIndex: number
   currentLessonIndex: number
   courseLessons: Lesson[]
+  courseOptions: Array<{ slug: string; title: string; index: number }>
+  previousLessonSlug: string | null
+  nextLessonSlug: string | null
   contentSource: "database" | "mock"
   contentSourceReason: string
 }

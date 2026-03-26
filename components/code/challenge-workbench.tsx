@@ -78,7 +78,7 @@ export function ChallengeWorkbench({
         </CardHeader>
         <CardContent className="p-0">
           <MonacoEditor
-            height="720px"
+            height="70vh"
             defaultLanguage={challenge.language === "python" ? "python" : "javascript"}
             theme="vs-dark"
             value={sourceCode}

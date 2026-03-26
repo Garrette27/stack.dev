@@ -1,7 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import { useActionState } from "react"
+import { useActionState, useEffect, useState } from "react"
 
 import { upsertAuthoringBundleAction, type AuthoringActionState } from "@/app/admin/actions"
 import { Button } from "@/components/ui/button"
@@ -10,168 +9,373 @@ import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { getDefaultJudge0LanguageId } from "@/lib/judge0/languages"
-import type { Challenge } from "@/lib/types"
-import { cn } from "@/lib/utils"
+import type { Challenge, ContentSnapshot, Lesson } from "@/lib/types"
+import { slugify } from "@/lib/utils"
+
+const NEW_COURSE = "__new_course__"
+const NEW_CHAPTER = "__new_chapter__"
+const NEW_ASSIGNMENT = "__new_assignment__"
 
 const initialState: AuthoringActionState = {
   success: false,
   message: ""
 }
 
-export function AuthoringForm() {
+type AuthoringFormProps = {
+  snapshot: ContentSnapshot
+}
+
+function getStarterTemplate(language: Challenge["language"]) {
+  if (language === "javascript") {
+    return 'console.log("hello there!")'
+  }
+
+  return 'print("hello there!")'
+}
+
+function getSolutionTemplate(language: Challenge["language"]) {
+  if (language === "javascript") {
+    return 'console.log("Starting Textio server...")'
+  }
+
+  return 'print("Starting Textio server...")'
+}
+
+function getHiddenTestTemplate(language: Challenge["language"]) {
+  if (language === "javascript") {
+    return 'if (!stackOutput.includes("Starting Textio server...")) {\n  throw new Error("Print the expected text")\n}'
+  }
+
+  return 'assert "Starting Textio server..." in stackOutput'
+}
+
+function getAssignmentLabel(challenge: Challenge, index: number) {
+  const normalizedTitle = challenge.title.replace(/^assignment[:\s-]*/i, "").trim()
+  const safeTitle = normalizedTitle || `Assignment ${index + 1}`
+  const shortTitle = safeTitle.length > 34 ? `${safeTitle.slice(0, 31).trimEnd()}...` : safeTitle
+  return `A${index + 1}: ${shortTitle}`
+}
+
+function getLessonsForCourse(snapshot: ContentSnapshot, courseId: string | null) {
+  if (!courseId) {
+    return []
+  }
+
+  return snapshot.lessons.filter((lesson) => lesson.courseId === courseId).sort((left, right) => left.orderIndex - right.orderIndex)
+}
+
+function getChallengesForLesson(snapshot: ContentSnapshot, lesson: Lesson | null) {
+  if (!lesson) {
+    return []
+  }
+
+  return lesson.challengeIds
+    .map((challengeId) => snapshot.challenges.find((challenge) => challenge.id === challengeId) ?? null)
+    .filter((challenge): challenge is Challenge => Boolean(challenge))
+}
+
+/**
+ * Presents authoring in product terms: learning path, chapter, and assignment.
+ * The form keeps routing and internal challenge identity hidden behind generated fields.
+ */
+export function AuthoringForm({ snapshot }: AuthoringFormProps) {
   const [state, formAction, pending] = useActionState(upsertAuthoringBundleAction, initialState)
-  const [language, setLanguage] = useState<Challenge["language"]>("python")
-  const [judge0LanguageId, setJudge0LanguageId] = useState(String(getDefaultJudge0LanguageId("python")))
+
+  const initialCourse = snapshot.courses[0] ?? null
+  const initialLessons = getLessonsForCourse(snapshot, initialCourse?.id ?? null)
+  const initialLesson = initialLessons[0] ?? null
+
+  const [courseSelection, setCourseSelection] = useState(initialCourse?.slug ?? NEW_COURSE)
+  const [lessonSelection, setLessonSelection] = useState(initialLesson?.slug ?? NEW_CHAPTER)
+  const [assignmentSelection, setAssignmentSelection] = useState(NEW_ASSIGNMENT)
+
+  const [courseTitle, setCourseTitle] = useState(initialCourse?.title ?? "")
+  const [lessonTitle, setLessonTitle] = useState(initialLesson?.title ?? "")
+  const [lessonSummary, setLessonSummary] = useState(initialLesson?.summary ?? "")
+  const [bodyMdx, setBodyMdx] = useState(initialLesson?.bodyMdx ?? "")
+
+  const [language, setLanguage] = useState<Challenge["language"]>("javascript")
+  const [judge0LanguageId, setJudge0LanguageId] = useState(String(getDefaultJudge0LanguageId("javascript")))
+  const [promptMdx, setPromptMdx] = useState("")
+  const [starterCode, setStarterCode] = useState(getStarterTemplate("javascript"))
+  const [solutionCode, setSolutionCode] = useState(getSolutionTemplate("javascript"))
+  const [hiddenTestCode, setHiddenTestCode] = useState(getHiddenTestTemplate("javascript"))
+
+  const selectedCourse = snapshot.courses.find((course) => course.slug === courseSelection) ?? null
+  const courseLessons = getLessonsForCourse(snapshot, selectedCourse?.id ?? null)
+  const selectedLesson = courseLessons.find((lesson) => lesson.slug === lessonSelection) ?? null
+  const chapterAssignments = getChallengesForLesson(snapshot, selectedLesson)
+  const selectedAssignment = chapterAssignments.find((challenge) => challenge.slug === assignmentSelection) ?? null
+
+  const resetAssignmentDraft = (nextLanguage: Challenge["language"]) => {
+    setLanguage(nextLanguage)
+    setJudge0LanguageId(String(getDefaultJudge0LanguageId(nextLanguage)))
+    setPromptMdx("")
+    setStarterCode(getStarterTemplate(nextLanguage))
+    setSolutionCode(getSolutionTemplate(nextLanguage))
+    setHiddenTestCode(getHiddenTestTemplate(nextLanguage))
+  }
+
+  useEffect(() => {
+    const nextSelectedCourse = snapshot.courses.find((course) => course.slug === courseSelection) ?? null
+
+    if (!nextSelectedCourse) {
+      setCourseTitle("")
+      setLessonSelection(NEW_CHAPTER)
+      return
+    }
+
+    setCourseTitle(nextSelectedCourse.title)
+    const nextLesson = getLessonsForCourse(snapshot, nextSelectedCourse.id)[0] ?? null
+    setLessonSelection(nextLesson?.slug ?? NEW_CHAPTER)
+  }, [courseSelection, snapshot])
+
+  useEffect(() => {
+    const nextSelectedCourse = snapshot.courses.find((course) => course.slug === courseSelection) ?? null
+    const nextLessons = getLessonsForCourse(snapshot, nextSelectedCourse?.id ?? null)
+    const nextSelectedLesson = nextLessons.find((lesson) => lesson.slug === lessonSelection) ?? null
+
+    if (!nextSelectedLesson) {
+      setLessonTitle("")
+      setLessonSummary("")
+      setBodyMdx("")
+      setAssignmentSelection(NEW_ASSIGNMENT)
+      resetAssignmentDraft("javascript")
+      return
+    }
+
+    setLessonTitle(nextSelectedLesson.title)
+    setLessonSummary(nextSelectedLesson.summary)
+    setBodyMdx(nextSelectedLesson.bodyMdx)
+    setAssignmentSelection(NEW_ASSIGNMENT)
+    resetAssignmentDraft("javascript")
+  }, [courseSelection, lessonSelection, snapshot])
+
+  useEffect(() => {
+    if (assignmentSelection === NEW_ASSIGNMENT) {
+      return
+    }
+
+    const nextSelectedAssignment = chapterAssignments.find((challenge) => challenge.slug === assignmentSelection) ?? null
+
+    if (!nextSelectedAssignment) {
+      return
+    }
+
+    setLanguage(nextSelectedAssignment.language)
+    setJudge0LanguageId(String(nextSelectedAssignment.judge0LanguageId))
+    setPromptMdx(nextSelectedAssignment.promptMdx)
+    setStarterCode(nextSelectedAssignment.starterCode)
+    setSolutionCode(nextSelectedAssignment.solutionCode)
+    setHiddenTestCode(nextSelectedAssignment.hiddenTestCode)
+  }, [assignmentSelection, chapterAssignments])
+
+  const resolvedCourseSlug = selectedCourse?.slug ?? slugify(courseTitle)
+  const resolvedLessonSlug = selectedLesson?.slug ?? slugify(lessonTitle)
 
   return (
     <Card className="overflow-hidden">
       <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.66)]">
-        <CardTitle>Create lesson + question</CardTitle>
+        <CardTitle>Create chapter + assignment</CardTitle>
         <p className="text-sm leading-7 text-[var(--ink-muted)]">
-          Save a lesson and question here, then open the learner page to verify the exact content you just authored.
+          Choose a learning path, choose a chapter, then attach one assignment to that chapter.
         </p>
       </CardHeader>
       <CardContent className="grid gap-8 p-6">
         <form action={formAction} className="grid gap-8">
-          <section className="grid gap-4 rounded-[1.75rem] bg-[color:rgb(25_31_45/0.04)] p-5 text-sm leading-7 text-[var(--ink)] md:grid-cols-2">
-            <div>
-              <p className="font-semibold text-[var(--ink-strong)]">Public</p>
-              <p className="mt-1">Lesson title, lesson text, public question, and starter code.</p>
-            </div>
-            <div>
-              <p className="font-semibold text-[var(--ink-strong)]">Private</p>
-              <p className="mt-1">Reference solution and the checks used to score an answer.</p>
-            </div>
-          </section>
+          <input type="hidden" name="courseTitle" value={courseTitle} readOnly />
+          <input type="hidden" name="courseSlug" value={resolvedCourseSlug} readOnly />
+          <input type="hidden" name="lessonTitle" value={lessonTitle} readOnly />
+          <input type="hidden" name="lessonSlug" value={resolvedLessonSlug} readOnly />
+          <input type="hidden" name="challengeSlug" value={selectedAssignment?.slug ?? ""} readOnly />
 
-          <p className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] px-5 py-4 text-sm leading-7 text-[var(--ink)]">
-            Reuse the same course and lesson slugs to add another question to an existing lesson after the
-            `lesson_challenges` migration is applied.
-          </p>
+          <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,247,241,0.9))]">
+            <CardHeader className="border-b border-black/6 bg-white/70">
+              <CardTitle>Learning path</CardTitle>
+              <p className="text-sm leading-7 text-[var(--ink-muted)]">Use an existing path or rename the current one before adding new chapters.</p>
+            </CardHeader>
+            <CardContent className="grid gap-5 p-6">
+              <Field label="Path">
+                <select
+                  value={courseSelection}
+                  onChange={(event) => setCourseSelection(event.target.value)}
+                  className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
+                >
+                  {snapshot.courses.map((course, index) => (
+                    <option key={course.id} value={course.slug}>
+                      {`L${index + 1}: ${course.title}`}
+                    </option>
+                  ))}
+                  <option value={NEW_COURSE}>Create new learning path</option>
+                </select>
+              </Field>
 
-          <section className="grid gap-4 md:grid-cols-2">
-            <Field label="Course title">
-              <Input name="courseTitle" placeholder="Backend Foundations" required />
-            </Field>
-            <Field label="Course slug" hint="Used in the URL, for example backend-foundations">
-              <Input name="courseSlug" placeholder="backend-foundations" required />
-            </Field>
-          </section>
+              <Field label="Path title">
+                <Input value={courseTitle} onChange={(event) => setCourseTitle(event.target.value)} placeholder="Learn JavaScript for Beginners" required />
+              </Field>
 
-          <section className="grid gap-4 md:grid-cols-2">
-            <Field label="Lesson title" hint="This is the heading the learner sees in the course and lesson page.">
-              <Input name="lessonTitle" placeholder="Functions and feedback loops" required />
-            </Field>
-            <Field label="Lesson slug" hint="Short URL name for this lesson.">
-              <Input name="lessonSlug" placeholder="functions-and-feedback" required />
-            </Field>
-          </section>
+              <p className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+                Path URL: <span className="font-mono text-[var(--ink-strong)]">/learn/{resolvedCourseSlug || "new-path"}</span>
+              </p>
+            </CardContent>
+          </Card>
 
-          <section className="grid gap-4 md:grid-cols-3">
-            <Field label="Lesson summary" className="md:col-span-2">
-              <Input name="lessonSummary" placeholder="What the learner should remember after this exercise." required />
-            </Field>
-            <Field label="Minutes">
-              <Input name="estimatedMinutes" type="number" min="1" defaultValue="10" required />
-            </Field>
-          </section>
+          <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.92))]">
+            <CardHeader className="border-b border-black/6 bg-white/70">
+              <CardTitle>Chapter</CardTitle>
+              <p className="text-sm leading-7 text-[var(--ink-muted)]">Pick the chapter this assignment belongs to, or create the next chapter for the selected path.</p>
+            </CardHeader>
+            <CardContent className="grid gap-5 p-6">
+              <Field label="Chapter">
+                <select
+                  value={lessonSelection}
+                  onChange={(event) => setLessonSelection(event.target.value)}
+                  className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
+                >
+                  {courseLessons.map((lesson, index) => (
+                    <option key={lesson.id} value={lesson.slug}>
+                      {`CH${index + 1}: ${lesson.title}`}
+                    </option>
+                  ))}
+                  <option value={NEW_CHAPTER}>Create new chapter</option>
+                </select>
+              </Field>
 
-          <Field
-            label="Lesson reading text (MDX)"
-            hint="This is the explanation part the learner reads before answering the coding question."
-          >
-            <Textarea
-              name="bodyMdx"
-              rows={14}
-              placeholder={"# What this lesson teaches\n\nExplain the concept in a few paragraphs.\n\n- Keep it short\n- Keep it focused"}
-              required
-            />
-          </Field>
+              <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+                <Field label="Chapter title">
+                  <Input value={lessonTitle} onChange={(event) => setLessonTitle(event.target.value)} placeholder="Variables" required />
+                </Field>
+                <Field label="Chapter summary">
+                  <Input
+                    value={lessonSummary}
+                    onChange={(event) => setLessonSummary(event.target.value)}
+                    placeholder="What the learner should remember after this chapter."
+                    required
+                  />
+                </Field>
+              </section>
 
-          <section className="grid gap-4 md:grid-cols-3">
-            <Field label="Question title" hint="Short title shown above the public coding question." className="md:col-span-2">
-              <Input name="challengeTitle" placeholder="Write a greeting function" required />
-            </Field>
-            <Field label="Question slug" hint="URL-safe id for the coding challenge.">
-              <Input name="challengeSlug" placeholder="javascript-greet-user" required />
-            </Field>
-          </section>
+              <p className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+                Chapter URL:{" "}
+                <span className="font-mono text-[var(--ink-strong)]">
+                  /learn/{resolvedCourseSlug || "new-path"}/{resolvedLessonSlug || "new-chapter"}
+                </span>
+              </p>
 
-          <section className="grid gap-4 md:grid-cols-2">
-            <Field label="Answer language" hint="Language the learner will write their answer in.">
-              <select
-                name="language"
-                value={language}
-                onChange={(event) => {
-                  const nextLanguage = event.target.value as Challenge["language"]
-                  setLanguage(nextLanguage)
-                  setJudge0LanguageId(String(getDefaultJudge0LanguageId(nextLanguage)))
-                }}
-                className={cn(
-                  "flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
-                )}
-              >
-                <option value="python">python</option>
-                <option value="javascript">javascript</option>
-              </select>
-            </Field>
-            <Field label="Checker language id" hint="Auto-filled for the selected language.">
-              <Input
-                name="judge0LanguageId"
-                type="number"
-                value={judge0LanguageId}
-                onChange={(event) => setJudge0LanguageId(event.target.value)}
-                required
-              />
-            </Field>
-          </section>
+              <Field label="Chapter reading (MDX)">
+                <Textarea
+                  name="bodyMdx"
+                  rows={16}
+                  value={bodyMdx}
+                  onChange={(event) => setBodyMdx(event.target.value)}
+                  placeholder={"# Variables\n\nExplain the concept clearly.\n\n- Keep it short\n- Keep it practical"}
+                  required
+                />
+              </Field>
+            </CardContent>
+          </Card>
 
-          <Field
-            label="Public question / prompt (MDX)"
-            hint="This is the exact coding question shown to the learner above the editor."
-          >
-            <Textarea
-              name="promptMdx"
-              rows={10}
-              placeholder={"Describe the task clearly.\n\n- Input requirements\n- Expected behavior\n- Edge cases"}
-              required
-            />
-          </Field>
+          <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,247,241,0.94))]">
+            <CardHeader className="border-b border-black/6 bg-white/72">
+              <CardTitle>Assignment</CardTitle>
+              <p className="text-sm leading-7 text-[var(--ink-muted)]">Add a new assignment to this chapter, or load one of the existing assignments to revise it.</p>
+            </CardHeader>
+            <CardContent className="grid gap-6 p-6">
+              <Field label="Assignment">
+                <select
+                  value={assignmentSelection}
+                  onChange={(event) => {
+                    const nextAssignment = event.target.value
+                    setAssignmentSelection(nextAssignment)
 
-          <section className="grid gap-4 lg:grid-cols-2">
-            <Field label="Starter answer code" hint="This pre-fills the learner editor so they know where to write the solution.">
-              <Textarea
-                name="starterCode"
-                rows={14}
-                placeholder={"def solve(value):\n    raise NotImplementedError('implement me')"}
-                required
-              />
-            </Field>
-            <Field label="Reference solution (private)" hint="Used for your internal answer key only. The learner does not see this.">
-              <Textarea
-                name="solutionCode"
-                rows={14}
-                placeholder={"def solve(value):\n    return value"}
-                required
-              />
-            </Field>
-          </section>
+                    if (nextAssignment === NEW_ASSIGNMENT) {
+                      resetAssignmentDraft(language)
+                    }
+                  }}
+                  className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
+                >
+                  <option value={NEW_ASSIGNMENT}>Create new assignment</option>
+                  {chapterAssignments.map((challenge, index) => (
+                    <option key={challenge.id} value={challenge.slug}>
+                      {getAssignmentLabel(challenge, index)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
 
-          <Field
-            label="Hidden checker tests (private)"
-            hint="Write assertions that must pass. This is the real correctness check run on the server."
-          >
-            <Textarea
-              name="hiddenTestCode"
-              rows={12}
-              placeholder={'assert greet("Ada") == "Hello, Ada!"\nassert greet("Rico") == "Hello, Rico!"'}
-              required
-            />
-          </Field>
+              <section className="grid gap-5 lg:grid-cols-2">
+                <Field label="Answer language">
+                  <select
+                    name="language"
+                    value={language}
+                    onChange={(event) => {
+                      const nextLanguage = event.target.value as Challenge["language"]
+                      setLanguage(nextLanguage)
+                      setJudge0LanguageId(String(getDefaultJudge0LanguageId(nextLanguage)))
+                    }}
+                    className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
+                  >
+                    <option value="javascript">javascript</option>
+                    <option value="python">python</option>
+                  </select>
+                </Field>
+                <Field label="Checker language id">
+                  <Input
+                    name="judge0LanguageId"
+                    type="number"
+                    value={judge0LanguageId}
+                    onChange={(event) => setJudge0LanguageId(event.target.value)}
+                    required
+                  />
+                </Field>
+              </section>
+
+              <Field label="Assignment prompt (MDX)">
+                <Textarea
+                  name="promptMdx"
+                  rows={12}
+                  value={promptMdx}
+                  onChange={(event) => setPromptMdx(event.target.value)}
+                  placeholder={"Explain the task clearly.\n\n- What to print or return\n- What matters about the output\n- Any edge cases"}
+                  required
+                />
+              </Field>
+
+              <Field label="Starter code">
+                <Textarea
+                  name="starterCode"
+                  rows={14}
+                  value={starterCode}
+                  onChange={(event) => setStarterCode(event.target.value)}
+                  required
+                />
+              </Field>
+
+              <Field label="Reference solution">
+                <Textarea
+                  name="solutionCode"
+                  rows={14}
+                  value={solutionCode}
+                  onChange={(event) => setSolutionCode(event.target.value)}
+                  required
+                />
+              </Field>
+
+              <Field label="Hidden checker tests">
+                <Textarea
+                  name="hiddenTestCode"
+                  rows={12}
+                  value={hiddenTestCode}
+                  onChange={(event) => setHiddenTestCode(event.target.value)}
+                  required
+                />
+              </Field>
+            </CardContent>
+          </Card>
 
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={pending}>
-              {pending ? "Saving..." : "Save lesson and question"}
+              {pending ? "Saving..." : "Save chapter and assignment"}
             </Button>
             {state.message ? (
               <p className={state.success ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>{state.message}</p>

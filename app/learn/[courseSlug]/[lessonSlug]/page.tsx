@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowLeft, Clock3 } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { notFound } from "next/navigation"
 
 import { ChallengeWorkbench } from "@/components/code/challenge-workbench"
@@ -8,22 +8,42 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getCurrentUser, getLessonPageData } from "@/lib/data"
 import { MdxRenderer } from "@/lib/mdx"
-import { formatRelativeMinutes } from "@/lib/utils"
+import type { Challenge } from "@/lib/types"
 
 type LessonPageProps = {
   params: Promise<{
     courseSlug: string
     lessonSlug: string
   }>
+  searchParams: Promise<{
+    assignment?: string
+  }>
 }
 
-export default async function LessonPage({ params }: LessonPageProps) {
+function getAssignmentTitle(challenge: Challenge, index: number) {
+  const normalizedTitle = challenge.title.replace(/^assignment[:\s-]*/i, "").trim()
+  const safeTitle = normalizedTitle || `Assignment ${index + 1}`
+  return safeTitle.length > 42 ? `${safeTitle.slice(0, 39).trimEnd()}...` : safeTitle
+}
+
+export default async function LessonPage({ params, searchParams }: LessonPageProps) {
   const { courseSlug, lessonSlug } = await params
+  const { assignment } = await searchParams
   const [data, user] = await Promise.all([getLessonPageData(courseSlug, lessonSlug), getCurrentUser()])
 
   if (!data) {
     notFound()
   }
+
+  const activeChallengeIndex = data.challenges.findIndex((challenge) => challenge.slug === assignment)
+  const safeActiveChallengeIndex = activeChallengeIndex >= 0 ? activeChallengeIndex : 0
+  const activeChallenge = data.challenges[safeActiveChallengeIndex] ?? null
+  const previousChallengeSlug = data.challenges[safeActiveChallengeIndex - 1]?.slug ?? null
+  const nextChallengeSlug = data.challenges[safeActiveChallengeIndex + 1]?.slug ?? null
+  const challengeOptions = data.challenges.map((challenge, index) => ({
+    slug: challenge.slug,
+    title: getAssignmentTitle(challenge, index)
+  }))
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-10 sm:px-6 xl:px-10">
@@ -33,6 +53,11 @@ export default async function LessonPage({ params }: LessonPageProps) {
         courseIndex={data.courseIndex}
         courseLessons={data.courseLessons}
         currentLessonIndex={data.currentLessonIndex}
+        currentLessonSlug={data.lesson.slug}
+        challengeOptions={challengeOptions}
+        activeChallengeSlug={activeChallenge?.slug ?? null}
+        previousChallengeSlug={previousChallengeSlug}
+        nextChallengeSlug={nextChallengeSlug}
       />
 
       <section className="relative overflow-hidden rounded-[2.75rem] border border-black/8 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(255,244,236,0.98))] p-7 shadow-[0_28px_80px_rgba(25,31,45,0.08)] sm:p-10">
@@ -47,9 +72,6 @@ export default async function LessonPage({ params }: LessonPageProps) {
             <div className="flex flex-wrap items-center gap-3">
               <Badge>{`CH${data.currentLessonIndex + 1}`}</Badge>
               <Badge className="bg-white/85 text-[var(--ink-strong)] ring-1 ring-black/8">{`L${data.courseIndex}: ${data.course.title}`}</Badge>
-              <Badge className="bg-white/85 text-[var(--ink-strong)] ring-1 ring-black/8">
-                {formatRelativeMinutes(data.lesson.estimatedMinutes)}
-              </Badge>
             </div>
             <div className="space-y-5">
               <h1 className="max-w-5xl font-serif text-5xl tracking-tight text-[var(--ink-strong)] sm:text-6xl">
@@ -63,72 +85,68 @@ export default async function LessonPage({ params }: LessonPageProps) {
 
           <div className="grid gap-4">
             <div className="rounded-[2rem] border border-black/8 bg-white/80 p-5 backdrop-blur">
-              <div className="flex items-start gap-3">
-                <Clock3 className="mt-1 h-5 w-5 text-[var(--accent)]" />
-                <div>
-                  <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Lesson time</p>
-                  <p className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">
-                    {formatRelativeMinutes(data.lesson.estimatedMinutes)}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">Estimated time for this lesson.</p>
-                </div>
-              </div>
+              <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Current chapter</p>
+              <p className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">{`CH${data.currentLessonIndex + 1}: ${data.lesson.title}`}</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">{data.lesson.summary}</p>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-10 2xl:grid-cols-[minmax(420px,0.62fr)_minmax(0,1.38fr)]">
-        <Card className="h-fit overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,250,245,0.92))]">
-          <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.72)] p-7 sm:p-8">
-            <div className="flex items-center justify-between gap-3">
-              <CardTitle className="font-serif text-3xl">{data.lesson.title}</CardTitle>
-              <Badge>{data.course.title}</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="max-w-none p-7 pt-6 sm:p-8 sm:pt-6">
-            <MdxRenderer source={data.lesson.bodyMdx} />
-          </CardContent>
-        </Card>
-
-        {data.challenges.length ? (
-          <div className="grid gap-6">
-            {data.challenges.map((challenge, index) => (
-              <div key={challenge.id} className="grid gap-6">
-                <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,247,241,0.94))]">
-                  <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.78)] p-7 sm:p-8">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="space-y-3">
-                        {data.challenges.length > 1 ? (
-                          <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">
-                            Question {index + 1}
-                          </p>
-                        ) : null}
-                        <CardTitle className="font-serif text-4xl">{challenge.title}</CardTitle>
-                      </div>
-                      <Badge>{challenge.language}</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="max-w-none p-7 sm:p-8">
-                    <MdxRenderer source={challenge.promptMdx} />
-                  </CardContent>
-                </Card>
-                <ChallengeWorkbench
-                  challenge={challenge}
-                  courseSlug={courseSlug}
-                  lessonSlug={lessonSlug}
-                  isAuthenticated={Boolean(user)}
-                />
+      <div className="grid gap-10 xl:grid-cols-[minmax(420px,0.84fr)_minmax(640px,1.16fr)] xl:items-start">
+        <div className="grid gap-6 xl:max-h-[calc(100vh-10rem)] xl:overflow-y-auto xl:pr-3">
+          <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,250,245,0.92))]">
+            <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.72)] p-7 sm:p-8">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="font-serif text-3xl">{data.lesson.title}</CardTitle>
+                <Badge>{`L${data.courseIndex}: ${data.course.title}`}</Badge>
               </div>
-            ))}
+            </CardHeader>
+            <CardContent className="max-w-none p-7 pt-6 sm:p-8 sm:pt-6">
+              <MdxRenderer source={data.lesson.bodyMdx} />
+            </CardContent>
+          </Card>
+
+          {activeChallenge ? (
+            <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,247,241,0.94))]">
+              <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.78)] p-7 sm:p-8">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="space-y-3">
+                    {data.challenges.length > 1 ? (
+                      <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">
+                        {`Assignment ${safeActiveChallengeIndex + 1} of ${data.challenges.length}`}
+                      </p>
+                    ) : (
+                      <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Assignment</p>
+                    )}
+                    <CardTitle className="font-serif text-4xl">Assignment</CardTitle>
+                  </div>
+                  <Badge>{activeChallenge.language}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="max-w-none p-7 sm:p-8">
+                <MdxRenderer source={activeChallenge.promptMdx} />
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+
+        {activeChallenge ? (
+          <div className="xl:sticky xl:top-6">
+            <ChallengeWorkbench
+              challenge={activeChallenge}
+              courseSlug={courseSlug}
+              lessonSlug={lessonSlug}
+              isAuthenticated={Boolean(user)}
+            />
           </div>
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle>No challenge linked yet</CardTitle>
+              <CardTitle>No assignment linked yet</CardTitle>
             </CardHeader>
             <CardContent className="text-sm leading-7 text-[var(--ink)]">
-              Practice for this lesson will appear here when it is ready.
+              Practice for this chapter will appear here when it is ready.
             </CardContent>
           </Card>
         )}

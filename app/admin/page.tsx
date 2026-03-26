@@ -17,13 +17,13 @@ export default async function AdminPage() {
           <CardHeader>
             <Badge className="w-fit bg-white/12 text-white">Authoring</Badge>
             <CardTitle className="max-w-4xl font-serif text-4xl leading-[1.05] text-white">
-              Write the next lesson and attach questions in one place.
+              Choose a path, choose a chapter, write an assignment.
             </CardTitle>
-            <CardDescription className="text-white/80">Save content here, then open the learner page to test the exact result.</CardDescription>
+            <CardDescription className="text-white/80">Save content here, then open the learner page to test the exact chapter and assignment.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm leading-7 text-white/85">
-            <p>Each save updates the course and lesson, then attaches the authored question to that lesson.</p>
-            <p>Use this page to keep content moving without jumping between tools.</p>
+            <p>Each save updates the selected learning path and chapter, then attaches the authored assignment to that chapter.</p>
+            <p>Use the chapter picker to append a new assignment without replacing the existing ones.</p>
           </CardContent>
         </Card>
 
@@ -68,32 +68,54 @@ export default async function AdminPage() {
 
       {user && !isAdmin ? <AdminAccessCard canClaimFirstAdmin={canClaimFirstAdmin} /> : null}
 
-      {user && isAdmin ? <AuthoringForm /> : null}
+      {user && isAdmin ? <AuthoringForm snapshot={snapshot} /> : null}
 
       <section className="grid gap-5">
         <Card>
           <CardHeader>
             <CardTitle>Current content</CardTitle>
-            <CardDescription>Open the learner page after each save and verify the exact lesson you just changed.</CardDescription>
+            <CardDescription>Use this as the source of truth for which chapters already exist inside each learning path.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
-            {snapshot.lessons.length ? (
-              snapshot.lessons.map((lesson) => (
-                <div key={lesson.id} className="rounded-[1.5rem] bg-white/80 p-4 ring-1 ring-black/6">
-                  <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{lesson.courseSlug}</p>
-                  <p className="mt-2 text-lg font-semibold text-[var(--ink-strong)]">{lesson.title}</p>
-                  <p className="mt-1 text-sm leading-6 text-[var(--ink)]">{lesson.summary}</p>
-                  <p className="mt-2 text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">
-                    {lesson.challengeIds.length} question{lesson.challengeIds.length === 1 ? "" : "s"}
-                  </p>
-                  <Link
-                    href={`/learn/${lesson.courseSlug}/${lesson.slug}`}
-                    className="mt-3 inline-flex text-sm font-medium text-[var(--ink-strong)] underline decoration-[var(--accent)]"
-                  >
-                    Open learner view
-                  </Link>
-                </div>
-              ))
+            {snapshot.courses.length ? (
+              snapshot.courses.map((course, courseIndex) => {
+                const lessons = snapshot.lessons
+                  .filter((lesson) => lesson.courseId === course.id)
+                  .sort((left, right) => left.orderIndex - right.orderIndex)
+
+                return (
+                  <div key={course.id} className="rounded-[1.5rem] bg-white/80 p-4 ring-1 ring-black/6">
+                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`L${courseIndex + 1}`}</p>
+                    <p className="mt-2 text-lg font-semibold text-[var(--ink-strong)]">{course.title}</p>
+                    <p className="mt-1 text-sm leading-6 text-[var(--ink)]">{course.summary}</p>
+
+                    <div className="mt-4 grid gap-3">
+                      {lessons.map((lesson, lessonIndex) => (
+                        <div key={lesson.id} className="rounded-[1.25rem] bg-[color:rgb(25_31_45/0.03)] px-4 py-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`CH${lessonIndex + 1}`}</p>
+                              <p className="mt-1 text-base font-semibold text-[var(--ink-strong)]">{lesson.title}</p>
+                              <p className="mt-1 text-sm leading-6 text-[var(--ink)]">{lesson.summary}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">
+                                {lesson.challengeIds.length} assignment{lesson.challengeIds.length === 1 ? "" : "s"}
+                              </p>
+                              <Link
+                                href={`/learn/${lesson.courseSlug}/${lesson.slug}`}
+                                className="mt-2 inline-flex text-sm font-medium text-[var(--ink-strong)] underline decoration-[var(--accent)]"
+                              >
+                                Open learner view
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })
             ) : (
               <p className="text-sm leading-7 text-[var(--ink-muted)]">No lessons have been created yet.</p>
             )}

@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { getCoursePageData } from "@/lib/data"
-import { formatRelativeMinutes } from "@/lib/utils"
 
 type CoursePageProps = {
   params: Promise<{
@@ -39,7 +38,7 @@ export default async function CoursePage({ params }: CoursePageProps) {
                 <p className="text-xl font-semibold text-[var(--ink-strong)]">{lesson.title}</p>
                 <p className="max-w-2xl text-sm leading-7 text-[var(--ink)]">{lesson.summary}</p>
                 <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">
-                  {formatRelativeMinutes(lesson.estimatedMinutes)}
+                  {lesson.challengeIds.length} assignment{lesson.challengeIds.length === 1 ? "" : "s"}
                 </p>
               </div>
               <Link href={`/learn/${lesson.courseSlug}/${lesson.slug}`}>

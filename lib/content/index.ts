@@ -106,6 +106,7 @@ export const getLessonPageData = cache(async (courseSlug: string, lessonSlug: st
 
   const courseLessons = sortLessons(snapshot.lessons.filter((item) => item.courseId === course.id && item.published))
   const currentLessonIndex = courseLessons.findIndex((item) => item.id === lesson.id)
+  const safeCurrentLessonIndex = currentLessonIndex >= 0 ? currentLessonIndex : 0
   const challenges = lesson.challengeIds
     .map((challengeId) => snapshot.challenges.find((item) => item.id === challengeId && item.published) ?? null)
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
@@ -115,8 +116,15 @@ export const getLessonPageData = cache(async (courseSlug: string, lessonSlug: st
     lesson,
     challenges,
     courseIndex: snapshot.courses.findIndex((item) => item.id === course.id) + 1,
-    currentLessonIndex: currentLessonIndex >= 0 ? currentLessonIndex : 0,
+    currentLessonIndex: safeCurrentLessonIndex,
     courseLessons,
+    courseOptions: snapshot.courses.map((item, index) => ({
+      slug: item.slug,
+      title: item.title,
+      index: index + 1
+    })),
+    previousLessonSlug: courseLessons[safeCurrentLessonIndex - 1]?.slug ?? null,
+    nextLessonSlug: courseLessons[safeCurrentLessonIndex + 1]?.slug ?? null,
     contentSource: snapshot.contentSource,
     contentSourceReason: snapshot.contentSourceReason
   }

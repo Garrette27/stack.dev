@@ -18,10 +18,8 @@ const authoringSchema = z.object({
   lessonTitle: z.string().min(3),
   lessonSlug: z.string().min(3),
   lessonSummary: z.string().min(8),
-  estimatedMinutes: z.coerce.number().int().min(1),
   bodyMdx: z.string().min(20),
-  challengeTitle: z.string().min(3),
-  challengeSlug: z.string().min(3),
+  challengeSlug: z.string().optional(),
   language: z.enum(["python", "javascript"]),
   judge0LanguageId: z.coerce.number().int().min(1),
   promptMdx: z.string().min(10),
@@ -56,9 +54,7 @@ export function parseAuthoringBundleFormData(formData: FormData): ParsedAuthorin
     lessonTitle: formData.get("lessonTitle"),
     lessonSlug: slugify(String(formData.get("lessonSlug") ?? "")),
     lessonSummary: formData.get("lessonSummary"),
-    estimatedMinutes: formData.get("estimatedMinutes"),
     bodyMdx: formData.get("bodyMdx"),
-    challengeTitle: formData.get("challengeTitle"),
     challengeSlug: slugify(String(formData.get("challengeSlug") ?? "")),
     language: formData.get("language"),
     judge0LanguageId: formData.get("judge0LanguageId"),
@@ -123,6 +119,61 @@ async function attachChallengeToLesson(
 }
 
 /**
+ * Derives a compact internal challenge title from the public assignment prompt.
+ * This keeps the authoring form focused on chapter and assignment content.
+ */
+function deriveChallengeTitle(promptMdx: string) {
+  const firstMeaningfulLine = promptMdx
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^#+\s*/, "").replace(/^[-*]\s*/, "").trim())
+    .find(Boolean)
+
+  if (!firstMeaningfulLine) {
+    return "Assignment"
+  }
+
+  return firstMeaningfulLine.length > 96
+    ? `${firstMeaningfulLine.slice(0, 93).trimEnd()}...`
+    : firstMeaningfulLine
+}
+
+/**
+ * Allocates a stable internal slug for a new assignment inside the lesson.
+ * Existing assignments keep their slug so edits remain idempotent.
+ */
+async function resolveChallengeSlug(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  lessonSlug: string,
+  providedChallengeSlug?: string
+) {
+  if (providedChallengeSlug) {
+    return providedChallengeSlug
+  }
+
+  const baseSlug = slugify(`${lessonSlug}-assignment`) || "assignment"
+  const { data: existingRows, error } = await admin
+    .from("challenges")
+    .select("slug")
+    .like("slug", `${baseSlug}%`)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const existingSlugs = new Set((existingRows ?? []).map((row) => String(row.slug)))
+  if (!existingSlugs.has(baseSlug)) {
+    return baseSlug
+  }
+
+  let suffix = 2
+  while (existingSlugs.has(`${baseSlug}-${suffix}`)) {
+    suffix += 1
+  }
+
+  return `${baseSlug}-${suffix}`
+}
+
+/**
  * Persists a full lesson-and-challenge bundle for the current admin user.
  */
 export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundleInput): Promise<AuthoringSaveResult> {
@@ -151,13 +202,14 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   }
 
   const admin = createAdminClient()
+  const challengeTitle = deriveChallengeTitle(payload.promptMdx)
   const { data: courseRow, error: courseError } = await admin!
     .from("courses")
     .upsert(
       {
         slug: payload.courseSlug,
         title: payload.courseTitle,
-        summary: `A focused path for ${payload.courseTitle.toLowerCase()}.`,
+        summary: `A practical path into software with ${payload.courseTitle.toLowerCase()}.`,
         difficulty: "Beginner",
         accent: "#c96f36",
         published: true
@@ -176,10 +228,11 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
     }
   }
 
+  const challengeSlug = await resolveChallengeSlug(admin!, payload.lessonSlug, payload.challengeSlug)
   const { data: challengeRow, error: challengeError } = await admin!.from("challenges").upsert(
     {
-      slug: payload.challengeSlug,
-      title: payload.challengeTitle,
+      slug: challengeSlug,
+      title: challengeTitle,
       language: payload.language,
       judge0_language_id: payload.judge0LanguageId,
       prompt_mdx: payload.promptMdx,
@@ -204,7 +257,7 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   const [{ data: existingLesson }, { count: lessonCount }] = await Promise.all([
     admin!
       .from("lessons")
-      .select("id, order_index, challenge_slug")
+      .select("id, order_index, challenge_slug, estimated_minutes")
       .eq("course_id", courseRow.id)
       .eq("slug", payload.lessonSlug)
       .maybeSingle(),
@@ -217,9 +270,9 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
       slug: payload.lessonSlug,
       title: payload.lessonTitle,
       summary: payload.lessonSummary,
-      estimated_minutes: payload.estimatedMinutes,
+      estimated_minutes: existingLesson?.estimated_minutes ?? 10,
       body_mdx: payload.bodyMdx,
-      challenge_slug: existingLesson?.challenge_slug ?? payload.challengeSlug,
+      challenge_slug: existingLesson?.challenge_slug ?? challengeSlug,
       order_index: existingLesson?.order_index ?? (lessonCount ?? 0) + 1,
       published: true
     },
@@ -239,7 +292,7 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   try {
     const relationResult = await attachChallengeToLesson(admin!, lessonRow.id, challengeRow.id)
 
-    if (!relationResult.tableAvailable && existingLesson?.challenge_slug && existingLesson.challenge_slug !== payload.challengeSlug) {
+    if (!relationResult.tableAvailable && existingLesson?.challenge_slug && existingLesson.challenge_slug !== challengeSlug) {
       return {
         success: false,
         message: "This database still supports one question per lesson. Apply the lesson_challenges migration first."
@@ -249,7 +302,7 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
     if (!relationResult.tableAvailable && !existingLesson?.challenge_slug) {
       const { error: legacyLessonError } = await admin!
         .from("lessons")
-        .update({ challenge_slug: payload.challengeSlug })
+        .update({ challenge_slug: challengeSlug })
         .eq("id", lessonRow.id)
 
       if (legacyLessonError) {
@@ -268,6 +321,6 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
 
   return {
     success: true,
-    message: "Lesson and question saved."
+    message: "Chapter and assignment saved."
   }
 }
