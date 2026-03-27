@@ -1,11 +1,11 @@
+import type { ReactNode } from "react"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, ChevronDown } from "lucide-react"
 import { notFound } from "next/navigation"
 
 import { ChallengeWorkbench } from "@/components/code/challenge-workbench"
 import { CourseProgressStrip } from "@/components/learn/course-progress-strip"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getCurrentUser, getLessonPageData } from "@/lib/data"
 import { MdxRenderer } from "@/lib/mdx"
 import type { Challenge } from "@/lib/types"
@@ -24,6 +24,31 @@ function getAssignmentTitle(challenge: Challenge, index: number) {
   const normalizedTitle = challenge.title.replace(/^assignment[:\s-]*/i, "").trim()
   const safeTitle = normalizedTitle || `Assignment ${index + 1}`
   return safeTitle.length > 42 ? `${safeTitle.slice(0, 39).trimEnd()}...` : safeTitle
+}
+
+function LessonPanelSection({
+  title,
+  defaultOpen = true,
+  children
+}: {
+  title: string
+  defaultOpen?: boolean
+  children: ReactNode
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className="group overflow-hidden rounded-[1.25rem] border border-white/10 bg-white/5"
+    >
+      <summary className="flex list-none items-center justify-between gap-3 px-5 py-4 text-left">
+        <span className="font-serif text-3xl text-white">{title}</span>
+        <ChevronDown className="h-5 w-5 text-white/55 transition group-open:rotate-180" />
+      </summary>
+      <div className="border-t border-white/10 px-5 py-5">
+        {children}
+      </div>
+    </details>
+  )
 }
 
 export default async function LessonPage({ params, searchParams }: LessonPageProps) {
@@ -60,97 +85,64 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
         nextChallengeSlug={nextChallengeSlug}
       />
 
-      <section className="relative overflow-hidden rounded-[2.75rem] border border-black/8 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(255,244,236,0.98))] p-7 shadow-[0_28px_80px_rgba(25,31,45,0.08)] sm:p-10">
-        <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-[color:rgb(201_111_54/0.16)] blur-3xl" />
-        <div className="absolute bottom-0 right-[14%] h-24 w-24 rounded-full bg-[color:rgb(25_31_45/0.08)] blur-3xl" />
-        <div className="relative grid gap-8 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)] xl:items-end">
-          <div className="space-y-6">
-            <Link href={`/learn/${data.course.slug}`} className="inline-flex items-center gap-2 text-sm text-[var(--ink-muted)]">
-              <ArrowLeft className="h-4 w-4" />
-              Back to course
-            </Link>
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge>{`CH${data.currentLessonIndex + 1}`}</Badge>
-              <Badge className="bg-white/85 text-[var(--ink-strong)] ring-1 ring-black/8">{`L${data.courseIndex}: ${data.course.title}`}</Badge>
-            </div>
-            <div className="space-y-5">
-              <h1 className="max-w-5xl font-serif text-5xl tracking-tight text-[var(--ink-strong)] sm:text-6xl">
-                {data.lesson.title}
-              </h1>
-              <p className="max-w-4xl text-lg leading-9 text-[var(--ink)] sm:text-xl">
-                {data.lesson.summary}
-              </p>
-            </div>
-          </div>
+      <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,#131824,#101520)] text-white shadow-[0_28px_80px_rgba(11,15,24,0.32)]">
+        <div className="grid min-h-[calc(100vh-11rem)] xl:grid-cols-[minmax(430px,0.92fr)_minmax(660px,1.08fr)]">
+          <aside className="border-b border-white/10 px-6 py-6 xl:max-h-[calc(100vh-11rem)] xl:overflow-y-auto xl:border-b-0 xl:border-r">
+            <div className="space-y-6">
+              <Link href={`/learn/${data.course.slug}`} className="inline-flex items-center gap-2 text-sm text-white/60">
+                <ArrowLeft className="h-4 w-4" />
+                Back to course
+              </Link>
 
-          <div className="grid gap-4">
-            <div className="rounded-[2rem] border border-black/8 bg-white/80 p-5 backdrop-blur">
-              <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Current chapter</p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">{`CH${data.currentLessonIndex + 1}: ${data.lesson.title}`}</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">{data.lesson.summary}</p>
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge>{`CH${data.currentLessonIndex + 1}`}</Badge>
+                  <Badge className="bg-white/8 text-white ring-1 ring-white/10">{`L${data.courseIndex}: ${data.course.title}`}</Badge>
+                </div>
+                <div className="space-y-4">
+                  <h1 className="font-serif text-5xl tracking-tight text-white sm:text-6xl">{data.lesson.title}</h1>
+                  <p className="max-w-3xl text-lg leading-8 text-slate-300">{data.lesson.summary}</p>
+                </div>
+              </div>
+
+              <LessonPanelSection title="Reading">
+                <MdxRenderer source={data.lesson.bodyMdx} tone="dark" />
+              </LessonPanelSection>
+
+              {activeChallenge ? (
+                <LessonPanelSection
+                  title={data.challenges.length > 1 ? `Assignment ${safeActiveChallengeIndex + 1}` : "Assignment"}
+                >
+                  <div className="mb-4 flex flex-wrap items-center gap-3">
+                    <Badge className="bg-white/10 text-white">{activeChallenge.language}</Badge>
+                    {data.challenges.length > 1 ? (
+                      <span className="text-xs uppercase tracking-[0.22em] text-white/45">
+                        {`${safeActiveChallengeIndex + 1} of ${data.challenges.length}`}
+                      </span>
+                    ) : null}
+                  </div>
+                  <MdxRenderer source={activeChallenge.promptMdx} tone="dark" />
+                </LessonPanelSection>
+              ) : (
+                <div className="rounded-[1.25rem] border border-dashed border-white/10 bg-white/4 px-5 py-4 text-sm text-white/60">
+                  Practice for this chapter will appear here when it is ready.
+                </div>
+              )}
             </div>
+          </aside>
+
+          <div className="min-h-0 p-4 sm:p-5">
+            {activeChallenge ? (
+              <ChallengeWorkbench
+                challenge={activeChallenge}
+                courseSlug={courseSlug}
+                lessonSlug={lessonSlug}
+                isAuthenticated={Boolean(user)}
+              />
+            ) : null}
           </div>
         </div>
       </section>
-
-      <div className="grid gap-10 xl:grid-cols-[minmax(420px,0.84fr)_minmax(640px,1.16fr)] xl:items-start">
-        <div className="grid gap-6 xl:max-h-[calc(100vh-10rem)] xl:overflow-y-auto xl:pr-3">
-          <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,250,245,0.92))]">
-            <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.72)] p-7 sm:p-8">
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle className="font-serif text-3xl">{data.lesson.title}</CardTitle>
-                <Badge>{`L${data.courseIndex}: ${data.course.title}`}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="max-w-none p-7 pt-6 sm:p-8 sm:pt-6">
-              <MdxRenderer source={data.lesson.bodyMdx} />
-            </CardContent>
-          </Card>
-
-          {activeChallenge ? (
-            <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,247,241,0.94))]">
-              <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.78)] p-7 sm:p-8">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="space-y-3">
-                    {data.challenges.length > 1 ? (
-                      <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">
-                        {`Assignment ${safeActiveChallengeIndex + 1} of ${data.challenges.length}`}
-                      </p>
-                    ) : (
-                      <p className="text-xs uppercase leading-[1.35] tracking-[0.22em] text-[var(--ink-muted)]">Assignment</p>
-                    )}
-                    <CardTitle className="font-serif text-4xl">Assignment</CardTitle>
-                  </div>
-                  <Badge>{activeChallenge.language}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="max-w-none p-7 sm:p-8">
-                <MdxRenderer source={activeChallenge.promptMdx} />
-              </CardContent>
-            </Card>
-          ) : null}
-        </div>
-
-        {activeChallenge ? (
-          <div className="xl:sticky xl:top-6">
-            <ChallengeWorkbench
-              challenge={activeChallenge}
-              courseSlug={courseSlug}
-              lessonSlug={lessonSlug}
-              isAuthenticated={Boolean(user)}
-            />
-          </div>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>No assignment linked yet</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm leading-7 text-[var(--ink)]">
-              Practice for this chapter will appear here when it is ready.
-            </CardContent>
-          </Card>
-        )}
-      </div>
     </div>
   )
 }

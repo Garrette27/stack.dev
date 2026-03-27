@@ -3,9 +3,11 @@ import { LockKeyhole } from "lucide-react"
 
 import { AdminAccessCard } from "@/components/admin/admin-access-card"
 import { AuthoringForm } from "@/components/admin/authoring-form"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAdminPageState } from "@/lib/admin"
+import { deleteChallengeAction, deleteCourseAction, deleteLessonAction } from "./actions"
 
 export default async function AdminPage() {
   const { user, isAdmin, canClaimFirstAdmin, snapshot } = await getAdminPageState()
@@ -17,12 +19,12 @@ export default async function AdminPage() {
           <CardHeader>
             <Badge className="w-fit bg-white/12 text-white">Authoring</Badge>
             <CardTitle className="max-w-4xl font-serif text-4xl leading-[1.05] text-white">
-              Choose a path, choose a chapter, write an assignment.
+              Choose a course, choose a chapter, write an assignment.
             </CardTitle>
             <CardDescription className="text-white/80">Save content here, then open the learner page to test the exact chapter and assignment.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm leading-7 text-white/85">
-            <p>Each save updates the selected learning path and chapter, then attaches the authored assignment to that chapter.</p>
+            <p>Each save updates the selected course and chapter, then attaches the authored assignment to that chapter.</p>
             <p>Use the chapter picker to append a new assignment without replacing the existing ones.</p>
           </CardContent>
         </Card>
@@ -74,7 +76,7 @@ export default async function AdminPage() {
         <Card>
           <CardHeader>
             <CardTitle>Current content</CardTitle>
-            <CardDescription>Use this as the source of truth for which chapters already exist inside each learning path.</CardDescription>
+            <CardDescription>Use this to edit or remove existing courses, chapters, and assignments.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             {snapshot.courses.length ? (
@@ -85,31 +87,79 @@ export default async function AdminPage() {
 
                 return (
                   <div key={course.id} className="rounded-[1.5rem] bg-white/80 p-4 ring-1 ring-black/6">
-                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`L${courseIndex + 1}`}</p>
-                    <p className="mt-2 text-lg font-semibold text-[var(--ink-strong)]">{course.title}</p>
-                    <p className="mt-1 text-sm leading-6 text-[var(--ink)]">{course.summary}</p>
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`L${courseIndex + 1}`}</p>
+                        <p className="mt-2 text-lg font-semibold text-[var(--ink-strong)]">{course.title}</p>
+                        <p className="mt-1 text-sm leading-6 text-[var(--ink)]">{course.summary}</p>
+                      </div>
+                      <form action={deleteCourseAction}>
+                        <input type="hidden" name="courseSlug" value={course.slug} />
+                        <Button type="submit" variant="destructive" size="sm">
+                          Delete course
+                        </Button>
+                      </form>
+                    </div>
 
                     <div className="mt-4 grid gap-3">
                       {lessons.map((lesson, lessonIndex) => (
                         <div key={lesson.id} className="rounded-[1.25rem] bg-[color:rgb(25_31_45/0.03)] px-4 py-3">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex flex-wrap items-start justify-between gap-4">
                             <div>
                               <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`CH${lessonIndex + 1}`}</p>
                               <p className="mt-1 text-base font-semibold text-[var(--ink-strong)]">{lesson.title}</p>
                               <p className="mt-1 text-sm leading-6 text-[var(--ink)]">{lesson.summary}</p>
                             </div>
-                            <div className="text-right">
+                            <div className="flex flex-col items-end gap-2 text-right">
                               <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">
                                 {lesson.challengeIds.length} assignment{lesson.challengeIds.length === 1 ? "" : "s"}
                               </p>
                               <Link
                                 href={`/learn/${lesson.courseSlug}/${lesson.slug}`}
-                                className="mt-2 inline-flex text-sm font-medium text-[var(--ink-strong)] underline decoration-[var(--accent)]"
+                                className="inline-flex text-sm font-medium text-[var(--ink-strong)] underline decoration-[var(--accent)]"
                               >
                                 Open learner view
                               </Link>
+                              <form action={deleteLessonAction}>
+                                <input type="hidden" name="courseSlug" value={lesson.courseSlug} />
+                                <input type="hidden" name="lessonSlug" value={lesson.slug} />
+                                <Button type="submit" variant="destructive" size="sm">
+                                  Delete chapter
+                                </Button>
+                              </form>
                             </div>
                           </div>
+
+                          {lesson.challengeIds.length ? (
+                            <div className="mt-4 grid gap-2">
+                              {lesson.challengeIds.map((challengeId, challengeIndex) => {
+                                const challenge = snapshot.challenges.find((item) => item.id === challengeId)
+                                if (!challenge) {
+                                  return null
+                                }
+
+                                return (
+                                  <div
+                                    key={challenge.id}
+                                    className="flex flex-wrap items-center justify-between gap-3 rounded-[1rem] bg-white/75 px-3 py-2 ring-1 ring-black/6"
+                                  >
+                                    <div className="min-w-0">
+                                      <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`A${challengeIndex + 1}`}</p>
+                                      <p className="mt-1 truncate text-sm font-semibold text-[var(--ink-strong)]">{challenge.title}</p>
+                                    </div>
+                                    <form action={deleteChallengeAction}>
+                                      <input type="hidden" name="courseSlug" value={lesson.courseSlug} />
+                                      <input type="hidden" name="lessonSlug" value={lesson.slug} />
+                                      <input type="hidden" name="challengeSlug" value={challenge.slug} />
+                                      <Button type="submit" variant="destructive" size="sm">
+                                        Delete assignment
+                                      </Button>
+                                    </form>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ) : null}
                         </div>
                       ))}
                     </div>

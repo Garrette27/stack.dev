@@ -13,6 +13,8 @@ const buttonVariants = cva(
         secondary:
           "bg-white px-5 py-3 text-[var(--ink-strong)] ring-1 ring-black/10 hover:bg-[color:rgb(255_255_255/0.7)]",
         ghost: "px-4 py-2.5 text-[var(--ink)] hover:bg-black/5",
+        destructive:
+          "bg-rose-600 px-5 py-3 text-white shadow-[0_16px_36px_rgba(225,29,72,0.22)] hover:bg-rose-700",
         accent:
           "bg-[var(--accent)] px-5 py-3 text-white shadow-[0_16px_40px_rgba(201,111,54,0.35)] hover:bg-[color:rgb(201_111_54/0.92)]"
       },

@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState, useEffect, useState } from "react"
+import { useActionState, useEffect, useMemo, useState } from "react"
 
 import { upsertAuthoringBundleAction, type AuthoringActionState } from "@/app/admin/actions"
 import { Button } from "@/components/ui/button"
@@ -75,7 +75,7 @@ function getChallengesForLesson(snapshot: ContentSnapshot, lesson: Lesson | null
 }
 
 /**
- * Presents authoring in product terms: learning path, chapter, and assignment.
+ * Presents authoring in product terms: course, chapter, and assignment.
  * The form keeps routing and internal challenge identity hidden behind generated fields.
  */
 export function AuthoringForm({ snapshot }: AuthoringFormProps) {
@@ -91,7 +91,6 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
 
   const [courseTitle, setCourseTitle] = useState(initialCourse?.title ?? "")
   const [lessonTitle, setLessonTitle] = useState(initialLesson?.title ?? "")
-  const [lessonSummary, setLessonSummary] = useState(initialLesson?.summary ?? "")
   const [bodyMdx, setBodyMdx] = useState(initialLesson?.bodyMdx ?? "")
 
   const [language, setLanguage] = useState<Challenge["language"]>("javascript")
@@ -101,11 +100,26 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
   const [solutionCode, setSolutionCode] = useState(getSolutionTemplate("javascript"))
   const [hiddenTestCode, setHiddenTestCode] = useState(getHiddenTestTemplate("javascript"))
 
-  const selectedCourse = snapshot.courses.find((course) => course.slug === courseSelection) ?? null
-  const courseLessons = getLessonsForCourse(snapshot, selectedCourse?.id ?? null)
-  const selectedLesson = courseLessons.find((lesson) => lesson.slug === lessonSelection) ?? null
-  const chapterAssignments = getChallengesForLesson(snapshot, selectedLesson)
-  const selectedAssignment = chapterAssignments.find((challenge) => challenge.slug === assignmentSelection) ?? null
+  const selectedCourse = useMemo(
+    () => snapshot.courses.find((course) => course.slug === courseSelection) ?? null,
+    [courseSelection, snapshot.courses]
+  )
+  const courseLessons = useMemo(
+    () => getLessonsForCourse(snapshot, selectedCourse?.id ?? null),
+    [selectedCourse?.id, snapshot]
+  )
+  const selectedLesson = useMemo(
+    () => courseLessons.find((lesson) => lesson.slug === lessonSelection) ?? null,
+    [courseLessons, lessonSelection]
+  )
+  const chapterAssignments = useMemo(
+    () => getChallengesForLesson(snapshot, selectedLesson),
+    [selectedLesson, snapshot]
+  )
+  const selectedAssignment = useMemo(
+    () => chapterAssignments.find((challenge) => challenge.slug === assignmentSelection) ?? null,
+    [assignmentSelection, chapterAssignments]
+  )
 
   const resetAssignmentDraft = (nextLanguage: Challenge["language"]) => {
     setLanguage(nextLanguage)
@@ -117,58 +131,44 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
   }
 
   useEffect(() => {
-    const nextSelectedCourse = snapshot.courses.find((course) => course.slug === courseSelection) ?? null
-
-    if (!nextSelectedCourse) {
+    if (!selectedCourse) {
       setCourseTitle("")
       setLessonSelection(NEW_CHAPTER)
       return
     }
 
-    setCourseTitle(nextSelectedCourse.title)
-    const nextLesson = getLessonsForCourse(snapshot, nextSelectedCourse.id)[0] ?? null
+    setCourseTitle(selectedCourse.title)
+    const nextLesson = courseLessons[0] ?? null
     setLessonSelection(nextLesson?.slug ?? NEW_CHAPTER)
-  }, [courseSelection, snapshot])
+  }, [courseSelection, selectedCourse, courseLessons])
 
   useEffect(() => {
-    const nextSelectedCourse = snapshot.courses.find((course) => course.slug === courseSelection) ?? null
-    const nextLessons = getLessonsForCourse(snapshot, nextSelectedCourse?.id ?? null)
-    const nextSelectedLesson = nextLessons.find((lesson) => lesson.slug === lessonSelection) ?? null
-
-    if (!nextSelectedLesson) {
+    if (!selectedLesson) {
       setLessonTitle("")
-      setLessonSummary("")
       setBodyMdx("")
       setAssignmentSelection(NEW_ASSIGNMENT)
       resetAssignmentDraft("javascript")
       return
     }
 
-    setLessonTitle(nextSelectedLesson.title)
-    setLessonSummary(nextSelectedLesson.summary)
-    setBodyMdx(nextSelectedLesson.bodyMdx)
+    setLessonTitle(selectedLesson.title)
+    setBodyMdx(selectedLesson.bodyMdx)
     setAssignmentSelection(NEW_ASSIGNMENT)
     resetAssignmentDraft("javascript")
-  }, [courseSelection, lessonSelection, snapshot])
+  }, [lessonSelection, selectedLesson])
 
   useEffect(() => {
-    if (assignmentSelection === NEW_ASSIGNMENT) {
+    if (assignmentSelection === NEW_ASSIGNMENT || !selectedAssignment) {
       return
     }
 
-    const nextSelectedAssignment = chapterAssignments.find((challenge) => challenge.slug === assignmentSelection) ?? null
-
-    if (!nextSelectedAssignment) {
-      return
-    }
-
-    setLanguage(nextSelectedAssignment.language)
-    setJudge0LanguageId(String(nextSelectedAssignment.judge0LanguageId))
-    setPromptMdx(nextSelectedAssignment.promptMdx)
-    setStarterCode(nextSelectedAssignment.starterCode)
-    setSolutionCode(nextSelectedAssignment.solutionCode)
-    setHiddenTestCode(nextSelectedAssignment.hiddenTestCode)
-  }, [assignmentSelection, chapterAssignments])
+    setLanguage(selectedAssignment.language)
+    setJudge0LanguageId(String(selectedAssignment.judge0LanguageId))
+    setPromptMdx(selectedAssignment.promptMdx)
+    setStarterCode(selectedAssignment.starterCode)
+    setSolutionCode(selectedAssignment.solutionCode)
+    setHiddenTestCode(selectedAssignment.hiddenTestCode)
+  }, [assignmentSelection, selectedAssignment])
 
   const resolvedCourseSlug = selectedCourse?.slug ?? slugify(courseTitle)
   const resolvedLessonSlug = selectedLesson?.slug ?? slugify(lessonTitle)
@@ -178,7 +178,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
       <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.66)]">
         <CardTitle>Create chapter + assignment</CardTitle>
         <p className="text-sm leading-7 text-[var(--ink-muted)]">
-          Choose a learning path, choose a chapter, then attach one assignment to that chapter.
+          Choose a course, choose a chapter, then attach one assignment to that chapter.
         </p>
       </CardHeader>
       <CardContent className="grid gap-8 p-6">
@@ -191,11 +191,11 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
 
           <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,247,241,0.9))]">
             <CardHeader className="border-b border-black/6 bg-white/70">
-              <CardTitle>Learning path</CardTitle>
-              <p className="text-sm leading-7 text-[var(--ink-muted)]">Use an existing path or rename the current one before adding new chapters.</p>
+              <CardTitle>Course</CardTitle>
+              <p className="text-sm leading-7 text-[var(--ink-muted)]">Choose the course this chapter belongs to, or rename the current course before adding the next chapter.</p>
             </CardHeader>
             <CardContent className="grid gap-5 p-6">
-              <Field label="Path">
+              <Field label="Course">
                 <select
                   value={courseSelection}
                   onChange={(event) => setCourseSelection(event.target.value)}
@@ -206,16 +206,16 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                       {`L${index + 1}: ${course.title}`}
                     </option>
                   ))}
-                  <option value={NEW_COURSE}>Create new learning path</option>
+                  <option value={NEW_COURSE}>Create new course</option>
                 </select>
               </Field>
 
-              <Field label="Path title">
+              <Field label="Course title">
                 <Input value={courseTitle} onChange={(event) => setCourseTitle(event.target.value)} placeholder="Learn JavaScript for Beginners" required />
               </Field>
 
               <p className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3 text-sm text-[var(--ink-muted)]">
-                Path URL: <span className="font-mono text-[var(--ink-strong)]">/learn/{resolvedCourseSlug || "new-path"}</span>
+                Course URL: <span className="font-mono text-[var(--ink-strong)]">/learn/{resolvedCourseSlug || "new-course"}</span>
               </p>
             </CardContent>
           </Card>
@@ -223,7 +223,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
           <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.92))]">
             <CardHeader className="border-b border-black/6 bg-white/70">
               <CardTitle>Chapter</CardTitle>
-              <p className="text-sm leading-7 text-[var(--ink-muted)]">Pick the chapter this assignment belongs to, or create the next chapter for the selected path.</p>
+              <p className="text-sm leading-7 text-[var(--ink-muted)]">Pick the chapter this assignment belongs to, or create the next chapter for the selected course.</p>
             </CardHeader>
             <CardContent className="grid gap-5 p-6">
               <Field label="Chapter">
@@ -241,24 +241,14 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                 </select>
               </Field>
 
-              <section className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-                <Field label="Chapter title">
-                  <Input value={lessonTitle} onChange={(event) => setLessonTitle(event.target.value)} placeholder="Variables" required />
-                </Field>
-                <Field label="Chapter summary">
-                  <Input
-                    value={lessonSummary}
-                    onChange={(event) => setLessonSummary(event.target.value)}
-                    placeholder="What the learner should remember after this chapter."
-                    required
-                  />
-                </Field>
-              </section>
+              <Field label="Chapter title">
+                <Input value={lessonTitle} onChange={(event) => setLessonTitle(event.target.value)} placeholder="Variables" required />
+              </Field>
 
               <p className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3 text-sm text-[var(--ink-muted)]">
                 Chapter URL:{" "}
                 <span className="font-mono text-[var(--ink-strong)]">
-                  /learn/{resolvedCourseSlug || "new-path"}/{resolvedLessonSlug || "new-chapter"}
+                  /learn/{resolvedCourseSlug || "new-course"}/{resolvedLessonSlug || "new-chapter"}
                 </span>
               </p>
 
@@ -302,6 +292,10 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                   ))}
                 </select>
               </Field>
+
+              <p className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+                The assignment slug is generated for you when you create a new assignment. Pick an existing assignment above to revise it.
+              </p>
 
               <section className="grid gap-5 lg:grid-cols-2">
                 <Field label="Answer language">

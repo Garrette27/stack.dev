@@ -17,7 +17,6 @@ const authoringSchema = z.object({
   courseSlug: z.string().min(3),
   lessonTitle: z.string().min(3),
   lessonSlug: z.string().min(3),
-  lessonSummary: z.string().min(8),
   bodyMdx: z.string().min(20),
   challengeSlug: z.string().optional(),
   language: z.enum(["python", "javascript"]),
@@ -53,7 +52,6 @@ export function parseAuthoringBundleFormData(formData: FormData): ParsedAuthorin
     courseSlug: slugify(String(formData.get("courseSlug") ?? "")),
     lessonTitle: formData.get("lessonTitle"),
     lessonSlug: slugify(String(formData.get("lessonSlug") ?? "")),
-    lessonSummary: formData.get("lessonSummary"),
     bodyMdx: formData.get("bodyMdx"),
     challengeSlug: slugify(String(formData.get("challengeSlug") ?? "")),
     language: formData.get("language"),
@@ -138,6 +136,25 @@ function deriveChallengeTitle(promptMdx: string) {
 }
 
 /**
+ * Derives a compact chapter summary from the authored reading text so the admin
+ * form does not need a second field for the same concept.
+ */
+function deriveLessonSummary(bodyMdx: string) {
+  const firstMeaningfulLine = bodyMdx
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^#+\s*/, "").replace(/^[-*]\s*/, "").trim())
+    .find(Boolean)
+
+  if (!firstMeaningfulLine) {
+    return "Practical reading and assignment."
+  }
+
+  return firstMeaningfulLine.length > 120
+    ? `${firstMeaningfulLine.slice(0, 117).trimEnd()}...`
+    : firstMeaningfulLine
+}
+
+/**
  * Allocates a stable internal slug for a new assignment inside the lesson.
  * Existing assignments keep their slug so edits remain idempotent.
  */
@@ -203,6 +220,7 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
 
   const admin = createAdminClient()
   const challengeTitle = deriveChallengeTitle(payload.promptMdx)
+  const lessonSummary = deriveLessonSummary(payload.bodyMdx)
   const { data: courseRow, error: courseError } = await admin!
     .from("courses")
     .upsert(
@@ -269,7 +287,7 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
       course_id: courseRow.id,
       slug: payload.lessonSlug,
       title: payload.lessonTitle,
-      summary: payload.lessonSummary,
+      summary: lessonSummary,
       estimated_minutes: existingLesson?.estimated_minutes ?? 10,
       body_mdx: payload.bodyMdx,
       challenge_slug: existingLesson?.challenge_slug ?? challengeSlug,
