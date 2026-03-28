@@ -10,6 +10,7 @@ import type { DashboardState, LessonProgress, ResumeState } from "@/lib/types"
 import { getCurrentUser } from "@/lib/auth"
 import { getContentSnapshot } from "@/lib/content"
 import { sortLessons } from "@/lib/content/shared"
+import type { Challenge } from "@/lib/types"
 
 export const resumeSchema = z.object({
   courseSlug: z.string().min(3),
@@ -176,4 +177,37 @@ export async function getDashboardState(): Promise<DashboardState> {
     resumeTarget: resumeRow ? mapResumeState(resumeRow as Record<string, unknown>) : null,
     recentLessons
   }
+}
+
+/**
+ * Returns the challenge slugs the current user has already passed so learner
+ * navigation can show assignment-level completion without exposing submission
+ * storage details to pages.
+ */
+export async function getCompletedChallengeSlugs(challenges: Challenge[]): Promise<string[]> {
+  if (!challenges.length) {
+    return []
+  }
+
+  const user = await getCurrentUser()
+  if (!user || !hasSupabaseEnv()) {
+    return []
+  }
+
+  const supabase = await createServerClient()
+  if (!supabase) {
+    return []
+  }
+
+  const challengeSlugById = new Map(challenges.map((challenge) => [challenge.id, challenge.slug]))
+  const challengeIds = challenges.map((challenge) => challenge.id)
+
+  const { data } = await supabase
+    .from("submissions")
+    .select("challenge_id")
+    .eq("user_id", user.id)
+    .eq("passed", true)
+    .in("challenge_id", challengeIds)
+
+  return [...new Set((data ?? []).map((row) => challengeSlugById.get(String(row.challenge_id))).filter(Boolean))] as string[]
 }

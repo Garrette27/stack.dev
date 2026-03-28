@@ -4,6 +4,7 @@ import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useEffect, useState, useTransition } from "react"
 import { CheckCircle2, LoaderCircle, Play, Save, Send, Sparkles, Terminal } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,6 +18,7 @@ type ChallengeWorkbenchProps = {
   courseSlug: string
   lessonSlug: string
   isAuthenticated: boolean
+  onPassed?: (challengeSlug: string) => void
 }
 
 const initialResult: SubmissionOutcome | null = null
@@ -105,8 +107,10 @@ export function ChallengeWorkbench({
   challenge,
   courseSlug,
   lessonSlug,
-  isAuthenticated
+  isAuthenticated,
+  onPassed
 }: ChallengeWorkbenchProps) {
+  const router = useRouter()
   const [sourceCode, setSourceCode] = useState(challenge.starterCode)
   const [activeFile, setActiveFile] = useState<"source" | "tests">("source")
   const [showSolutionPane, setShowSolutionPane] = useState(false)
@@ -119,9 +123,13 @@ export function ChallengeWorkbench({
     setResult(initialResult)
     setActiveFile("source")
     setShowSolutionPane(false)
-  }, [challenge.slug, challenge.starterCode])
+  }, [challenge.slug, challenge.starterCode, isAuthenticated])
 
   const runSubmission = () => {
+    if (!isAuthenticated) {
+      return
+    }
+
     startTransition(async () => {
       const response = await fetch("/api/submissions", {
         method: "POST",
@@ -138,14 +146,27 @@ export function ChallengeWorkbench({
 
       const payload = (await response.json()) as SubmissionOutcome
       setResult(payload)
+
+      if (payload.passed) {
+        onPassed?.(challenge.slug)
+        router.refresh()
+      }
     })
   }
 
   const handleToggleSolutionPane = () => {
+    if (!isAuthenticated) {
+      return
+    }
+
     setShowSolutionPane((current) => !current)
   }
 
   const handleSaveForLater = () => {
+    if (!isAuthenticated) {
+      return
+    }
+
     startSavingTransition(async () => {
       await fetch("/api/progress/resume", {
         method: "POST",
@@ -168,6 +189,7 @@ export function ChallengeWorkbench({
   const editorHeight = showSolutionPane ? "58vh" : "62vh"
   const visibleEditorPath = isShowingTests ? testFileLabel : sourceFileLabel
   const visibleEditorValue = isShowingTests ? challenge.hiddenTestCode : sourceCode
+  const isSourceReadOnly = isShowingTests || !isAuthenticated
 
   return (
     <section className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,#141923,#121722)] text-white shadow-[0_24px_70px_rgba(11,15,24,0.36)]">
@@ -209,7 +231,7 @@ export function ChallengeWorkbench({
           language={editorLanguage}
           value={visibleEditorValue}
           height={editorHeight}
-          readOnly={isShowingTests}
+          readOnly={isSourceReadOnly}
           badgeLabel={challenge.language}
           className={showSolutionPane ? "xl:border-r xl:border-white/10" : undefined}
           onChange={setSourceCode}
@@ -230,7 +252,7 @@ export function ChallengeWorkbench({
 
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 bg-white/4 px-4 py-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" variant="accent" onClick={runSubmission} disabled={pending}>
+          <Button type="button" variant="accent" onClick={runSubmission} disabled={pending || !isAuthenticated}>
             {pending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
             Submit
           </Button>
@@ -238,7 +260,7 @@ export function ChallengeWorkbench({
             type="button"
             variant="secondary"
             onClick={runSubmission}
-            disabled={pending}
+            disabled={pending || !isAuthenticated}
             className="border-white/10 bg-white/10 text-white hover:bg-white/16"
           >
             {pending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
@@ -248,6 +270,7 @@ export function ChallengeWorkbench({
             type="button"
             variant={showSolutionPane ? "accent" : "secondary"}
             onClick={handleToggleSolutionPane}
+            disabled={!isAuthenticated}
             className={cn(
               showSolutionPane
                 ? "text-white"
@@ -261,7 +284,7 @@ export function ChallengeWorkbench({
             type="button"
             variant="secondary"
             onClick={handleSaveForLater}
-            disabled={saving}
+            disabled={saving || !isAuthenticated}
             className="border-white/10 bg-transparent text-white/85 hover:bg-white/10"
           >
             {saving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -273,7 +296,7 @@ export function ChallengeWorkbench({
             <Link href="/login" className="font-medium text-white underline decoration-[var(--accent)]">
               Sign in with Google
             </Link>{" "}
-            to sync progress.
+            to unlock editing, solution view, and progress sync.
           </p>
         ) : (
           <p className="text-sm text-white/55">Progress syncs when you submit or save.</p>
@@ -330,7 +353,9 @@ export function ChallengeWorkbench({
             </div>
           ) : (
             <div className="mt-4 rounded-[1rem] border border-dashed border-white/10 bg-black/10 px-4 py-3 text-sm text-white/55">
-              Submit or run this assignment to see the output and pass/fail result here.
+              {isAuthenticated
+                ? "Submit or run this assignment to see the output and pass/fail result here."
+                : "Sign in to run the checker and see pass/fail feedback here."}
             </div>
           )}
         </div>

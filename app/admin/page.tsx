@@ -2,15 +2,54 @@ import Link from "next/link"
 import { LockKeyhole } from "lucide-react"
 
 import { AdminAccessCard } from "@/components/admin/admin-access-card"
+import { AnalyticsOverview } from "@/components/admin/analytics-overview"
 import { AuthoringForm } from "@/components/admin/authoring-form"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAdminPageState } from "@/lib/admin"
+import { getAdminAnalyticsSnapshot, type AnalyticsAudience, type AnalyticsRange } from "@/lib/analytics"
 import { deleteChallengeAction, deleteCourseAction, deleteLessonAction } from "./actions"
 
-export default async function AdminPage() {
-  const { user, isAdmin, canClaimFirstAdmin, snapshot } = await getAdminPageState()
+type AdminPageProps = {
+  searchParams?: Promise<{
+    analyticsRange?: string | string[]
+    analyticsAudience?: string | string[]
+  }>
+}
+
+function firstQueryValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+function normalizeAnalyticsRange(value: string | undefined): AnalyticsRange {
+  if (value === "24h" || value === "30d") {
+    return value
+  }
+
+  return "7d"
+}
+
+function normalizeAnalyticsAudience(value: string | undefined): AnalyticsAudience {
+  if (value === "signed_in" || value === "anonymous") {
+    return value
+  }
+
+  return "all"
+}
+
+export default async function AdminPage({ searchParams }: AdminPageProps) {
+  const resolvedSearchParams = (await searchParams) ?? {}
+  const analyticsRange = normalizeAnalyticsRange(firstQueryValue(resolvedSearchParams.analyticsRange))
+  const analyticsAudience = normalizeAnalyticsAudience(firstQueryValue(resolvedSearchParams.analyticsAudience))
+
+  const [{ user, isAdmin, canClaimFirstAdmin, snapshot }, analytics] = await Promise.all([
+    getAdminPageState(),
+    getAdminAnalyticsSnapshot({
+      range: analyticsRange,
+      audience: analyticsAudience
+    })
+  ])
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-12 sm:px-6 xl:px-10">
@@ -69,6 +108,8 @@ export default async function AdminPage() {
       ) : null}
 
       {user && !isAdmin ? <AdminAccessCard canClaimFirstAdmin={canClaimFirstAdmin} /> : null}
+
+      {user && isAdmin ? <AnalyticsOverview snapshot={analytics} /> : null}
 
       {user && isAdmin ? <AuthoringForm snapshot={snapshot} /> : null}
 

@@ -17,6 +17,7 @@ type CourseProgressStripProps = {
   activeChallengeSlug: string | null
   previousChallengeSlug: string | null
   nextChallengeSlug: string | null
+  completedChallengeSlugs: string[]
 }
 
 /**
@@ -33,7 +34,8 @@ export function CourseProgressStrip({
   challengeOptions,
   activeChallengeSlug,
   previousChallengeSlug,
-  nextChallengeSlug
+  nextChallengeSlug,
+  completedChallengeSlugs
 }: CourseProgressStripProps) {
   const router = useRouter()
 
@@ -41,22 +43,22 @@ export function CourseProgressStrip({
     <div className="overflow-hidden rounded-[1.2rem] border border-white/10 bg-[linear-gradient(160deg,rgba(16,20,30,0.98),rgba(23,28,40,0.95))] px-3 py-2.5 text-white shadow-[0_16px_34px_rgba(11,15,24,0.32)]">
       <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0">
-          <p className="text-[9px] uppercase leading-[1.3] tracking-[0.24em] text-white/45">Course progress</p>
+          <p className="text-[9px] uppercase leading-[1.3] tracking-[0.24em] text-white/45">Assignment progress</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {courseLessons.map((lesson, index) => {
-              const isCurrent = index === currentLessonIndex
-              const isCompleted = index < currentLessonIndex
+            {challengeOptions.map((challenge, index) => {
+              const isCurrent = challenge.slug === activeChallengeSlug
+              const isCompleted = completedChallengeSlugs.includes(challenge.slug)
 
               return (
                 <Link
-                  key={lesson.id}
-                  href={`/learn/${courseSlug}/${lesson.slug}`}
-                  aria-label={`Open chapter ${index + 1}: ${lesson.title}`}
+                  key={challenge.slug}
+                  href={`/learn/${courseSlug}/${currentLessonSlug}?assignment=${challenge.slug}`}
+                  aria-label={`Open assignment ${index + 1}: ${challenge.title}`}
                   className={`inline-flex rounded-full border transition ${
                     isCurrent
-                      ? "h-2.5 w-2.5 border-[var(--accent-soft)] bg-[var(--accent)] shadow-[0_0_0_2px_rgba(201,111,54,0.16)]"
+                      ? "h-2.5 w-2.5 border-[var(--accent-soft)] bg-[var(--accent)] shadow-[0_0_0_2px_rgba(201,111,54,0.22)]"
                       : isCompleted
-                        ? "h-2 w-2 border-white/30 bg-white/85 hover:bg-white"
+                        ? "h-2 w-2 border-[var(--accent-soft)] bg-[var(--accent)]/80 hover:bg-[var(--accent)]"
                         : "h-2 w-2 border-white/25 bg-white/8 hover:bg-white/24"
                   }`}
                 />

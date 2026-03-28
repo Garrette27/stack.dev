@@ -174,3 +174,10 @@ export async function recordPageHit(request: Request, payload: PageHitPayload): 
 
   return { ok: true, tracked: true }
 }
+
+export {
+  getAdminAnalyticsSnapshot,
+  type AdminAnalyticsSnapshot,
+  type AnalyticsAudience,
+  type AnalyticsRange
+} from "./admin"

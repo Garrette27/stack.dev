@@ -1,13 +1,30 @@
 import Link from "next/link"
-import { ArrowRight, Clock3, Trophy } from "lucide-react"
+import { ArrowRight, Clock3, CreditCard, Trophy } from "lucide-react"
 
+import { getCurrentSubscriptionAccess, getPrimaryPlan } from "@/lib/billing"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getDashboardState, getCurrentUser } from "@/lib/data"
 
+function formatRenewalDate(value: string | null) {
+  if (!value) {
+    return null
+  }
+
+  return new Intl.DateTimeFormat("en-PH", {
+    dateStyle: "medium"
+  }).format(new Date(value))
+}
+
 export default async function DashboardPage() {
-  const [user, state] = await Promise.all([getCurrentUser(), getDashboardState()])
+  const [user, state, subscriptionAccess] = await Promise.all([
+    getCurrentUser(),
+    getDashboardState(),
+    getCurrentSubscriptionAccess()
+  ])
+  const primaryPlan = getPrimaryPlan()
+  const renewalDate = formatRenewalDate(subscriptionAccess.currentPeriodEnd)
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-12 sm:px-6 xl:px-10">
@@ -68,7 +85,7 @@ export default async function DashboardPage() {
         </Card>
       </section>
 
-      <section className="grid auto-rows-fr gap-5 md:grid-cols-2">
+      <section className="grid auto-rows-fr gap-5 md:grid-cols-2 xl:grid-cols-3">
         <Card className="h-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -89,6 +106,58 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="text-sm leading-7 text-[var(--ink)]">
             Short, regular sessions work better than giant bursts. Keep the next lesson obvious and easy to resume.
+          </CardContent>
+        </Card>
+        <Card className="h-full overflow-hidden">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-[var(--accent)]" />
+              Billing status
+            </CardTitle>
+            <CardDescription>
+              Subscription controls will live here once checkout and webhooks are connected.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 text-sm leading-7 text-[var(--ink)]">
+            {subscriptionAccess.status === "active" ? (
+              <>
+                <div className="rounded-[1.25rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3">
+                  <p className="font-semibold text-[var(--ink-strong)]">{primaryPlan.name}</p>
+                  <p className="mt-1 text-[var(--ink-muted)]">
+                    {renewalDate ? `Active. Renews around ${renewalDate}.` : "Active subscription detected."}
+                  </p>
+                </div>
+                <p className="text-[var(--ink-muted)]">Billing portal and invoice history will appear here in a later pass.</p>
+              </>
+            ) : subscriptionAccess.status === "inactive" ? (
+              <>
+                <div className="rounded-[1.25rem] bg-[color:rgb(201_111_54/0.08)] px-4 py-3">
+                  <p className="font-semibold text-[var(--ink-strong)]">No active plan yet</p>
+                  <p className="mt-1 text-[var(--ink-muted)]">The pricing page is ready for a single featured paid plan.</p>
+                </div>
+                <Link href="/pricing">
+                  <Button variant="secondary">
+                    View pricing
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="rounded-[1.25rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3">
+                  <p className="font-semibold text-[var(--ink-strong)]">Sign in to see billing status</p>
+                  <p className="mt-1 text-[var(--ink-muted)]">
+                    We will show your subscription state and renewal details here once checkout is live.
+                  </p>
+                </div>
+                <Link href="/pricing">
+                  <Button variant="secondary">
+                    See the plan
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </>
+            )}
           </CardContent>
         </Card>
       </section>

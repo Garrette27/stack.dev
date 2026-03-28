@@ -8,6 +8,7 @@ import { CourseProgressStrip } from "@/components/learn/course-progress-strip"
 import { Badge } from "@/components/ui/badge"
 import { getCurrentUser, getLessonPageData } from "@/lib/data"
 import { MdxRenderer } from "@/lib/mdx"
+import { getCompletedChallengeSlugs } from "@/lib/progress"
 import type { Challenge } from "@/lib/types"
 
 type LessonPageProps = {
@@ -65,6 +66,7 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
   const activeChallenge = data.challenges[safeActiveChallengeIndex] ?? null
   const previousChallengeSlug = data.challenges[safeActiveChallengeIndex - 1]?.slug ?? null
   const nextChallengeSlug = data.challenges[safeActiveChallengeIndex + 1]?.slug ?? null
+  const completedChallengeSlugs = await getCompletedChallengeSlugs(data.challenges)
   const challengeOptions = data.challenges.map((challenge, index) => ({
     slug: challenge.slug,
     title: getAssignmentTitle(challenge, index)
@@ -83,6 +85,7 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
         activeChallengeSlug={activeChallenge?.slug ?? null}
         previousChallengeSlug={previousChallengeSlug}
         nextChallengeSlug={nextChallengeSlug}
+        completedChallengeSlugs={completedChallengeSlugs}
       />
 
       <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,#131824,#101520)] text-white shadow-[0_28px_80px_rgba(11,15,24,0.32)]">
