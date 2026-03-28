@@ -5,6 +5,7 @@ import { notFound } from "next/navigation"
 
 import { ChallengeWorkbench } from "@/components/code/challenge-workbench"
 import { CourseProgressStrip } from "@/components/learn/course-progress-strip"
+import { LessonSideTools } from "@/components/learn/lesson-side-tools"
 import { Badge } from "@/components/ui/badge"
 import { getCurrentUser, getLessonPageData } from "@/lib/data"
 import { MdxRenderer } from "@/lib/mdx"
@@ -131,6 +132,17 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
                   Practice for this chapter will appear here when it is ready.
                 </div>
               )}
+
+              <LessonSideTools
+                courseSlug={data.course.slug}
+                currentLessonSlug={data.lesson.slug}
+                lessons={data.courseLessons.map((lesson) => ({
+                  slug: lesson.slug,
+                  title: lesson.title,
+                  summary: lesson.summary,
+                  bodyMdx: lesson.bodyMdx
+                }))}
+              />
             </div>
           </aside>
 
@@ -141,6 +153,7 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
                 courseSlug={courseSlug}
                 lessonSlug={lessonSlug}
                 isAuthenticated={Boolean(user)}
+                isCompleted={completedChallengeSlugs.includes(activeChallenge.slug)}
               />
             ) : null}
           </div>

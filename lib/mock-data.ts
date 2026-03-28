@@ -17,6 +17,7 @@ const challenge: Challenge = {
   title: "Write a greeting function",
   language: "javascript",
   judge0LanguageId: 102,
+  readingMdx: "",
   promptMdx: `Create a function named \`greet\` that returns \`Hello, {name}!\`.
 
 - The function must accept a single string argument.

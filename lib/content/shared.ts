@@ -48,6 +48,7 @@ export function mapChallenge(row: Record<string, unknown>): Challenge {
     title: String(row.title),
     language: row.language === "javascript" ? "javascript" : "python",
     judge0LanguageId: Number(row.judge0_language_id ?? 71),
+    readingMdx: String(row.reading_mdx ?? ""),
     promptMdx: String(row.prompt_mdx ?? ""),
     starterCode: String(row.starter_code ?? ""),
     solutionCode: String(row.solution_code ?? ""),

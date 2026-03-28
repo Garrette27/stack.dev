@@ -28,6 +28,7 @@ export type Challenge = {
   title: string
   language: "python" | "javascript"
   judge0LanguageId: number
+  readingMdx: string
   promptMdx: string
   starterCode: string
   solutionCode: string

@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useEffect, useState, useTransition } from "react"
-import { CheckCircle2, LoaderCircle, Play, Save, Send, Sparkles, Terminal } from "lucide-react"
+import { CheckCircle2, LoaderCircle, Play, RotateCcw, Save, Send, Sparkles, Terminal } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Badge } from "@/components/ui/badge"
@@ -18,7 +18,7 @@ type ChallengeWorkbenchProps = {
   courseSlug: string
   lessonSlug: string
   isAuthenticated: boolean
-  onPassed?: (challengeSlug: string) => void
+  isCompleted: boolean
 }
 
 const initialResult: SubmissionOutcome | null = null
@@ -108,7 +108,7 @@ export function ChallengeWorkbench({
   courseSlug,
   lessonSlug,
   isAuthenticated,
-  onPassed
+  isCompleted
 }: ChallengeWorkbenchProps) {
   const router = useRouter()
   const [sourceCode, setSourceCode] = useState(challenge.starterCode)
@@ -117,6 +117,7 @@ export function ChallengeWorkbench({
   const [result, setResult] = useState<SubmissionOutcome | null>(initialResult)
   const [pending, startTransition] = useTransition()
   const [saving, startSavingTransition] = useTransition()
+  const [resetting, startResetTransition] = useTransition()
 
   useEffect(() => {
     setSourceCode(challenge.starterCode)
@@ -148,7 +149,6 @@ export function ChallengeWorkbench({
       setResult(payload)
 
       if (payload.passed) {
-        onPassed?.(challenge.slug)
         router.refresh()
       }
     })
@@ -178,6 +178,29 @@ export function ChallengeWorkbench({
           lessonSlug
         })
       })
+    })
+  }
+
+  const handleResetProgress = () => {
+    if (!isAuthenticated || !isCompleted) {
+      return
+    }
+
+    startResetTransition(async () => {
+      await fetch("/api/progress/challenge/reset", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          courseSlug,
+          lessonSlug,
+          challengeSlug: challenge.slug
+        })
+      })
+
+      setResult(initialResult)
+      router.refresh()
     })
   }
 
@@ -290,6 +313,18 @@ export function ChallengeWorkbench({
             {saving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Save
           </Button>
+          {isCompleted ? (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleResetProgress}
+              disabled={resetting || !isAuthenticated}
+              className="border-white/10 bg-transparent text-white/85 hover:bg-white/10"
+            >
+              {resetting ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
+              Clear progress
+            </Button>
+          ) : null}
         </div>
         {!isAuthenticated ? (
           <p className="text-sm text-white/60">
@@ -299,7 +334,9 @@ export function ChallengeWorkbench({
             to unlock editing, solution view, and progress sync.
           </p>
         ) : (
-          <p className="text-sm text-white/55">Progress syncs when you submit or save.</p>
+          <p className="text-sm text-white/55">
+            {isCompleted ? "This assignment is marked complete. Use Clear progress if you want to remove the pass mark." : "Progress syncs when you submit or save."}
+          </p>
         )}
       </div>
 

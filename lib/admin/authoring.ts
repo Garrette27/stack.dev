@@ -21,6 +21,7 @@ const authoringSchema = z.object({
   challengeSlug: z.string().optional(),
   language: z.enum(["python", "javascript"]),
   judge0LanguageId: z.coerce.number().int().min(1),
+  readingMdx: z.string().optional(),
   promptMdx: z.string().min(10),
   starterCode: z.string().min(5),
   solutionCode: z.string().min(5),
@@ -56,6 +57,7 @@ export function parseAuthoringBundleFormData(formData: FormData): ParsedAuthorin
     challengeSlug: slugify(String(formData.get("challengeSlug") ?? "")),
     language: formData.get("language"),
     judge0LanguageId: formData.get("judge0LanguageId"),
+    readingMdx: String(formData.get("readingMdx") ?? ""),
     promptMdx: formData.get("promptMdx"),
     starterCode: formData.get("starterCode"),
     solutionCode: formData.get("solutionCode"),
@@ -221,6 +223,7 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   const admin = createAdminClient()
   const challengeTitle = deriveChallengeTitle(payload.promptMdx)
   const lessonSummary = deriveLessonSummary(payload.bodyMdx)
+  const normalizedReadingMdx = payload.readingMdx?.trim() ? payload.readingMdx.trim() : null
   const { data: courseRow, error: courseError } = await admin!
     .from("courses")
     .upsert(
@@ -253,6 +256,7 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
       title: challengeTitle,
       language: payload.language,
       judge0_language_id: payload.judge0LanguageId,
+      reading_mdx: normalizedReadingMdx,
       prompt_mdx: payload.promptMdx,
       starter_code: payload.starterCode,
       solution_code: payload.solutionCode,

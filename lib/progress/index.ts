@@ -28,6 +28,20 @@ type ResumeSaveResult = {
   }
 }
 
+type ChallengeProgressResetPayload = {
+  courseSlug: string
+  lessonSlug: string
+  challengeSlug: string
+}
+
+type ChallengeProgressResetResult = {
+  status: number
+  body: {
+    ok: boolean
+    message?: string
+  }
+}
+
 type ServerSupabaseClient = NonNullable<Awaited<ReturnType<typeof createServerClient>>>
 
 function mapResumeState(row: Record<string, unknown>): ResumeState {
@@ -49,6 +63,48 @@ async function upsertResumeState(client: ServerSupabaseClient, userId: string, p
     },
     {
       onConflict: "user_id"
+    }
+  )
+}
+
+async function recalculateLessonProgress(
+  client: ServerSupabaseClient,
+  userId: string,
+  lessonId: string,
+  lessonChallengeIds: string[]
+) {
+  const { data: remainingSubmissions } = await client
+    .from("submissions")
+    .select("id,passed,created_at,challenge_id")
+    .eq("user_id", userId)
+    .in("challenge_id", lessonChallengeIds)
+    .order("created_at", { ascending: false })
+
+  const submissions = (remainingSubmissions ?? []).map((row) => ({
+    id: String(row.id),
+    passed: Boolean(row.passed)
+  }))
+
+  const latestSubmissionId = submissions[0]?.id ?? null
+  const hasAnySubmission = submissions.length > 0
+  const hasPassedSubmission = submissions.some((submission) => submission.passed)
+
+  if (!hasAnySubmission) {
+    await client.from("lesson_progress").delete().eq("user_id", userId).eq("lesson_id", lessonId)
+    return
+  }
+
+  await client.from("lesson_progress").upsert(
+    {
+      user_id: userId,
+      lesson_id: lessonId,
+      last_submission_id: latestSubmissionId,
+      status: hasPassedSubmission ? "completed" : "in_progress",
+      completed_at: hasPassedSubmission ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString()
+    },
+    {
+      onConflict: "user_id,lesson_id"
     }
   )
 }
@@ -96,6 +152,57 @@ export async function saveResumeStateForCurrentUser(payload: ResumePayload): Pro
   }
 
   await upsertResumeState(supabase, user.id, payload)
+
+  return {
+    status: 200,
+    body: { ok: true }
+  }
+}
+
+/**
+ * Removes the current user's passed marker for one assignment and recalculates
+ * lesson progress so the learner can intentionally clear completion state.
+ */
+export async function resetChallengeProgressForCurrentUser(
+  payload: ChallengeProgressResetPayload
+): Promise<ChallengeProgressResetResult> {
+  const user = await getCurrentUser()
+
+  if (!user || !hasSupabaseEnv()) {
+    return {
+      status: 401,
+      body: { ok: false, message: "Authentication required." }
+    }
+  }
+
+  const snapshot = await getContentSnapshot()
+  const course = snapshot.courses.find((item) => item.slug === payload.courseSlug)
+  const lesson = snapshot.lessons.find((item) => item.courseId === course?.id && item.slug === payload.lessonSlug)
+  const challenge = snapshot.challenges.find((item) => item.slug === payload.challengeSlug)
+
+  if (!course || !lesson || !challenge || !lesson.challengeIds.includes(challenge.id)) {
+    return {
+      status: 404,
+      body: { ok: false, message: "Assignment not found." }
+    }
+  }
+
+  const client = await createServerClient()
+  if (!client) {
+    return {
+      status: 500,
+      body: { ok: false, message: "Progress service unavailable." }
+    }
+  }
+
+  await client
+    .from("submissions")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("challenge_id", challenge.id)
+    .eq("passed", true)
+
+  await recalculateLessonProgress(client, user.id, lesson.id, lesson.challengeIds)
 
   return {
     status: 200,

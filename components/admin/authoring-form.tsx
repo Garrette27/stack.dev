@@ -95,6 +95,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
 
   const [language, setLanguage] = useState<Challenge["language"]>("javascript")
   const [judge0LanguageId, setJudge0LanguageId] = useState(String(getDefaultJudge0LanguageId("javascript")))
+  const [readingMdx, setReadingMdx] = useState("")
   const [promptMdx, setPromptMdx] = useState("")
   const [starterCode, setStarterCode] = useState(getStarterTemplate("javascript"))
   const [solutionCode, setSolutionCode] = useState(getSolutionTemplate("javascript"))
@@ -124,6 +125,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
   const resetAssignmentDraft = (nextLanguage: Challenge["language"]) => {
     setLanguage(nextLanguage)
     setJudge0LanguageId(String(getDefaultJudge0LanguageId(nextLanguage)))
+    setReadingMdx("")
     setPromptMdx("")
     setStarterCode(getStarterTemplate(nextLanguage))
     setSolutionCode(getSolutionTemplate(nextLanguage))
@@ -164,6 +166,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
 
     setLanguage(selectedAssignment.language)
     setJudge0LanguageId(String(selectedAssignment.judge0LanguageId))
+    setReadingMdx(selectedAssignment.readingMdx)
     setPromptMdx(selectedAssignment.promptMdx)
     setStarterCode(selectedAssignment.starterCode)
     setSolutionCode(selectedAssignment.solutionCode)
@@ -323,6 +326,16 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                   />
                 </Field>
               </section>
+
+              <Field label="Assignment reading (optional)">
+                <Textarea
+                  name="readingMdx"
+                  rows={10}
+                  value={readingMdx}
+                  onChange={(event) => setReadingMdx(event.target.value)}
+                  placeholder={"Use this only when one assignment needs its own reading.\n\nLeave it blank to keep using the chapter reading above."}
+                />
+              </Field>
 
               <Field label="Assignment prompt (MDX)">
                 <Textarea
