@@ -44,6 +44,14 @@ type RelationInsertResult = {
   tableAvailable: boolean
 }
 
+function isMissingReadingColumn(error: { code?: string; message?: string } | null) {
+  if (!error) {
+    return false
+  }
+
+  return error.code === "42703" || error.code === "PGRST204" || error.message?.includes("reading_mdx") === true
+}
+
 /**
  * Parses and normalizes the authoring form into a single bundle payload.
  */
@@ -193,6 +201,56 @@ async function resolveChallengeSlug(
 }
 
 /**
+ * Persists assignment content while tolerating older databases that have not
+ * added the optional reading override column yet.
+ */
+async function upsertChallengeRecord(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  payload: AuthoringBundleInput,
+  challengeSlug: string,
+  challengeTitle: string,
+  readingMdx: string | null
+) {
+  const baseChallengeRow = {
+    slug: challengeSlug,
+    title: challengeTitle,
+    language: payload.language,
+    judge0_language_id: payload.judge0LanguageId,
+    prompt_mdx: payload.promptMdx,
+    starter_code: payload.starterCode,
+    solution_code: payload.solutionCode,
+    hidden_test_code: payload.hiddenTestCode,
+    published: true
+  }
+
+  const fullResult = await admin
+    .from("challenges")
+    .upsert(
+      {
+        ...baseChallengeRow,
+        reading_mdx: readingMdx
+      },
+      {
+        onConflict: "slug"
+      }
+    )
+    .select("id")
+    .single()
+
+  if (!isMissingReadingColumn(fullResult.error)) {
+    return fullResult
+  }
+
+  return admin
+    .from("challenges")
+    .upsert(baseChallengeRow, {
+      onConflict: "slug"
+    })
+    .select("id")
+    .single()
+}
+
+/**
  * Persists a full lesson-and-challenge bundle for the current admin user.
  */
 export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundleInput): Promise<AuthoringSaveResult> {
@@ -250,24 +308,13 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   }
 
   const challengeSlug = await resolveChallengeSlug(admin!, payload.lessonSlug, payload.challengeSlug)
-  const { data: challengeRow, error: challengeError } = await admin!.from("challenges").upsert(
-    {
-      slug: challengeSlug,
-      title: challengeTitle,
-      language: payload.language,
-      judge0_language_id: payload.judge0LanguageId,
-      reading_mdx: normalizedReadingMdx,
-      prompt_mdx: payload.promptMdx,
-      starter_code: payload.starterCode,
-      solution_code: payload.solutionCode,
-      hidden_test_code: payload.hiddenTestCode,
-      published: true
-    },
-    {
-      onConflict: "slug"
-    }
-  ).select("id")
-   .single()
+  const { data: challengeRow, error: challengeError } = await upsertChallengeRecord(
+    admin!,
+    payload,
+    challengeSlug,
+    challengeTitle,
+    normalizedReadingMdx
+  )
 
   if (challengeError) {
     return {

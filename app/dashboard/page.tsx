@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ArrowRight, Clock3, CreditCard, Trophy } from "lucide-react"
 
-import { getCurrentSubscriptionAccess, getPrimaryPlan } from "@/lib/billing"
+import { getCurrentSubscriptionAccess, getPrimaryBillingCta, getPrimaryPlan } from "@/lib/billing"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +24,7 @@ export default async function DashboardPage() {
     getCurrentSubscriptionAccess()
   ])
   const primaryPlan = getPrimaryPlan()
+  const billingCta = getPrimaryBillingCta(subscriptionAccess)
   const renewalDate = formatRenewalDate(subscriptionAccess.currentPeriodEnd)
 
   return (
@@ -135,9 +136,9 @@ export default async function DashboardPage() {
                   <p className="font-semibold text-[var(--ink-strong)]">No active plan yet</p>
                   <p className="mt-1 text-[var(--ink-muted)]">The pricing page is ready for a single featured paid plan.</p>
                 </div>
-                <Link href="/pricing">
+                <Link href={billingCta.href}>
                   <Button variant="secondary">
-                    View pricing
+                    {billingCta.label}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>

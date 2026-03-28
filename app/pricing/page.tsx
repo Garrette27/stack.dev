@@ -4,7 +4,7 @@ import { ArrowRight, Briefcase, Clock3, ShieldCheck, Sparkles } from "lucide-rea
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { getCurrentSubscriptionAccess, getPrimaryPlan } from "@/lib/billing"
+import { getCurrentSubscriptionAccess, getPrimaryBillingCta, getPrimaryPlan } from "@/lib/billing"
 
 const reasonsToJoin = [
   {
@@ -27,6 +27,7 @@ const reasonsToJoin = [
 export default async function PricingPage() {
   const plan = getPrimaryPlan()
   const subscriptionAccess = await getCurrentSubscriptionAccess()
+  const primaryCta = getPrimaryBillingCta(subscriptionAccess)
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-12 px-4 py-12 sm:px-6 xl:px-10">
@@ -67,13 +68,13 @@ export default async function PricingPage() {
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Link href="/login">
+              <Link href={primaryCta.href}>
                 <Button className="bg-white text-[var(--ink-strong)] hover:bg-white/90">
-                  {subscriptionAccess.status === "active" ? "Open your learning path" : "Start your transition"}
+                  {primaryCta.label}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
-              <p className="text-sm text-white/75">Sign in to explore the platform and follow the learning path.</p>
+              <p className="text-sm text-white/75">{primaryCta.helperText}</p>
             </div>
           </CardContent>
         </Card>
@@ -126,7 +127,7 @@ export default async function PricingPage() {
           </CardHeader>
           <CardContent className="grid gap-4 text-sm leading-7 text-white/85">
             <p>If you want a focused path into tech, this subscription is built to help you stay consistent and keep moving.</p>
-            <Link href="/login">
+            <Link href={primaryCta.href}>
               <Button>
                 Start learning
                 <ArrowRight className="ml-2 h-4 w-4" />

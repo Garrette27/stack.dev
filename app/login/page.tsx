@@ -1,10 +1,18 @@
+import { redirect } from "next/navigation"
 import { ArrowRight, CheckCircle2 } from "lucide-react"
 
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { getCurrentUser } from "@/lib/data"
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const user = await getCurrentUser()
+
+  if (user) {
+    redirect("/dashboard")
+  }
+
   return (
     <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-[1880px] items-center px-4 py-16 sm:px-6 xl:px-10">
       <div className="grid w-full gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">

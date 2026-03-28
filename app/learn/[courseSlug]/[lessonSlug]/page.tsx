@@ -28,6 +28,16 @@ function getAssignmentTitle(challenge: Challenge, index: number) {
   return safeTitle.length > 42 ? `${safeTitle.slice(0, 39).trimEnd()}...` : safeTitle
 }
 
+/**
+ * Keeps the reading panel chapter-first while allowing an assignment to override
+ * it when that assignment needs its own explanation.
+ */
+function getActiveReadingSource(lessonBodyMdx: string, activeChallenge: Challenge | null) {
+  const challengeReading = activeChallenge?.readingMdx.trim()
+
+  return challengeReading ? challengeReading : lessonBodyMdx
+}
+
 function LessonPanelSection({
   title,
   defaultOpen = true,
@@ -72,6 +82,7 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
     slug: challenge.slug,
     title: getAssignmentTitle(challenge, index)
   }))
+  const readingSource = getActiveReadingSource(data.lesson.bodyMdx, activeChallenge)
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-10 sm:px-6 xl:px-10">
@@ -110,7 +121,7 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
               </div>
 
               <LessonPanelSection title="Reading">
-                <MdxRenderer source={data.lesson.bodyMdx} tone="dark" />
+                <MdxRenderer source={readingSource} tone="dark" />
               </LessonPanelSection>
 
               {activeChallenge ? (
