@@ -145,14 +145,8 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
               )}
 
               <LessonSideTools
-                courseSlug={data.course.slug}
-                currentLessonSlug={data.lesson.slug}
-                lessons={data.courseLessons.map((lesson) => ({
-                  slug: lesson.slug,
-                  title: lesson.title,
-                  summary: lesson.summary,
-                  bodyMdx: lesson.bodyMdx
-                }))}
+                currentHref={`/learn/${data.course.slug}/${data.lesson.slug}${activeChallenge ? `?assignment=${activeChallenge.slug}` : ""}`}
+                entries={data.courseReadingEntries}
               />
             </div>
           </aside>

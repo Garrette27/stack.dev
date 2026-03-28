@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react"
+import { ArrowRight, ShieldCheck } from "lucide-react"
 
 import { SiteHeaderNav } from "@/components/navigation/site-header-nav"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,7 @@ export async function SiteHeader() {
           <Link href="/" className="text-lg font-semibold tracking-tight text-[var(--ink-strong)]">
             stack.dev.ph
           </Link>
-          <SiteHeaderNav showAuthoring={Boolean(user)} isAdmin={isAdmin} />
+          <SiteHeaderNav showAuthoring={Boolean(user) && isAdmin} isAdmin={isAdmin} />
         </div>
 
         <div className="flex items-center gap-3">
@@ -28,13 +28,13 @@ export async function SiteHeader() {
                 </p>
                 <p className="text-xs text-[var(--ink-muted)]">{isAdmin ? "Admin authoring enabled" : "Learner mode"}</p>
               </div>
-              {user ? (
+              {isAdmin ? (
                 <Link
                   href="/admin"
                   className="hidden rounded-full bg-white px-4 py-2 text-sm font-medium text-[var(--ink-strong)] ring-1 ring-black/8 md:inline-flex"
                 >
-                  {isAdmin ? <ShieldCheck className="mr-2 h-4 w-4" /> : <LockKeyhole className="mr-2 h-4 w-4" />}
-                  {isAdmin ? "Author" : "Authoring"}
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  Author
                 </Link>
               ) : null}
               <form action="/auth/signout" method="post">

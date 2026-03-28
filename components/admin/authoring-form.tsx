@@ -56,6 +56,18 @@ function getAssignmentLabel(challenge: Challenge, index: number) {
   return `A${index + 1}: ${shortTitle}`
 }
 
+function appendCodeFence(source: string, language: "javascript" | "python") {
+  const label = language === "javascript" ? "javascript" : "python"
+  const example = language === "javascript"
+    ? 'const message = "Hello from stack.dev.ph"\nconsole.log(message)'
+    : 'message = "Hello from stack.dev.ph"\nprint(message)'
+
+  const trimmed = source.trimEnd()
+  const prefix = trimmed ? "\n\n" : ""
+
+  return `${trimmed}${prefix}\`\`\`${label}\n${example}\n\`\`\`\n`
+}
+
 function getLessonsForCourse(snapshot: ContentSnapshot, courseId: string | null) {
   if (!courseId) {
     return []
@@ -264,6 +276,27 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                   placeholder={"# Variables\n\nExplain the concept clearly.\n\n- Keep it short\n- Keep it practical"}
                   required
                 />
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setBodyMdx((current) => appendCodeFence(current, "javascript"))}
+                  >
+                    Insert JavaScript code block
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setBodyMdx((current) => appendCodeFence(current, "python"))}
+                  >
+                    Insert Python code block
+                  </Button>
+                </div>
+                <p className="text-sm leading-7 text-[var(--ink-muted)]">
+                  Code examples render in a read-only code panel on the learner page. These buttons insert the fenced Markdown for you.
+                </p>
               </Field>
             </CardContent>
           </Card>
@@ -335,6 +368,24 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                   onChange={(event) => setReadingMdx(event.target.value)}
                   placeholder={"Use this only when one assignment needs its own reading.\n\nLeave it blank to keep using the chapter reading above."}
                 />
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setReadingMdx((current) => appendCodeFence(current, "javascript"))}
+                  >
+                    Insert JavaScript code block
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setReadingMdx((current) => appendCodeFence(current, "python"))}
+                  >
+                    Insert Python code block
+                  </Button>
+                </div>
               </Field>
 
               <Field label="Assignment prompt (MDX)">

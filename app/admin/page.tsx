@@ -1,7 +1,6 @@
 import Link from "next/link"
-import { LockKeyhole } from "lucide-react"
+import { notFound } from "next/navigation"
 
-import { AdminAccessCard } from "@/components/admin/admin-access-card"
 import { AnalyticsOverview } from "@/components/admin/analytics-overview"
 import { AuthoringForm } from "@/components/admin/authoring-form"
 import { Button } from "@/components/ui/button"
@@ -43,13 +42,17 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const analyticsRange = normalizeAnalyticsRange(firstQueryValue(resolvedSearchParams.analyticsRange))
   const analyticsAudience = normalizeAnalyticsAudience(firstQueryValue(resolvedSearchParams.analyticsAudience))
 
-  const [{ user, isAdmin, canClaimFirstAdmin, snapshot }, analytics] = await Promise.all([
+  const [{ user, isAdmin, snapshot }, analytics] = await Promise.all([
     getAdminPageState(),
     getAdminAnalyticsSnapshot({
       range: analyticsRange,
       audience: analyticsAudience
     })
   ])
+
+  if (!user || !isAdmin) {
+    notFound()
+  }
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-12 sm:px-6 xl:px-10">
@@ -90,28 +93,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </div>
       </section>
 
-      {!user ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <LockKeyhole className="h-5 w-5 text-[var(--accent)]" />
-              Sign in required
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm leading-7 text-[var(--ink)]">
-            <p>Sign in with the Google account you want to use for authoring.</p>
-            <Link href="/login" className="font-medium text-[var(--ink-strong)] underline decoration-[var(--accent)]">
-              Go to login
-            </Link>
-          </CardContent>
-        </Card>
-      ) : null}
+      <AnalyticsOverview snapshot={analytics} />
 
-      {user && !isAdmin ? <AdminAccessCard canClaimFirstAdmin={canClaimFirstAdmin} /> : null}
-
-      {user && isAdmin ? <AnalyticsOverview snapshot={analytics} /> : null}
-
-      {user && isAdmin ? <AuthoringForm snapshot={snapshot} /> : null}
+      <AuthoringForm snapshot={snapshot} />
 
       <section className="grid gap-5">
         <Card>

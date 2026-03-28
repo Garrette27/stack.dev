@@ -61,6 +61,13 @@ export type CourseWithLessons = {
   contentSourceReason: string
 }
 
+export type CourseReadingEntry = {
+  href: string
+  title: string
+  sectionLabel: string
+  bodyMdx: string
+}
+
 export type LessonBundle = {
   course: Course
   lesson: Lesson
@@ -68,6 +75,7 @@ export type LessonBundle = {
   courseIndex: number
   currentLessonIndex: number
   courseLessons: Lesson[]
+  courseReadingEntries: CourseReadingEntry[]
   courseOptions: Array<{ slug: string; title: string; index: number }>
   previousLessonSlug: string | null
   nextLessonSlug: string | null

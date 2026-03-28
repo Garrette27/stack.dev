@@ -48,19 +48,20 @@ export function CourseProgressStrip({
             {challengeOptions.map((challenge, index) => {
               const isCurrent = challenge.slug === activeChallengeSlug
               const isCompleted = completedChallengeSlugs.includes(challenge.slug)
+              const className = isCurrent
+                ? isCompleted
+                  ? "h-2.5 w-2.5 border-[var(--accent-soft)] bg-[var(--accent)] shadow-[0_0_0_2px_rgba(201,111,54,0.22)]"
+                  : "h-2.5 w-2.5 border-[var(--accent-soft)] bg-transparent shadow-[0_0_0_2px_rgba(201,111,54,0.16)]"
+                : isCompleted
+                  ? "h-2 w-2 border-[var(--accent-soft)] bg-[var(--accent)]/82 hover:bg-[var(--accent)]"
+                  : "h-2 w-2 border-white/25 bg-white/8 hover:bg-white/24"
 
               return (
                 <Link
                   key={challenge.slug}
                   href={`/learn/${courseSlug}/${currentLessonSlug}?assignment=${challenge.slug}`}
                   aria-label={`Open assignment ${index + 1}: ${challenge.title}`}
-                  className={`inline-flex rounded-full border transition ${
-                    isCurrent
-                      ? "h-2.5 w-2.5 border-[var(--accent-soft)] bg-[var(--accent)] shadow-[0_0_0_2px_rgba(201,111,54,0.22)]"
-                      : isCompleted
-                        ? "h-2 w-2 border-[var(--accent-soft)] bg-[var(--accent)]/80 hover:bg-[var(--accent)]"
-                        : "h-2 w-2 border-white/25 bg-white/8 hover:bg-white/24"
-                  }`}
+                  className={`inline-flex rounded-full border transition ${className}`}
                 />
               )
             })}

@@ -2,7 +2,7 @@ import { cache } from "react"
 
 import { hasSupabaseEnv } from "@/lib/env"
 import { createClient as createServerClient } from "@/lib/supabase/server"
-import type { CourseWithLessons, LessonBundle } from "@/lib/types"
+import type { CourseReadingEntry, CourseWithLessons, LessonBundle } from "@/lib/types"
 
 import { loadOptionalLessonChallengeRows, loadSnapshotFromRows } from "./snapshot-loader"
 import { sortLessons } from "./shared"
@@ -89,6 +89,44 @@ export const getCoursePageData = cache(async (courseSlug: string): Promise<Cours
   }
 })
 
+function buildCourseReadingEntries(
+  courseSlug: string,
+  courseLessons: LessonBundle["courseLessons"],
+  snapshotChallenges: Awaited<ReturnType<typeof getContentSnapshot>>["challenges"]
+): CourseReadingEntry[] {
+  const entries: CourseReadingEntry[] = []
+
+  courseLessons.forEach((lesson, lessonIndex) => {
+    if (lesson.bodyMdx.trim()) {
+      entries.push({
+        href: `/learn/${courseSlug}/${lesson.slug}`,
+        title: lesson.title,
+        sectionLabel: `CH${lessonIndex + 1} reading`,
+        bodyMdx: lesson.bodyMdx
+      })
+    }
+
+    const lessonChallenges = lesson.challengeIds
+      .map((challengeId) => snapshotChallenges.find((challenge) => challenge.id === challengeId && challenge.published) ?? null)
+      .filter((challenge): challenge is NonNullable<typeof challenge> => Boolean(challenge))
+
+    lessonChallenges.forEach((challenge, challengeIndex) => {
+      if (!challenge.readingMdx.trim()) {
+        return
+      }
+
+      entries.push({
+        href: `/learn/${courseSlug}/${lesson.slug}?assignment=${challenge.slug}`,
+        title: challenge.title,
+        sectionLabel: `CH${lessonIndex + 1} • A${challengeIndex + 1} reading`,
+        bodyMdx: challenge.readingMdx
+      })
+    })
+  })
+
+  return entries
+}
+
 export const getLessonPageData = cache(async (courseSlug: string, lessonSlug: string): Promise<LessonBundle | null> => {
   const snapshot = await getContentSnapshot()
   const course = snapshot.courses.find((item) => item.slug === courseSlug)
@@ -110,6 +148,7 @@ export const getLessonPageData = cache(async (courseSlug: string, lessonSlug: st
   const challenges = lesson.challengeIds
     .map((challengeId) => snapshot.challenges.find((item) => item.id === challengeId && item.published) ?? null)
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
+  const courseReadingEntries = buildCourseReadingEntries(courseSlug, courseLessons, snapshot.challenges)
 
   return {
     course,
@@ -118,6 +157,7 @@ export const getLessonPageData = cache(async (courseSlug: string, lessonSlug: st
     courseIndex: snapshot.courses.findIndex((item) => item.id === course.id) + 1,
     currentLessonIndex: safeCurrentLessonIndex,
     courseLessons,
+    courseReadingEntries,
     courseOptions: snapshot.courses.map((item, index) => ({
       slug: item.slug,
       title: item.title,

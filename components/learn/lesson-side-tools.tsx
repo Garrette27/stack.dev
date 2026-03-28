@@ -7,16 +7,15 @@ import { BookOpenText, Lightbulb, Search, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 type SearchableLesson = {
-  slug: string
+  href: string
   title: string
-  summary: string
+  sectionLabel: string
   bodyMdx: string
 }
 
 type LessonSideToolsProps = {
-  courseSlug: string
-  currentLessonSlug: string
-  lessons: SearchableLesson[]
+  currentHref: string
+  entries: SearchableLesson[]
 }
 
 function stripMdx(source: string) {
@@ -53,7 +52,7 @@ function buildExcerpt(text: string, query: string) {
  * Keeps learner-side support tools together so search and future AI help can
  * grow behind one obvious module instead of being scattered across the page.
  */
-export function LessonSideTools({ courseSlug, currentLessonSlug, lessons }: LessonSideToolsProps) {
+export function LessonSideTools({ currentHref, entries }: LessonSideToolsProps) {
   const [query, setQuery] = useState("")
 
   const results = useMemo(() => {
@@ -63,14 +62,14 @@ export function LessonSideTools({ courseSlug, currentLessonSlug, lessons }: Less
       return []
     }
 
-    return lessons
-      .map((lesson) => ({
-        lesson,
-        haystack: `${lesson.title} ${lesson.summary} ${stripMdx(lesson.bodyMdx)}`.toLowerCase()
+    return entries
+      .map((entry) => ({
+        entry,
+        haystack: `${entry.title} ${entry.sectionLabel} ${stripMdx(entry.bodyMdx)}`.toLowerCase()
       }))
       .filter((item) => item.haystack.includes(normalizedQuery))
       .slice(0, 6)
-  }, [lessons, query])
+  }, [entries, query])
 
   return (
     <div className="grid gap-5">
@@ -97,20 +96,21 @@ export function LessonSideTools({ courseSlug, currentLessonSlug, lessons }: Less
           {query ? (
             results.length ? (
               <div className="grid gap-3">
-                {results.map(({ lesson }) => {
-                  const isCurrent = lesson.slug === currentLessonSlug
+                {results.map(({ entry }) => {
+                  const isCurrent = entry.href === currentHref
 
                   return (
                     <Link
-                      key={lesson.slug}
-                      href={`/learn/${courseSlug}/${lesson.slug}`}
+                      key={entry.href}
+                      href={entry.href}
                       className="rounded-[1rem] border border-white/10 bg-[#171d29] px-4 py-3 transition hover:bg-white/8"
                     >
                       <p className="text-sm font-semibold text-white">
-                        {lesson.title}
+                        {entry.title}
                         {isCurrent ? <span className="ml-2 text-xs uppercase tracking-[0.22em] text-[var(--accent-soft)]">Current</span> : null}
                       </p>
-                      <p className="mt-2 text-sm leading-7 text-white/65">{buildExcerpt(lesson.bodyMdx || lesson.summary, query)}</p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.2em] text-white/40">{entry.sectionLabel}</p>
+                      <p className="mt-2 text-sm leading-7 text-white/65">{buildExcerpt(entry.bodyMdx, query)}</p>
                     </Link>
                   )
                 })}
