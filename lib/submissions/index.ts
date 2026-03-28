@@ -88,18 +88,42 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function extractReadableFailure(rawOutput: string) {
+  const lines = rawOutput
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  if (!lines.length) {
+    return ""
+  }
+
+  const explicitErrorLine = [...lines]
+    .reverse()
+    .find((line) => /\b(?:Assertion|Reference|Type|Range|Syntax|Eval|URI)?Error:/.test(line))
+
+  if (explicitErrorLine) {
+    return explicitErrorLine.replace(/^.*?\b((?:Assertion|Reference|Type|Range|Syntax|Eval|URI)?Error:\s*)/, "")
+  }
+
+  return lines.at(-1) ?? ""
+}
+
 function buildOutcomeFromJudge0Payload(payload: Record<string, unknown>): SubmissionOutcome {
   const statusPayload = payload.status as Record<string, unknown> | string | undefined
   const stdout = String(payload.stdout ?? "")
-  const stderr = String(payload.stderr ?? payload.message ?? "")
-  const compileOutput = String(payload.compile_output ?? "")
+  const rawStderr = String(payload.stderr ?? payload.message ?? "")
+  const rawCompileOutput = String(payload.compile_output ?? "")
   const status =
     typeof statusPayload === "string"
       ? statusPayload
       : String(statusPayload?.description ?? "processed")
-  const passed = stdout.includes(PASS_MARKER) && !stderr && !compileOutput
+  const stderr = extractReadableFailure(rawStderr) || rawStderr
+  const compileOutput = extractReadableFailure(rawCompileOutput) || rawCompileOutput
+  const passed = stdout.includes(PASS_MARKER) && !rawStderr && !rawCompileOutput
+  const failureFeedback = compileOutput || stderr || "The answer did not pass yet."
 
-  return createOutcome(status, passed ? "All checks passed." : "The answer did not pass yet.", {
+  return createOutcome(status, passed ? "All checks passed." : failureFeedback, {
     configured: true,
     passed,
     stdout: stdout.replace(PASS_MARKER, "").trim(),

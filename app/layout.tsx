@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import { Space_Grotesk, Source_Serif_4 } from "next/font/google"
-import type { ReactNode } from "react"
+import { Suspense, type ReactNode } from "react"
 
+import { PageHitTracker } from "@/components/analytics/page-hit-tracker"
 import { SiteHeader } from "@/components/navigation/site-header"
 import { cn } from "@/lib/utils"
 
@@ -27,6 +28,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     <html lang="en">
       <body className={cn(spaceGrotesk.variable, sourceSerif.variable, "font-sans")}>
         <div className="relative min-h-screen">
+          <Suspense fallback={null}>
+            <PageHitTracker />
+          </Suspense>
           <SiteHeader />
           <main>{children}</main>
         </div>

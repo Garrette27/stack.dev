@@ -7,6 +7,7 @@ import { CheckCircle2, LoaderCircle, Play, Save, Send, Sparkles, Terminal } from
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import type { Challenge, SubmissionOutcome } from "@/lib/types"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
@@ -28,6 +29,78 @@ function getTestFileLabel(language: Challenge["language"]) {
   return language === "python" ? "main_test.py" : "main_test.js"
 }
 
+function getSolutionFileLabel(language: Challenge["language"]) {
+  return language === "python" ? "solution.py" : "solution.js"
+}
+
+function getReadableModeLabel(readOnly: boolean) {
+  return readOnly ? "Read only" : "Editable"
+}
+
+type EditorPaneProps = {
+  editorKey: string
+  path: string
+  language: string
+  value: string
+  height: string
+  readOnly: boolean
+  badgeLabel: string
+  className?: string
+  onChange?: (value: string) => void
+}
+
+function EditorPane({
+  editorKey,
+  path,
+  language,
+  value,
+  height,
+  readOnly,
+  badgeLabel,
+  className,
+  onChange
+}: EditorPaneProps) {
+  return (
+    <div className={cn("min-w-0 overflow-hidden bg-[#171d29]", className)}>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#1b2230] px-4 py-3">
+        <span className="rounded-t-xl border border-white/15 bg-[#232b39] px-3 py-2 text-sm font-semibold text-white">
+          {path}
+        </span>
+        <div className="flex items-center gap-2">
+          <Badge className="bg-white/10 text-white">{badgeLabel}</Badge>
+          <span className="text-xs uppercase tracking-[0.22em] text-white/45">{getReadableModeLabel(readOnly)}</span>
+        </div>
+      </div>
+      <MonacoEditor
+        key={editorKey}
+        path={path}
+        height={height}
+        language={language}
+        theme="vs-dark"
+        value={value}
+        onChange={(nextValue) => {
+          if (!readOnly) {
+            onChange?.(nextValue ?? "")
+          }
+        }}
+        options={{
+          fontSize: 15,
+          minimap: { enabled: false },
+          padding: { top: 16 },
+          readOnly,
+          scrollBeyondLastLine: false,
+          smoothScrolling: true
+        }}
+      />
+    </div>
+  )
+}
+
+/**
+ * Hosts the learner code workspace, keeps editable source isolated from test
+ * and solution views, and surfaces submission feedback without leaking runner
+ * details into the page component.
+ */
 export function ChallengeWorkbench({
   challenge,
   courseSlug,
@@ -36,6 +109,7 @@ export function ChallengeWorkbench({
 }: ChallengeWorkbenchProps) {
   const [sourceCode, setSourceCode] = useState(challenge.starterCode)
   const [activeFile, setActiveFile] = useState<"source" | "tests">("source")
+  const [showSolutionPane, setShowSolutionPane] = useState(false)
   const [result, setResult] = useState<SubmissionOutcome | null>(initialResult)
   const [pending, startTransition] = useTransition()
   const [saving, startSavingTransition] = useTransition()
@@ -44,6 +118,7 @@ export function ChallengeWorkbench({
     setSourceCode(challenge.starterCode)
     setResult(initialResult)
     setActiveFile("source")
+    setShowSolutionPane(false)
   }, [challenge.slug, challenge.starterCode])
 
   const runSubmission = () => {
@@ -66,9 +141,8 @@ export function ChallengeWorkbench({
     })
   }
 
-  const handleUseSolution = () => {
-    setActiveFile("source")
-    setSourceCode(challenge.solutionCode)
+  const handleToggleSolutionPane = () => {
+    setShowSolutionPane((current) => !current)
   }
 
   const handleSaveForLater = () => {
@@ -89,7 +163,11 @@ export function ChallengeWorkbench({
   const editorLanguage = challenge.language === "python" ? "python" : "javascript"
   const sourceFileLabel = getSourceFileLabel(challenge.language)
   const testFileLabel = getTestFileLabel(challenge.language)
+  const solutionFileLabel = getSolutionFileLabel(challenge.language)
   const isShowingTests = activeFile === "tests"
+  const editorHeight = showSolutionPane ? "58vh" : "62vh"
+  const visibleEditorPath = isShowingTests ? testFileLabel : sourceFileLabel
+  const visibleEditorValue = isShowingTests ? challenge.hiddenTestCode : sourceCode
 
   return (
     <section className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,#141923,#121722)] text-white shadow-[0_24px_70px_rgba(11,15,24,0.36)]">
@@ -120,32 +198,34 @@ export function ChallengeWorkbench({
         </div>
         <div className="flex items-center gap-2">
           <Badge className="bg-white/10 text-white">{challenge.language}</Badge>
-          <span className="text-xs uppercase tracking-[0.22em] text-white/45">
-            {isShowingTests ? "Read only" : "Editable"}
-          </span>
+          <span className="text-xs uppercase tracking-[0.22em] text-white/45">{getReadableModeLabel(isShowingTests)}</span>
         </div>
       </div>
 
-      <div className="border-b border-white/10">
-        <MonacoEditor
-          height="62vh"
-          defaultLanguage={editorLanguage}
-          theme="vs-dark"
-          value={isShowingTests ? challenge.hiddenTestCode : sourceCode}
-          onChange={(value) => {
-            if (!isShowingTests) {
-              setSourceCode(value ?? "")
-            }
-          }}
-          options={{
-            fontSize: 15,
-            minimap: { enabled: false },
-            padding: { top: 16 },
-            readOnly: isShowingTests,
-            scrollBeyondLastLine: false,
-            smoothScrolling: true
-          }}
+      <div className={cn("border-b border-white/10", showSolutionPane && "grid gap-px bg-white/10 xl:grid-cols-2")}>
+        <EditorPane
+          editorKey={`${challenge.slug}-${activeFile}`}
+          path={visibleEditorPath}
+          language={editorLanguage}
+          value={visibleEditorValue}
+          height={editorHeight}
+          readOnly={isShowingTests}
+          badgeLabel={challenge.language}
+          className={showSolutionPane ? "xl:border-r xl:border-white/10" : undefined}
+          onChange={setSourceCode}
         />
+
+        {showSolutionPane ? (
+          <EditorPane
+            editorKey={`${challenge.slug}-solution`}
+            path={solutionFileLabel}
+            language={editorLanguage}
+            value={challenge.solutionCode}
+            height={editorHeight}
+            readOnly
+            badgeLabel={challenge.language}
+          />
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 bg-white/4 px-4 py-4">
@@ -166,12 +246,16 @@ export function ChallengeWorkbench({
           </Button>
           <Button
             type="button"
-            variant="secondary"
-            onClick={handleUseSolution}
-            className="border-white/10 bg-white/10 text-white hover:bg-white/16"
+            variant={showSolutionPane ? "accent" : "secondary"}
+            onClick={handleToggleSolutionPane}
+            className={cn(
+              showSolutionPane
+                ? "text-white"
+                : "border-white/10 bg-white/10 text-white hover:bg-white/16"
+            )}
           >
             <Sparkles className="mr-2 h-4 w-4" />
-            Solution
+            {showSolutionPane ? "Hide solution" : "Solution"}
           </Button>
           <Button
             type="button"
@@ -228,6 +312,14 @@ export function ChallengeWorkbench({
                     {result.stdout || "(empty)"}
                   </dd>
                 </div>
+                {result.compileOutput ? (
+                  <div>
+                    <dt className="font-semibold text-white">Compile output</dt>
+                    <dd className="mt-2 rounded-[1rem] bg-amber-950/70 p-4 font-mono text-xs text-amber-100">
+                      {result.compileOutput}
+                    </dd>
+                  </div>
+                ) : null}
                 {result.stderr ? (
                   <div>
                     <dt className="font-semibold text-white">Errors</dt>

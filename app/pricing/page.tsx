@@ -4,13 +4,7 @@ import { ArrowRight, Briefcase, Clock3, ShieldCheck, Sparkles } from "lucide-rea
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-
-const subscriptionHighlights = [
-  "Short daily lessons built for working adults",
-  "Hands-on coding practice with immediate feedback",
-  "Resume exactly where you left off",
-  "Structured path for career shifters moving into software"
-]
+import { getCurrentSubscriptionAccess, getPrimaryPlan } from "@/lib/billing"
 
 const reasonsToJoin = [
   {
@@ -30,7 +24,10 @@ const reasonsToJoin = [
   }
 ]
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const plan = getPrimaryPlan()
+  const subscriptionAccess = await getCurrentSubscriptionAccess()
+
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-12 px-4 py-12 sm:px-6 xl:px-10">
       <section className="grid gap-6">
@@ -55,14 +52,14 @@ export default function PricingPage() {
           </CardHeader>
           <CardContent className="grid gap-6">
             <div className="rounded-[1.75rem] bg-white/12 p-5 ring-1 ring-white/10">
-              <p className="text-xs uppercase tracking-[0.18em] text-white/65">Subscription</p>
-              <p className="mt-2 text-3xl font-semibold text-white">Paid plan at launch</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-white/65">{plan.cadenceLabel}</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{plan.priceLabel}</p>
               <p className="mt-3 text-sm leading-7 text-white/80">
-                Join for structured learning, practical exercises, and a guided path designed to help you switch careers.
+                {plan.tagline}
               </p>
             </div>
             <div className="grid gap-3 text-sm leading-7 text-white/85">
-              {subscriptionHighlights.map((feature) => (
+              {plan.highlights.map((feature) => (
                 <div key={feature} className="flex items-start gap-3">
                   <ShieldCheck className="mt-1 h-4 w-4 shrink-0 text-white" />
                   <span>{feature}</span>
@@ -72,7 +69,7 @@ export default function PricingPage() {
             <div className="flex flex-wrap items-center gap-3">
               <Link href="/login">
                 <Button className="bg-white text-[var(--ink-strong)] hover:bg-white/90">
-                  Start your transition
+                  {subscriptionAccess.status === "active" ? "Open your learning path" : "Start your transition"}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
