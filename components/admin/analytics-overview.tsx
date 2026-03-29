@@ -264,11 +264,14 @@ export function AnalyticsOverview({ snapshot }: AnalyticsOverviewProps) {
       <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Recent visits</CardTitle>
-          <CardDescription>Latest page hits with approximate device and location signals.</CardDescription>
+          <CardDescription>
+            Full visit history for the selected range with approximate device and location signals.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3">
+        <CardContent>
           {snapshot.recentVisits.length ? (
-            snapshot.recentVisits.map((visit) => (
+            <div className="max-h-[42rem] space-y-3 overflow-y-auto pr-2">
+              {snapshot.recentVisits.map((visit) => (
               <div
                 key={`${visit.path}-${visit.viewedAt}-${visit.deviceLabel}`}
                 className="grid gap-2 rounded-[1rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto]"
@@ -286,7 +289,8 @@ export function AnalyticsOverview({ snapshot }: AnalyticsOverviewProps) {
                 </div>
                 <p className="text-xs text-[var(--ink-muted)]">{formatVisitTime(visit.viewedAt)}</p>
               </div>
-            ))
+              ))}
+            </div>
           ) : (
             <p className="text-sm leading-7 text-[var(--ink-muted)]">No visits have been recorded yet.</p>
           )}

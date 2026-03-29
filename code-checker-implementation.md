@@ -2,186 +2,210 @@
 
 ## Goal
 
-Provide a reliable code-checking pipeline for learner assignments while keeping the learner UI simple and the runner-specific complexity hidden behind deeper modules.
+Provide a reliable Judge0-backed checking pipeline for learner assignments while keeping runner-specific decisions hidden behind deeper modules.
 
 ## Current State
 
-The app already has a working code checker for:
+The app already routes learner submissions through:
+
+1. [`/api/submissions`](C:/Users/garre/boot.dev/app/api/submissions/route.ts)
+2. [`lib/submissions`](C:/Users/garre/boot.dev/lib/submissions/index.ts)
+
+That service is responsible for:
+
+- loading the authored challenge
+- building runner source
+- sending it to Judge0
+- polling for the result
+- extracting readable errors
+- persisting submissions
+- updating lesson progress and resume state
+
+## Languages Prepared In Code
+
+Language defaults now live in one place:
+
+- [`lib/judge0/languages.ts`](C:/Users/garre/boot.dev/lib/judge0/languages.ts)
+
+Prepared language set:
+
+- JavaScript: `102`
+- TypeScript: `101`
+- Python: `71`
+- Go: `107`
+- SQL (SQLite): `82`
+
+These ids were verified against the public [`ce.judge0.com/languages`](https://ce.judge0.com/languages) endpoint that matches this project’s current Judge0 host.
+
+## Current Support Level
+
+### Fully usable now
 
 - JavaScript
+- TypeScript
 - Python
 
-Current runtime flow:
+These currently have:
 
-1. The learner submits code from the workbench.
-2. The request hits [`/api/submissions`](C:/Users/garre/boot.dev/app/api/submissions/route.ts).
-3. The route delegates to [`lib/submissions`](C:/Users/garre/boot.dev/lib/submissions/index.ts).
-4. The submission service:
-   - loads the authored challenge
-   - builds runner source
-   - sends it to Judge0
-   - polls for the result
-   - extracts readable errors
-   - persists submission and lesson progress
+- authoring support
+- editor file naming
+- starter / solution / hidden test templates
+- runner source generation
+- readable error extraction
 
-Language defaults currently implemented in [`lib/judge0/languages.ts`](C:/Users/garre/boot.dev/lib/judge0/languages.ts):
+### Prepared, but authoring discipline matters
 
-- Python: `71`
-- JavaScript: `102`
+- Go
+- SQL (SQLite)
 
-## What Already Works
+These now have:
 
-### JavaScript
+- language ids
+- editor file naming
+- authoring templates
+- runner source generation
 
-- editable learner source file
-- read-only hidden test file
-- runner support for `console.log`
-- hidden tests can assert `stackOutput`
-- pass/fail and readable runtime errors
+Important:
+
+- Go hidden tests are injected into an `init()` function, so hidden test code should be written as Go statements, not as a second full file.
+- SQLite checks are statement-based. Hidden tests should be authored as SQL statements that raise an error when expectations are not met.
+
+## Runner Behavior By Language
+
+### JavaScript / TypeScript
+
+- learner source runs first
+- `console.log` output is captured into `stackOutput`
+- hidden tests can assert both function behavior and output
+- a pass marker is printed only after hidden tests succeed
 
 ### Python
 
-- editable learner source file
-- read-only hidden test file
-- hidden assertions
-- pass/fail and readable runtime errors
+- learner source runs with stdout mirrored into `stackOutput`
+- hidden tests can assert return values or printed output
+- a pass marker is printed only after hidden tests succeed
 
-## What Is Not Implemented Yet
+### Go
 
-### TypeScript
+- learner source is treated as the main Go file
+- hidden tests are inserted into `func init()`
+- hidden tests should use `panic("message")` for failures
+- the pass marker is printed from the generated `init()` wrapper
 
-TypeScript is not fully wired yet.
+### SQL (SQLite)
 
-To support it safely, we need to add it across the full checker boundary, not just the admin form.
+- learner SQL runs first
+- hidden tests are appended as additional SQL statements
+- hidden tests should force an error when the result is wrong
+- the pass marker is emitted with a final `select`
 
-## Recommended TypeScript Rollout
+## Recommended Hidden Test Style
 
-### 1. Extend the challenge language model
+### JavaScript / TypeScript
 
-Update [`lib/types.ts`](C:/Users/garre/boot.dev/lib/types.ts):
+```ts
+if (greet("Ada") !== "Hello, Ada!") {
+  throw new Error("Ada greeting is incorrect")
+}
+```
 
-- add `"typescript"` to `Challenge["language"]`
+### Python
 
-### 2. Add Judge0 language mapping
+```python
+assert greet("Ada") == "Hello, Ada!"
+```
 
-Update [`lib/judge0/languages.ts`](C:/Users/garre/boot.dev/lib/judge0/languages.ts):
+### Go
 
-- add a default Judge0 language id for TypeScript
+```go
+if greet("Ada") != "Hello, Ada!" {
+	panic("Ada greeting is incorrect")
+}
+```
 
-Important:
-- confirm the exact TypeScript language id from the Judge0 host you are using
-- do not guess and hard-code it without verifying the provider
+### SQLite
 
-### 3. Update authoring defaults
-
-Update [`components/admin/authoring-form.tsx`](C:/Users/garre/boot.dev/components/admin/authoring-form.tsx):
-
-- allow `typescript` in the language picker
-- generate starter code template
-- generate solution template
-- generate hidden test template
-
-### 4. Update file naming in the learner workbench
-
-Update [`components/code/challenge-workbench.tsx`](C:/Users/garre/boot.dev/components/code/challenge-workbench.tsx):
-
-- source file label should become `main.ts`
-- hidden tests file label should become `main_test.ts`
-- solution file label should become `solution.ts`
-
-### 5. Extend runner source generation
-
-Update [`lib/submissions/index.ts`](C:/Users/garre/boot.dev/lib/submissions/index.ts):
-
-- treat TypeScript separately from plain JavaScript
-- decide whether the Judge0 host executes TypeScript directly or transpiles it internally
-- preserve `stackOutput` support so hidden tests can still validate console output
-
-### 6. Keep readable error extraction
-
-The current readable-error path in [`lib/submissions/index.ts`](C:/Users/garre/boot.dev/lib/submissions/index.ts) should stay shared across:
-
-- Python
-- JavaScript
-- TypeScript
-
-That keeps the learner-facing interface simple even if the runtime differences grow.
-
-## Hidden Test Model
-
-The current checker model is:
-
-- learner sees the prompt
-- learner writes code in `main.*`
-- learner may inspect `main_test.*` if you allow that UI
-- authored hidden checks live in `hidden_test_code`
-- the service builds one combined runner payload
-
-Current JavaScript runner behavior:
-
-- captures `console.log`
-- exposes the captured output as `stackOutput`
-- appends the pass marker only after hidden tests succeed
-
-Current Python runner behavior:
-
-- executes learner source
-- runs hidden assertions
-- prints the pass marker if tests succeed
+```sql
+select case
+  when exists (
+    select 1
+    from messages
+    where content = 'Starting Textio server...'
+  ) then 1
+  else missing_expected_output('Expected row was not produced')
+end;
+```
 
 ## Error Model
 
-The learner should see:
+Learners should continue to see:
 
-- pass/fail
+- pass / fail
 - readable failure message
 - standard output
 - compile output when relevant
 - runtime errors when relevant
 
-This already exists in [`lib/submissions/index.ts`](C:/Users/garre/boot.dev/lib/submissions/index.ts) and should remain the single place that translates Judge0 responses into learner-facing outcomes.
+Readable error extraction stays centralized in:
 
-## Database Model
+- [`lib/submissions/index.ts`](C:/Users/garre/boot.dev/lib/submissions/index.ts)
 
-The checker currently stores results in:
+That keeps page components free from runner parsing details.
 
-- `submissions`
-- `lesson_progress`
-- `resume_state`
+## Authoring Surface
 
-No checker-specific schema change is required for TypeScript if the existing `challenges.language` and `judge0_language_id` values can represent it cleanly.
+The admin form already reads from the shared Judge0 language config:
 
-## Recommended Build Order
+- [`components/admin/authoring-form.tsx`](C:/Users/garre/boot.dev/components/admin/authoring-form.tsx)
 
-1. Keep JavaScript and Python stable.
-2. Verify the Judge0 TypeScript language id from the current provider.
-3. Add TypeScript to the domain types.
-4. Add TypeScript to admin authoring.
-5. Add TypeScript file labels and runner source generation.
-6. Add one TypeScript lesson and one TypeScript assignment.
-7. Verify:
-   - passing submission
+That means:
+
+- language picker
+- starter code
+- solution code
+- hidden test templates
+- fenced reading-code examples
+
+all stay aligned with the same deep module.
+
+## Learner Workbench
+
+The learner workbench uses the same language config for:
+
+- source file names
+- hidden test file names
+- solution file names
+- Monaco language modes
+
+Implementation:
+
+- [`components/code/challenge-workbench.tsx`](C:/Users/garre/boot.dev/components/code/challenge-workbench.tsx)
+
+## Remaining Follow-Up Before Heavy Content Authoring
+
+1. Add one real TypeScript assignment and verify:
+   - pass
    - wrong answer
-   - runtime error
    - compile error
+2. Add one real Go assignment and verify the `init()` hidden-test pattern.
+3. Add one real SQLite assignment and verify the authored SQL error pattern.
+4. If SQLite authoring becomes common, add helper templates for common table-setup/check flows.
 
 ## Acceptance Criteria
 
-TypeScript support is ready when:
+The checker preparation is in a good state when:
 
-- an author can create a TypeScript assignment in admin
-- the learner sees `main.ts` and `main_test.ts`
-- `Submit` and `Run` return correct pass/fail results
-- compile errors are readable
-- runtime errors are readable
-- completed submissions still update progress normally
+- admin can author JavaScript, TypeScript, Python, Go, and SQLite assignments
+- learner sees correct file names and Monaco modes
+- Judge0 runs use the correct language id
+- readable errors still surface through one shared submission service
+- no page component needs to know runner assembly details
 
 ## Design Notes
 
-To stay aligned with `AGENTS.md`:
+This follows `AGENTS.md` by:
 
-- keep Judge0 details inside [`lib/submissions`](C:/Users/garre/boot.dev/lib/submissions/index.ts)
-- keep admin language defaults inside the authoring form and language map
-- avoid pushing runner-specific conditionals into page components
-- keep the learner-facing submission API simple
-
+- keeping language/runtime knowledge in [`lib/judge0/languages.ts`](C:/Users/garre/boot.dev/lib/judge0/languages.ts)
+- keeping runner assembly and Judge0 polling in [`lib/submissions/index.ts`](C:/Users/garre/boot.dev/lib/submissions/index.ts)
+- avoiding page-level language conditionals
+- preferring a few deeper modules over many shallow UI-only switches

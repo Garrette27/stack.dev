@@ -6,7 +6,7 @@ import { getRunnerChallengeBySlug } from "@/lib/admin"
 import { hasJudge0Env, hasSupabaseEnv } from "@/lib/env"
 import { saveResumeStateForUser } from "@/lib/progress"
 import { createClient } from "@/lib/supabase/server"
-import type { SubmissionOutcome } from "@/lib/types"
+import type { Challenge, SubmissionOutcome } from "@/lib/types"
 
 const PASS_MARKER = "__STACK_DEV_PH_PASS__"
 const PROCESSING_STATUS_IDS = new Set([1, 2])
@@ -48,8 +48,15 @@ function createOutcome(
  * behind one entry point. JavaScript checks receive `stackOutput` so hidden
  * tests can assert console output without re-executing user code.
  */
-function buildRunnerSource(language: "python" | "javascript", sourceCode: string, hiddenTestCode: string) {
-  if (language === "javascript") {
+function indentCode(source: string, prefix: string) {
+  return source
+    .split(/\r?\n/)
+    .map((line) => `${prefix}${line}`)
+    .join("\n")
+}
+
+function buildRunnerSource(language: Challenge["language"], sourceCode: string, hiddenTestCode: string) {
+  if (language === "javascript" || language === "typescript") {
     return `const __stackDevOutput = []
 const __stackDevConsoleLog = console.log.bind(console)
 console.log = (...args) => {
@@ -63,6 +70,51 @@ ${sourceCode}
 const stackOutput = __stackDevOutput.join("\\n")
 ${hiddenTestCode}
 console.log("${PASS_MARKER}")
+`
+  }
+
+  if (language === "python") {
+    return `import io
+import sys
+
+__stackDevRealStdout = sys.stdout
+__stackDevStdoutBuffer = io.StringIO()
+
+class __StackDevWriter(io.TextIOBase):
+    def write(self, value):
+        __stackDevStdoutBuffer.write(value)
+        return __stackDevRealStdout.write(value)
+
+    def flush(self):
+        return __stackDevRealStdout.flush()
+
+sys.stdout = __StackDevWriter()
+
+${sourceCode}
+
+sys.stdout = __stackDevRealStdout
+stackOutput = __stackDevStdoutBuffer.getvalue()
+${hiddenTestCode}
+print("${PASS_MARKER}")
+`
+  }
+
+  if (language === "go") {
+    return `${sourceCode}
+
+func init() {
+${indentCode(hiddenTestCode, "\t")}
+\tprintln("${PASS_MARKER}")
+}
+`
+  }
+
+  if (language === "sqlite") {
+    return `${sourceCode}
+
+${hiddenTestCode}
+
+select '${PASS_MARKER}' as stack_dev_pass;
 `
   }
 
@@ -100,9 +152,17 @@ function extractReadableFailure(rawOutput: string) {
 
   const explicitErrorLine = [...lines]
     .reverse()
-    .find((line) => /\b(?:Assertion|Reference|Type|Range|Syntax|Eval|URI)?Error:/.test(line))
+    .find((line) => /\b(?:Assertion|Reference|Type|Range|Syntax|Eval|URI)?Error:|panic:|no such function:/i.test(line))
 
   if (explicitErrorLine) {
+    if (/panic:/i.test(explicitErrorLine)) {
+      return explicitErrorLine.replace(/^.*?panic:\s*/i, "")
+    }
+
+    if (/no such function:/i.test(explicitErrorLine)) {
+      return explicitErrorLine.trim()
+    }
+
     return explicitErrorLine.replace(/^.*?\b((?:Assertion|Reference|Type|Range|Syntax|Eval|URI)?Error:\s*)/, "")
   }
 
@@ -133,7 +193,7 @@ function buildOutcomeFromJudge0Payload(payload: Record<string, unknown>): Submis
 }
 
 async function runJudge0Submission(
-  language: "python" | "javascript",
+  language: Challenge["language"],
   judge0LanguageId: number,
   sourceCode: string,
   hiddenTestCode: string

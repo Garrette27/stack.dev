@@ -26,7 +26,7 @@ export type Challenge = {
   id: string
   slug: string
   title: string
-  language: "python" | "javascript"
+  language: "python" | "javascript" | "typescript" | "go" | "sqlite"
   judge0LanguageId: number
   readingMdx: string
   promptMdx: string

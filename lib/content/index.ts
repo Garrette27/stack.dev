@@ -89,6 +89,10 @@ export const getCoursePageData = cache(async (courseSlug: string): Promise<Cours
   }
 })
 
+/**
+ * Builds a course-wide reading index so learner-side search can look beyond the
+ * current chapter and include assignment-specific explanations when present.
+ */
 function buildCourseReadingEntries(
   courseSlug: string,
   courseLessons: LessonBundle["courseLessons"],
@@ -111,15 +115,17 @@ function buildCourseReadingEntries(
       .filter((challenge): challenge is NonNullable<typeof challenge> => Boolean(challenge))
 
     lessonChallenges.forEach((challenge, challengeIndex) => {
-      if (!challenge.readingMdx.trim()) {
+      const assignmentReading = challenge.readingMdx.trim() || challenge.promptMdx.trim()
+
+      if (!assignmentReading) {
         return
       }
 
       entries.push({
         href: `/learn/${courseSlug}/${lesson.slug}?assignment=${challenge.slug}`,
         title: challenge.title,
-        sectionLabel: `CH${lessonIndex + 1} • A${challengeIndex + 1} reading`,
-        bodyMdx: challenge.readingMdx
+        sectionLabel: `CH${lessonIndex + 1} - A${challengeIndex + 1} reading`,
+        bodyMdx: assignmentReading
       })
     })
   })

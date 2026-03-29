@@ -29,13 +29,30 @@ function getAssignmentTitle(challenge: Challenge, index: number) {
 }
 
 /**
- * Keeps the reading panel chapter-first while allowing an assignment to override
- * it when that assignment needs its own explanation.
+ * Keeps the reading panel chapter-first while still giving each assignment a
+ * distinct fallback when no dedicated assignment reading has been authored yet.
  */
 function getActiveReadingSource(lessonBodyMdx: string, activeChallenge: Challenge | null) {
   const challengeReading = activeChallenge?.readingMdx.trim()
+  const assignmentPrompt = activeChallenge?.promptMdx.trim()
 
-  return challengeReading ? challengeReading : lessonBodyMdx
+  if (challengeReading) {
+    return challengeReading
+  }
+
+  if (!assignmentPrompt) {
+    return lessonBodyMdx
+  }
+
+  if (!lessonBodyMdx.trim()) {
+    return assignmentPrompt
+  }
+
+  return `${lessonBodyMdx.trim()}
+
+## Assignment focus
+
+${assignmentPrompt}`
 }
 
 function LessonPanelSection({

@@ -1,4 +1,5 @@
 import { mockContent } from "@/lib/mock-data"
+import { getDefaultJudge0LanguageId, isSupportedChallengeLanguage } from "@/lib/judge0/languages"
 import type { Challenge, ContentSnapshot, Course, Lesson } from "@/lib/types"
 
 export function createMockSnapshot(reason: string): ContentSnapshot {
@@ -42,12 +43,15 @@ export function mapLesson(row: Record<string, unknown>, courseSlug: string, chal
 }
 
 export function mapChallenge(row: Record<string, unknown>): Challenge {
+  const languageValue = String(row.language ?? "python")
+  const language = isSupportedChallengeLanguage(languageValue) ? languageValue : "python"
+
   return {
     id: String(row.id),
     slug: String(row.slug),
     title: String(row.title),
-    language: row.language === "javascript" ? "javascript" : "python",
-    judge0LanguageId: Number(row.judge0_language_id ?? 71),
+    language,
+    judge0LanguageId: Number(row.judge0_language_id ?? getDefaultJudge0LanguageId(language)),
     readingMdx: String(row.reading_mdx ?? ""),
     promptMdx: String(row.prompt_mdx ?? ""),
     starterCode: String(row.starter_code ?? ""),

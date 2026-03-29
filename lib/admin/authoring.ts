@@ -19,7 +19,7 @@ const authoringSchema = z.object({
   lessonSlug: z.string().min(3),
   bodyMdx: z.string().min(20),
   challengeSlug: z.string().optional(),
-  language: z.enum(["python", "javascript"]),
+  language: z.enum(["python", "javascript", "typescript", "go", "sqlite"]),
   judge0LanguageId: z.coerce.number().int().min(1),
   readingMdx: z.string().optional(),
   promptMdx: z.string().min(10),
@@ -281,7 +281,10 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   const admin = createAdminClient()
   const challengeTitle = deriveChallengeTitle(payload.promptMdx)
   const lessonSummary = deriveLessonSummary(payload.bodyMdx)
-  const normalizedReadingMdx = payload.readingMdx?.trim() ? payload.readingMdx.trim() : null
+  // New assignments default their reading override to the assignment prompt so
+  // the learner view can still change per assignment even before a richer
+  // assignment-specific explanation is authored.
+  const normalizedReadingMdx = payload.readingMdx?.trim() ? payload.readingMdx.trim() : payload.promptMdx.trim()
   const { data: courseRow, error: courseError } = await admin!
     .from("courses")
     .upsert(

@@ -65,6 +65,11 @@ function getCodeBlockFileLabel(language: string | null) {
     case "python":
     case "py":
       return "example.py"
+    case "go":
+      return "example.go"
+    case "sql":
+    case "sqlite":
+      return "example.sql"
     case "json":
       return "example.json"
     case "bash":
@@ -100,6 +105,18 @@ function guessCodeLanguage(source: string) {
     return "python"
   }
 
+  if (/^(package main|func main\(|func [A-Za-z_][A-Za-z0-9_]*\()/m.test(trimmed)) {
+    return "go"
+  }
+
+  if (/^(select |create table |insert into |update |delete from |with )/im.test(trimmed)) {
+    return "sql"
+  }
+
+  if (/:\s*(string|number|boolean|unknown|any|void|Array<)/.test(trimmed) || /interface\s+[A-Z]/.test(trimmed)) {
+    return "typescript"
+  }
+
   if (
     /^(const |let |var |function |if\s*\(|for\s*\(|while\s*\(|console\.log|export |import )/m.test(trimmed) ||
     /=>/.test(trimmed)
@@ -121,6 +138,7 @@ function isLikelyCodeLine(line: string) {
     /^(const |let |var |function |if\s*\(|else\b|for\s*\(|while\s*\(|return\b|console\.log|print\(|throw\b|try\b|catch\b|finally\b|class\b|def\b|import\b|export\b)/.test(
       trimmed
     ) ||
+    /^(package main|func main\(|func [A-Za-z_][A-Za-z0-9_]*\(|select |create table |insert into |update |delete from |with )/i.test(trimmed) ||
     trimmed.endsWith("{") ||
     trimmed === "}" ||
     trimmed.includes("=>") ||

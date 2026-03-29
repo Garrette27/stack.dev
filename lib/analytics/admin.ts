@@ -55,6 +55,8 @@ type PageVisitRow = {
   viewed_at: string | null
 }
 
+const MAX_PAGE_VISIT_ROWS = 5000
+
 function createEmptySnapshot(range: AnalyticsRange, audience: AnalyticsAudience, enabled: boolean): AdminAnalyticsSnapshot {
   return {
     enabled,
@@ -238,7 +240,7 @@ export async function getAdminAnalyticsSnapshot(options?: {
     .select("id,user_id,path,referrer,ip_hash,country,region,city,device_type,browser,operating_system,viewed_at")
     .gte("viewed_at", getRangeStart(range).toISOString())
     .order("viewed_at", { ascending: false })
-    .limit(1000)
+    .limit(MAX_PAGE_VISIT_ROWS)
 
   if (isMissingTableError(error)) {
     return createEmptySnapshot(range, audience, false)
@@ -266,7 +268,7 @@ export async function getAdminAnalyticsSnapshot(options?: {
     topDevices: countTopItems(rows.map((row) => row.device_type?.trim() || "unknown")),
     topLocations: countTopItems(rows.map(getLocationLabel)),
     topBrowsers: countTopItems(rows.map((row) => row.browser?.trim() || "unknown")),
-    recentVisits: rows.slice(0, 12).map((row) => ({
+    recentVisits: rows.map((row) => ({
       path: row.path?.trim() || "(unknown page)",
       viewedAt: row.viewed_at || new Date().toISOString(),
       deviceLabel: getDeviceLabel(row),

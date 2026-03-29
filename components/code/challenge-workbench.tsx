@@ -7,6 +7,7 @@ import { CheckCircle2, LoaderCircle, Play, RotateCcw, Save, Send, Sparkles, Term
 import { useRouter } from "next/navigation"
 
 import { Badge } from "@/components/ui/badge"
+import { getEditorLanguage, getSolutionFileLabel, getSourceFileLabel, getTestFileLabel } from "@/lib/judge0/languages"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Challenge, SubmissionOutcome } from "@/lib/types"
@@ -22,18 +23,6 @@ type ChallengeWorkbenchProps = {
 }
 
 const initialResult: SubmissionOutcome | null = null
-
-function getSourceFileLabel(language: Challenge["language"]) {
-  return language === "python" ? "main.py" : "main.js"
-}
-
-function getTestFileLabel(language: Challenge["language"]) {
-  return language === "python" ? "main_test.py" : "main_test.js"
-}
-
-function getSolutionFileLabel(language: Challenge["language"]) {
-  return language === "python" ? "solution.py" : "solution.js"
-}
 
 function getReadableModeLabel(readOnly: boolean) {
   return readOnly ? "Read only" : "Editable"
@@ -204,7 +193,7 @@ export function ChallengeWorkbench({
     })
   }
 
-  const editorLanguage = challenge.language === "python" ? "python" : "javascript"
+  const editorLanguage = getEditorLanguage(challenge.language)
   const sourceFileLabel = getSourceFileLabel(challenge.language)
   const testFileLabel = getTestFileLabel(challenge.language)
   const solutionFileLabel = getSolutionFileLabel(challenge.language)
@@ -243,7 +232,7 @@ export function ChallengeWorkbench({
         </div>
         <div className="flex items-center gap-2">
           <Badge className="bg-white/10 text-white">{challenge.language}</Badge>
-          <span className="text-xs uppercase tracking-[0.22em] text-white/45">{getReadableModeLabel(isShowingTests)}</span>
+          <span className="text-xs uppercase tracking-[0.22em] text-white/45">{getReadableModeLabel(isSourceReadOnly)}</span>
         </div>
       </div>
 

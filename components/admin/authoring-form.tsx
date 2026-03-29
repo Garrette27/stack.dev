@@ -8,7 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { getDefaultJudge0LanguageId } from "@/lib/judge0/languages"
+import {
+  AUTHORING_LANGUAGE_OPTIONS,
+  getCodeFenceSnippet,
+  getDefaultJudge0LanguageId,
+  getHiddenTestTemplate,
+  getStarterTemplate,
+  getSolutionTemplate
+} from "@/lib/judge0/languages"
 import type { Challenge, ContentSnapshot, Lesson } from "@/lib/types"
 import { slugify } from "@/lib/utils"
 
@@ -25,30 +32,6 @@ type AuthoringFormProps = {
   snapshot: ContentSnapshot
 }
 
-function getStarterTemplate(language: Challenge["language"]) {
-  if (language === "javascript") {
-    return 'console.log("hello there!")'
-  }
-
-  return 'print("hello there!")'
-}
-
-function getSolutionTemplate(language: Challenge["language"]) {
-  if (language === "javascript") {
-    return 'console.log("Starting Textio server...")'
-  }
-
-  return 'print("Starting Textio server...")'
-}
-
-function getHiddenTestTemplate(language: Challenge["language"]) {
-  if (language === "javascript") {
-    return 'if (!stackOutput.includes("Starting Textio server...")) {\n  throw new Error("Print the expected text")\n}'
-  }
-
-  return 'assert "Starting Textio server..." in stackOutput'
-}
-
 function getAssignmentLabel(challenge: Challenge, index: number) {
   const normalizedTitle = challenge.title.replace(/^assignment[:\s-]*/i, "").trim()
   const safeTitle = normalizedTitle || `Assignment ${index + 1}`
@@ -56,12 +39,8 @@ function getAssignmentLabel(challenge: Challenge, index: number) {
   return `A${index + 1}: ${shortTitle}`
 }
 
-function appendCodeFence(source: string, language: "javascript" | "python") {
-  const label = language === "javascript" ? "javascript" : "python"
-  const example = language === "javascript"
-    ? 'const message = "Hello from stack.dev.ph"\nconsole.log(message)'
-    : 'message = "Hello from stack.dev.ph"\nprint(message)'
-
+function appendCodeFence(source: string, language: Challenge["language"]) {
+  const { label, example } = getCodeFenceSnippet(language)
   const trimmed = source.trimEnd()
   const prefix = trimmed ? "\n\n" : ""
 
@@ -277,22 +256,17 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                   required
                 />
                 <div className="mt-3 flex flex-wrap gap-3">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setBodyMdx((current) => appendCodeFence(current, "javascript"))}
-                  >
-                    Insert JavaScript code block
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setBodyMdx((current) => appendCodeFence(current, "python"))}
-                  >
-                    Insert Python code block
-                  </Button>
+                  {AUTHORING_LANGUAGE_OPTIONS.map((option) => (
+                    <Button
+                      key={`chapter-fence-${option}`}
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setBodyMdx((current) => appendCodeFence(current, option))}
+                    >
+                      {`Insert ${option} code block`}
+                    </Button>
+                  ))}
                 </div>
                 <p className="text-sm leading-7 text-[var(--ink-muted)]">
                   Code examples render in a read-only code panel on the learner page. These buttons insert the fenced Markdown for you.
@@ -345,8 +319,11 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                     }}
                     className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
                   >
-                    <option value="javascript">javascript</option>
-                    <option value="python">python</option>
+                    {AUTHORING_LANGUAGE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
                   </select>
                 </Field>
                 <Field label="Checker language id">
@@ -366,25 +343,20 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                   rows={10}
                   value={readingMdx}
                   onChange={(event) => setReadingMdx(event.target.value)}
-                  placeholder={"Use this only when one assignment needs its own reading.\n\nLeave it blank to keep using the chapter reading above."}
+                  placeholder={"Use this only when one assignment needs its own reading.\n\nLeave it blank to reuse the assignment prompt as the reading content."}
                 />
                 <div className="mt-3 flex flex-wrap gap-3">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setReadingMdx((current) => appendCodeFence(current, "javascript"))}
-                  >
-                    Insert JavaScript code block
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setReadingMdx((current) => appendCodeFence(current, "python"))}
-                  >
-                    Insert Python code block
-                  </Button>
+                  {AUTHORING_LANGUAGE_OPTIONS.map((option) => (
+                    <Button
+                      key={`assignment-fence-${option}`}
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setReadingMdx((current) => appendCodeFence(current, option))}
+                    >
+                      {`Insert ${option} code block`}
+                    </Button>
+                  ))}
                 </div>
               </Field>
 
