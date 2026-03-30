@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { getEffectiveAssignmentReading, getEffectiveAssignmentReadingLabel } from "@/lib/content/reading"
 import {
   AUTHORING_LANGUAGE_OPTIONS,
   getCodeFenceSnippet,
@@ -66,6 +67,31 @@ function getChallengesForLesson(snapshot: ContentSnapshot, lesson: Lesson | null
 }
 
 /**
+ * Loads the selected assignment draft into the form so authors can revise one
+ * assignment at a time without manually syncing every field.
+ */
+function loadAssignmentDraft(
+  challenge: Challenge,
+  setters: {
+    setLanguage: (value: Challenge["language"]) => void
+    setJudge0LanguageId: (value: string) => void
+    setReadingMdx: (value: string) => void
+    setPromptMdx: (value: string) => void
+    setStarterCode: (value: string) => void
+    setSolutionCode: (value: string) => void
+    setHiddenTestCode: (value: string) => void
+  }
+) {
+  setters.setLanguage(challenge.language)
+  setters.setJudge0LanguageId(String(challenge.judge0LanguageId))
+  setters.setReadingMdx(challenge.readingMdx)
+  setters.setPromptMdx(challenge.promptMdx)
+  setters.setStarterCode(challenge.starterCode)
+  setters.setSolutionCode(challenge.solutionCode)
+  setters.setHiddenTestCode(challenge.hiddenTestCode)
+}
+
+/**
  * Presents authoring in product terms: course, chapter, and assignment.
  * The form keeps routing and internal challenge identity hidden behind generated fields.
  */
@@ -112,6 +138,23 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     () => chapterAssignments.find((challenge) => challenge.slug === assignmentSelection) ?? null,
     [assignmentSelection, chapterAssignments]
   )
+  const learnerReadingPreview = useMemo(
+    () =>
+      getEffectiveAssignmentReading({
+        lessonBodyMdx: bodyMdx,
+        challengeReadingMdx: readingMdx,
+        challengePromptMdx: promptMdx
+      }),
+    [bodyMdx, promptMdx, readingMdx]
+  )
+  const learnerReadingLabel = useMemo(
+    () =>
+      getEffectiveAssignmentReadingLabel({
+        challengeReadingMdx: readingMdx,
+        challengePromptMdx: promptMdx
+      }),
+    [promptMdx, readingMdx]
+  )
 
   const resetAssignmentDraft = (nextLanguage: Challenge["language"]) => {
     setLanguage(nextLanguage)
@@ -149,20 +192,6 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     setAssignmentSelection(NEW_ASSIGNMENT)
     resetAssignmentDraft("javascript")
   }, [lessonSelection, selectedLesson])
-
-  useEffect(() => {
-    if (assignmentSelection === NEW_ASSIGNMENT || !selectedAssignment) {
-      return
-    }
-
-    setLanguage(selectedAssignment.language)
-    setJudge0LanguageId(String(selectedAssignment.judge0LanguageId))
-    setReadingMdx(selectedAssignment.readingMdx)
-    setPromptMdx(selectedAssignment.promptMdx)
-    setStarterCode(selectedAssignment.starterCode)
-    setSolutionCode(selectedAssignment.solutionCode)
-    setHiddenTestCode(selectedAssignment.hiddenTestCode)
-  }, [assignmentSelection, selectedAssignment])
 
   const resolvedCourseSlug = selectedCourse?.slug ?? slugify(courseTitle)
   const resolvedLessonSlug = selectedLesson?.slug ?? slugify(lessonTitle)
@@ -270,6 +299,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                 </div>
                 <p className="text-sm leading-7 text-[var(--ink-muted)]">
                   Code examples render in a read-only code panel on the learner page. These buttons insert the fenced Markdown for you.
+                  Chapter reading stays chapter-scoped; assignment-specific reading is edited below.
                 </p>
               </Field>
             </CardContent>
@@ -290,6 +320,22 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
 
                     if (nextAssignment === NEW_ASSIGNMENT) {
                       resetAssignmentDraft(language)
+                      return
+                    }
+
+                    const nextSelectedAssignment =
+                      chapterAssignments.find((challenge) => challenge.slug === nextAssignment) ?? null
+
+                    if (nextSelectedAssignment) {
+                      loadAssignmentDraft(nextSelectedAssignment, {
+                        setLanguage,
+                        setJudge0LanguageId,
+                        setReadingMdx,
+                        setPromptMdx,
+                        setStarterCode,
+                        setSolutionCode,
+                        setHiddenTestCode
+                      })
                     }
                   }}
                   className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
@@ -306,6 +352,26 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
               <p className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3 text-sm text-[var(--ink-muted)]">
                 The assignment slug is generated for you when you create a new assignment. Pick an existing assignment above to revise it.
               </p>
+
+              <div className="rounded-[1.5rem] border border-black/8 bg-[color:rgb(25_31_45/0.03)] px-4 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--ink-strong)]">Learner reading preview</p>
+                    <p className="mt-1 text-sm leading-7 text-[var(--ink-muted)]">
+                      Switching assignments changes this preview immediately. Chapter reading stays in the chapter editor above; this preview shows what the learner will actually read for the selected assignment.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-muted)] ring-1 ring-black/8">
+                    {learnerReadingLabel}
+                  </span>
+                </div>
+                <Textarea
+                  rows={10}
+                  value={learnerReadingPreview}
+                  readOnly
+                  className="mt-4 cursor-default bg-white/80 text-[var(--ink)]"
+                />
+              </div>
 
               <section className="grid gap-5 lg:grid-cols-2">
                 <Field label="Answer language">

@@ -107,8 +107,8 @@ export function CourseProgressStrip({
               aria-disabled={!previousChallengeSlug}
               className={`inline-flex items-center justify-center rounded-full border transition ${
                 previousChallengeSlug
-                  ? "h-9 w-9 border-white/10 bg-white/8 text-white hover:bg-white/16"
-                  : "pointer-events-none h-9 w-9 border-white/5 bg-white/5 text-white/30"
+                  ? "h-9 w-9 border-white/12 bg-white/8 text-white hover:border-[var(--accent-soft)] hover:bg-[color:rgb(201_111_54/0.16)]"
+                  : "pointer-events-none h-9 w-9 border-white/6 bg-white/4 text-white/22"
               }`}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -118,8 +118,8 @@ export function CourseProgressStrip({
               aria-disabled={!nextChallengeSlug}
               className={`inline-flex items-center justify-center rounded-full border transition ${
                 nextChallengeSlug
-                  ? "h-9 w-9 border-[var(--accent-soft)] bg-[var(--accent)] text-white shadow-[0_10px_20px_rgba(201,111,54,0.22)] hover:brightness-105"
-                  : "pointer-events-none h-9 w-9 border-white/5 bg-white/5 text-white/30"
+                  ? "h-9 w-9 border-white/12 bg-white/8 text-white hover:border-[var(--accent-soft)] hover:bg-[color:rgb(201_111_54/0.16)]"
+                  : "pointer-events-none h-9 w-9 border-white/6 bg-white/4 text-white/22"
               }`}
             >
               <ChevronRight className="h-4 w-4" />

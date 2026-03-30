@@ -177,7 +177,12 @@ export async function recordPageHit(request: Request, payload: PageHitPayload): 
 
 export {
   getAdminAnalyticsSnapshot,
+  getAdminRecentVisitsPage,
+  normalizeAnalyticsAudience,
+  normalizeAnalyticsRange,
   type AdminAnalyticsSnapshot,
   type AnalyticsAudience,
-  type AnalyticsRange
+  type AnalyticsRange,
+  type RecentVisit,
+  type RecentVisitsPage
 } from "./admin"

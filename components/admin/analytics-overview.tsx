@@ -1,6 +1,7 @@
 import Link from "next/link"
-import { Activity, Globe2, LaptopMinimal, MapPinned, MonitorSmartphone } from "lucide-react"
+import { Activity, Globe2, LaptopMinimal, MonitorSmartphone } from "lucide-react"
 
+import { RecentVisitsPanel } from "@/components/admin/recent-visits-panel"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -22,13 +23,6 @@ const AUDIENCE_OPTIONS: Array<{ value: AnalyticsAudience; label: string }> = [
   { value: "anonymous", label: "Anonymous" }
 ]
 
-function formatVisitTime(value: string) {
-  return new Intl.DateTimeFormat("en-PH", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(new Date(value))
-}
-
 function buildAnalyticsHref(range: AnalyticsRange, audience: AnalyticsAudience) {
   return `/admin?analyticsRange=${range}&analyticsAudience=${audience}`
 }
@@ -49,7 +43,7 @@ function FilterPill({
         "inline-flex rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition",
         active
           ? "border-[var(--accent-soft)] bg-[var(--accent)] text-white shadow-[0_10px_22px_rgba(201,111,54,0.24)]"
-          : "border-black/10 bg-white text-[var(--ink-muted)] hover:bg-[color:rgb(25_31_45/0.04)]"
+          : "border-white/12 bg-white/7 text-white/78 hover:border-white/18 hover:bg-white/12 hover:text-white"
       )}
     >
       {label}
@@ -270,27 +264,13 @@ export function AnalyticsOverview({ snapshot }: AnalyticsOverviewProps) {
         </CardHeader>
         <CardContent>
           {snapshot.recentVisits.length ? (
-            <div className="max-h-[42rem] space-y-3 overflow-y-auto pr-2">
-              {snapshot.recentVisits.map((visit) => (
-              <div
-                key={`${visit.path}-${visit.viewedAt}-${visit.deviceLabel}`}
-                className="grid gap-2 rounded-[1rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto]"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[var(--ink-strong)]">{visit.path}</p>
-                  <p className="text-xs text-[var(--ink-muted)]">{visit.visitorLabel}</p>
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-[var(--ink)]">{visit.deviceLabel}</p>
-                  <p className="truncate text-xs text-[var(--ink-muted)]">
-                    <MapPinned className="mr-1 inline h-3 w-3" />
-                    {visit.locationLabel}
-                  </p>
-                </div>
-                <p className="text-xs text-[var(--ink-muted)]">{formatVisitTime(visit.viewedAt)}</p>
-              </div>
-              ))}
-            </div>
+            <RecentVisitsPanel
+              key={`${snapshot.range}-${snapshot.audience}`}
+              range={snapshot.range}
+              audience={snapshot.audience}
+              initialVisits={snapshot.recentVisits}
+              initialHasMore={snapshot.hasMoreRecentVisits}
+            />
           ) : (
             <p className="text-sm leading-7 text-[var(--ink-muted)]">No visits have been recorded yet.</p>
           )}

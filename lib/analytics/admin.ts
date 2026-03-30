@@ -38,6 +38,12 @@ export type AdminAnalyticsSnapshot = {
   topLocations: AnalyticsBreakdownItem[]
   topBrowsers: AnalyticsBreakdownItem[]
   recentVisits: RecentVisit[]
+  hasMoreRecentVisits: boolean
+}
+
+export type RecentVisitsPage = {
+  visits: RecentVisit[]
+  hasMore: boolean
 }
 
 type PageVisitRow = {
@@ -55,7 +61,24 @@ type PageVisitRow = {
   viewed_at: string | null
 }
 
-const MAX_PAGE_VISIT_ROWS = 5000
+const MAX_ANALYTICS_ROWS = 5000
+const RECENT_VISITS_PAGE_SIZE = 50
+
+export function normalizeAnalyticsRange(value: string | undefined): AnalyticsRange {
+  if (value === "24h" || value === "30d") {
+    return value
+  }
+
+  return "7d"
+}
+
+export function normalizeAnalyticsAudience(value: string | undefined): AnalyticsAudience {
+  if (value === "signed_in" || value === "anonymous") {
+    return value
+  }
+
+  return "all"
+}
 
 function createEmptySnapshot(range: AnalyticsRange, audience: AnalyticsAudience, enabled: boolean): AdminAnalyticsSnapshot {
   return {
@@ -71,7 +94,8 @@ function createEmptySnapshot(range: AnalyticsRange, audience: AnalyticsAudience,
     topDevices: [],
     topLocations: [],
     topBrowsers: [],
-    recentVisits: []
+    recentVisits: [],
+    hasMoreRecentVisits: false
   }
 }
 
@@ -173,6 +197,77 @@ function matchesAudience(row: PageVisitRow, audience: AnalyticsAudience) {
   return true
 }
 
+/**
+ * Builds a page_visits query for a specific analytics slice so route and page
+ * layers do not duplicate audience/range filtering rules.
+ */
+function buildPageVisitQuery(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  options: {
+    range: AnalyticsRange
+    audience: AnalyticsAudience
+  }
+) {
+  let query = admin
+    .from("page_visits")
+    .select("id,user_id,path,referrer,ip_hash,country,region,city,device_type,browser,operating_system,viewed_at")
+    .gte("viewed_at", getRangeStart(options.range).toISOString())
+    .order("viewed_at", { ascending: false })
+
+  if (options.audience === "signed_in") {
+    query = query.not("user_id", "is", null)
+  } else if (options.audience === "anonymous") {
+    query = query.is("user_id", null)
+  }
+
+  return query
+}
+
+/**
+ * Loads one recent-visit page for the admin timeline. Paging lives here so the
+ * admin UI only deals with visits and "has more" state.
+ */
+export async function getAdminRecentVisitsPage(options?: {
+  range?: AnalyticsRange
+  audience?: AnalyticsAudience
+  page?: number
+}): Promise<RecentVisitsPage> {
+  const range = options?.range ?? "7d"
+  const audience = options?.audience ?? "all"
+  const page = Math.max(options?.page ?? 0, 0)
+
+  if (!hasSupabaseAdminEnv()) {
+    return { visits: [], hasMore: false }
+  }
+
+  const admin = createAdminClient()
+  if (!admin) {
+    return { visits: [], hasMore: false }
+  }
+
+  const from = page * RECENT_VISITS_PAGE_SIZE
+  const to = from + RECENT_VISITS_PAGE_SIZE
+  const { data, error } = await buildPageVisitQuery(admin, { range, audience }).range(from, to)
+
+  if (isMissingTableError(error) || error || !data) {
+    return { visits: [], hasMore: false }
+  }
+
+  const rows = data as PageVisitRow[]
+  const pageRows = rows.slice(0, RECENT_VISITS_PAGE_SIZE)
+
+  return {
+    visits: pageRows.map((row) => ({
+      path: row.path?.trim() || "(unknown page)",
+      viewedAt: row.viewed_at || new Date().toISOString(),
+      deviceLabel: getDeviceLabel(row),
+      locationLabel: getLocationLabel(row),
+      visitorLabel: getVisitorLabel(row)
+    })),
+    hasMore: rows.length > RECENT_VISITS_PAGE_SIZE
+  }
+}
+
 function formatTrendLabel(date: Date, range: AnalyticsRange) {
   return new Intl.DateTimeFormat(
     "en-PH",
@@ -235,12 +330,10 @@ export async function getAdminAnalyticsSnapshot(options?: {
     return createEmptySnapshot(range, audience, false)
   }
 
-  const { data, error } = await admin
-    .from("page_visits")
-    .select("id,user_id,path,referrer,ip_hash,country,region,city,device_type,browser,operating_system,viewed_at")
-    .gte("viewed_at", getRangeStart(range).toISOString())
-    .order("viewed_at", { ascending: false })
-    .limit(MAX_PAGE_VISIT_ROWS)
+  const [{ data, error }, recentVisitsPage] = await Promise.all([
+    buildPageVisitQuery(admin, { range, audience }).limit(MAX_ANALYTICS_ROWS),
+    getAdminRecentVisitsPage({ range, audience, page: 0 })
+  ])
 
   if (isMissingTableError(error)) {
     return createEmptySnapshot(range, audience, false)
@@ -268,12 +361,7 @@ export async function getAdminAnalyticsSnapshot(options?: {
     topDevices: countTopItems(rows.map((row) => row.device_type?.trim() || "unknown")),
     topLocations: countTopItems(rows.map(getLocationLabel)),
     topBrowsers: countTopItems(rows.map((row) => row.browser?.trim() || "unknown")),
-    recentVisits: rows.map((row) => ({
-      path: row.path?.trim() || "(unknown page)",
-      viewedAt: row.viewed_at || new Date().toISOString(),
-      deviceLabel: getDeviceLabel(row),
-      locationLabel: getLocationLabel(row),
-      visitorLabel: getVisitorLabel(row)
-    }))
+    recentVisits: recentVisitsPage.visits,
+    hasMoreRecentVisits: recentVisitsPage.hasMore
   }
 }

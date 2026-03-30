@@ -7,6 +7,7 @@ import { ChallengeWorkbench } from "@/components/code/challenge-workbench"
 import { CourseProgressStrip } from "@/components/learn/course-progress-strip"
 import { LessonSideTools } from "@/components/learn/lesson-side-tools"
 import { Badge } from "@/components/ui/badge"
+import { getEffectiveAssignmentReading } from "@/lib/content/reading"
 import { getCurrentUser, getLessonPageData } from "@/lib/data"
 import { MdxRenderer } from "@/lib/mdx"
 import { getCompletedChallengeSlugs } from "@/lib/progress"
@@ -26,33 +27,6 @@ function getAssignmentTitle(challenge: Challenge, index: number) {
   const normalizedTitle = challenge.title.replace(/^assignment[:\s-]*/i, "").trim()
   const safeTitle = normalizedTitle || `Assignment ${index + 1}`
   return safeTitle.length > 42 ? `${safeTitle.slice(0, 39).trimEnd()}...` : safeTitle
-}
-
-/**
- * Keeps the reading panel chapter-first while still giving each assignment a
- * distinct fallback when no dedicated assignment reading has been authored yet.
- */
-function getActiveReadingSource(lessonBodyMdx: string, activeChallenge: Challenge | null) {
-  const challengeReading = activeChallenge?.readingMdx.trim()
-  const assignmentPrompt = activeChallenge?.promptMdx.trim()
-
-  if (challengeReading) {
-    return challengeReading
-  }
-
-  if (!assignmentPrompt) {
-    return lessonBodyMdx
-  }
-
-  if (!lessonBodyMdx.trim()) {
-    return assignmentPrompt
-  }
-
-  return `${lessonBodyMdx.trim()}
-
-## Assignment focus
-
-${assignmentPrompt}`
 }
 
 function LessonPanelSection({
@@ -99,7 +73,11 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
     slug: challenge.slug,
     title: getAssignmentTitle(challenge, index)
   }))
-  const readingSource = getActiveReadingSource(data.lesson.bodyMdx, activeChallenge)
+  const readingSource = getEffectiveAssignmentReading({
+    lessonBodyMdx: data.lesson.bodyMdx,
+    challengeReadingMdx: activeChallenge?.readingMdx,
+    challengePromptMdx: activeChallenge?.promptMdx
+  })
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-10 sm:px-6 xl:px-10">

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAdminPageState } from "@/lib/admin"
-import { getAdminAnalyticsSnapshot, type AnalyticsAudience, type AnalyticsRange } from "@/lib/analytics"
+import { getAdminAnalyticsSnapshot, normalizeAnalyticsAudience, normalizeAnalyticsRange } from "@/lib/analytics"
 import { deleteChallengeAction, deleteCourseAction, deleteLessonAction } from "./actions"
 
 type AdminPageProps = {
@@ -19,22 +19,6 @@ type AdminPageProps = {
 
 function firstQueryValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
-}
-
-function normalizeAnalyticsRange(value: string | undefined): AnalyticsRange {
-  if (value === "24h" || value === "30d") {
-    return value
-  }
-
-  return "7d"
-}
-
-function normalizeAnalyticsAudience(value: string | undefined): AnalyticsAudience {
-  if (value === "signed_in" || value === "anonymous") {
-    return value
-  }
-
-  return "all"
 }
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
