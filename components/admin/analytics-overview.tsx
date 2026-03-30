@@ -43,7 +43,7 @@ function FilterPill({
         "inline-flex rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition",
         active
           ? "border-[var(--accent-soft)] bg-[var(--accent)] text-white shadow-[0_10px_22px_rgba(201,111,54,0.24)]"
-          : "border-white/12 bg-white/7 text-white/78 hover:border-white/18 hover:bg-white/12 hover:text-white"
+          : "border-white/20 bg-[rgba(255,255,255,0.14)] text-white/85 hover:border-white/30 hover:bg-[rgba(255,255,255,0.2)] hover:text-white"
       )}
     >
       {label}

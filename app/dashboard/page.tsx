@@ -41,15 +41,15 @@ export default async function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
-            <div className="min-h-[112px] rounded-[1.5rem] border border-white/10 bg-white/7 p-4">
+              <div className="min-h-[112px] rounded-[1.5rem] border border-white/10 bg-[rgba(255,255,255,0.07)] p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-white/55">Courses</p>
               <p className="mt-2 text-3xl font-semibold text-white">{state.courseCount}</p>
             </div>
-            <div className="min-h-[112px] rounded-[1.5rem] border border-white/10 bg-white/7 p-4">
+              <div className="min-h-[112px] rounded-[1.5rem] border border-white/10 bg-[rgba(255,255,255,0.07)] p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-white/55">Completed</p>
               <p className="mt-2 text-3xl font-semibold text-white">{state.completedLessons}</p>
             </div>
-            <div className="min-h-[112px] rounded-[1.5rem] border border-white/10 bg-white/7 p-4">
+              <div className="min-h-[112px] rounded-[1.5rem] border border-white/10 bg-[rgba(255,255,255,0.07)] p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-white/55">In progress</p>
               <p className="mt-2 text-3xl font-semibold text-white">{state.inProgressLessons}</p>
             </div>

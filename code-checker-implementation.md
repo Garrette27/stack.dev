@@ -35,7 +35,27 @@ Prepared language set:
 - Go: `107`
 - SQL (SQLite): `82`
 
-These ids were verified against the public [`ce.judge0.com/languages`](https://ce.judge0.com/languages) endpoint that matches this project’s current Judge0 host.
+These ids were verified against the public [`ce.judge0.com/languages`](https://ce.judge0.com/languages) endpoint that matches this project's current Judge0 host.
+
+## Java Preparation
+
+Java is now recorded as a planned language in:
+
+- [`lib/judge0/languages.ts`](C:/Users/garre/boot.dev/lib/judge0/languages.ts)
+
+Planned Judge0 id:
+
+- Java (JDK 17.0.6): `91`
+
+It is intentionally not exposed in the authoring UI yet.
+
+Why:
+
+- Java needs a clean single-file authoring contract
+- hidden tests need a stable wrapping strategy
+- the current runner assumes simpler file assembly than Java usually tolerates
+
+That means Java is prepared as a verified future target, but not surfaced prematurely.
 
 ## Current Support Level
 
@@ -189,7 +209,8 @@ Implementation:
    - compile error
 2. Add one real Go assignment and verify the `init()` hidden-test pattern.
 3. Add one real SQLite assignment and verify the authored SQL error pattern.
-4. If SQLite authoring becomes common, add helper templates for common table-setup/check flows.
+4. Implement the Java single-file wrapper before exposing Java in authoring.
+5. If SQLite authoring becomes common, add helper templates for common table-setup/check flows.
 
 ## Acceptance Criteria
 
@@ -200,6 +221,12 @@ The checker preparation is in a good state when:
 - Judge0 runs use the correct language id
 - readable errors still surface through one shared submission service
 - no page component needs to know runner assembly details
+
+Java is considered prepared when:
+
+- the Judge0 id is verified
+- the runner wrapper contract is documented
+- the language is still hidden until it can be surfaced cleanly
 
 ## Design Notes
 

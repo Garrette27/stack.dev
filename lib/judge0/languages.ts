@@ -15,6 +15,14 @@ type Judge0LanguageConfig = {
   hiddenTestTemplate: string
 }
 
+/**
+ * Tracks Judge0 language ids we have verified on the current host but are not
+ * exposing in authoring until their runner assembly is implemented cleanly.
+ */
+export const PLANNED_JUDGE0_LANGUAGE_IDS = {
+  java: 91
+} as const
+
 const LANGUAGE_CONFIGS: Record<SupportedLanguage, Judge0LanguageConfig> = {
   javascript: {
     defaultJudge0LanguageId: 102,
