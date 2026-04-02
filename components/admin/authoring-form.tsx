@@ -12,8 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { createDefaultMultipleChoiceOptions, ensureMultipleChoiceOptionShape } from "@/lib/challenges/multiple-choice"
 import {
   getEffectiveAssignmentReading,
-  getEffectiveAssignmentReadingLabel,
-  getMeaningfulAssignmentReadingOverride
+  getEffectiveAssignmentReadingLabel
 } from "@/lib/content/reading"
 import {
   AUTHORING_LANGUAGE_OPTIONS,
@@ -92,15 +91,10 @@ function loadAssignmentDraft(
     setChoiceExplanationMdx: (value: string) => void
   }
 ) {
-  const normalizedReadingOverride = getMeaningfulAssignmentReadingOverride({
-    challengeReadingMdx: challenge.readingMdx,
-    challengePromptMdx: challenge.promptMdx
-  })
-
   setters.setChallengeKind(challenge.kind)
   setters.setLanguage(challenge.language ?? "javascript")
   setters.setJudge0LanguageId(String(challenge.judge0LanguageId ?? getDefaultJudge0LanguageId("javascript")))
-  setters.setReadingMdx(normalizedReadingOverride)
+  setters.setReadingMdx(challenge.readingMdx)
   setters.setPromptMdx(challenge.promptMdx)
   setters.setStarterCode(challenge.starterCode)
   setters.setSolutionCode(challenge.solutionCode)
@@ -457,6 +451,14 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                   placeholder={"Use this only when one assignment needs its own reading.\n\nLeave it blank to reuse the chapter reading above."}
                 />
                 <div className="mt-3 flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setReadingMdx("")}
+                  >
+                    Use chapter reading
+                  </Button>
                   {AUTHORING_LANGUAGE_OPTIONS.map((option) => (
                     <Button
                       key={`assignment-fence-${option}`}

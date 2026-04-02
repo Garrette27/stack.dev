@@ -4,33 +4,15 @@ type EffectiveReadingOptions = {
   challengePromptMdx?: string | null
 }
 
-function normalizeReadingComparisonText(source: string) {
-  return source.replace(/\s+/g, " ").trim()
-}
-
 /**
- * Normalizes assignment-level reading overrides so legacy prompt-copied values
- * do not masquerade as intentional custom reading.
+ * Normalizes the stored assignment reading override into a single obvious
+ * string contract for authoring and learner views.
  */
 export function getMeaningfulAssignmentReadingOverride({
   challengeReadingMdx,
-  challengePromptMdx
+  challengePromptMdx: _challengePromptMdx
 }: Pick<EffectiveReadingOptions, "challengeReadingMdx" | "challengePromptMdx">) {
-  const normalizedChallengeReading = challengeReadingMdx?.trim()
-  const normalizedPrompt = challengePromptMdx?.trim()
-
-  if (!normalizedChallengeReading) {
-    return ""
-  }
-
-  if (
-    normalizedPrompt &&
-    normalizeReadingComparisonText(normalizedChallengeReading) === normalizeReadingComparisonText(normalizedPrompt)
-  ) {
-    return ""
-  }
-
-  return normalizedChallengeReading
+  return challengeReadingMdx?.trim() ?? ""
 }
 
 /**
