@@ -160,20 +160,12 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
                   <Badge className="bg-white/10 text-white">{selectedReferenceEntry.sectionLabel}</Badge>
                   <Badge className="bg-white/8 text-white ring-1 ring-white/10">Reference reading</Badge>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Link
-                    href={selectedReferenceEntry.href}
-                    className="text-sm text-white/65 underline decoration-white/20 underline-offset-4 hover:text-white"
-                  >
-                    Open source lesson
-                  </Link>
-                  <Link
-                    href={`${currentHref}${search?.trim() ? `&search=${encodeURIComponent(search.trim())}` : ""}`}
-                    className="text-sm text-white/65 underline decoration-white/20 underline-offset-4 hover:text-white"
-                  >
-                    Close
-                  </Link>
-                </div>
+                <Link
+                  href={`${currentHref}${search?.trim() ? `&search=${encodeURIComponent(search.trim())}` : ""}`}
+                  className="text-sm text-white/65 underline decoration-white/20 underline-offset-4 hover:text-white"
+                >
+                  Close
+                </Link>
               </div>
               <MdxRenderer source={selectedReferenceEntry.bodyMdx} tone="dark" />
             </LessonPanelSection>

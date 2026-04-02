@@ -136,7 +136,7 @@ export function LessonSideTools({ currentHref, entries, initialQuery = "", refer
                         {entry.title}
                         {isCurrent ? <span className="ml-2 text-xs uppercase tracking-[0.22em] text-[var(--accent-soft)]">Current</span> : null}
                         {referenceEntryId === entry.id ? (
-                          <span className="ml-2 text-xs uppercase tracking-[0.22em] text-[var(--accent-soft)]">Open</span>
+                          <span className="ml-2 text-xs uppercase tracking-[0.22em] text-[var(--accent-soft)]">Showing below</span>
                         ) : null}
                       </p>
                       <p className="mt-1 text-xs uppercase tracking-[0.2em] text-white/40">{entry.sectionLabel}</p>
