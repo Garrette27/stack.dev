@@ -112,27 +112,35 @@ function isMissingMultipleChoiceColumn(error: { code?: string; message?: string 
 }
 
 /**
+ * Normalizes browser FormData values into plain strings so optional authoring
+ * fields can be omitted without leaking `null` into the parser.
+ */
+function readFormString(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "")
+}
+
+/**
  * Parses and normalizes the authoring form into a single bundle payload.
  */
 export function parseAuthoringBundleFormData(formData: FormData): ParsedAuthoringBundle {
   const parsed = authoringBaseSchema.safeParse({
-    courseTitle: formData.get("courseTitle"),
-    courseSlug: slugify(String(formData.get("courseSlug") ?? "")),
-    lessonTitle: formData.get("lessonTitle"),
-    lessonSlug: slugify(String(formData.get("lessonSlug") ?? "")),
-    bodyMdx: formData.get("bodyMdx"),
-    challengeSlug: slugify(String(formData.get("challengeSlug") ?? "")),
-    kind: formData.get("kind"),
-    language: formData.get("language"),
-    judge0LanguageId: formData.get("judge0LanguageId"),
-    readingMdx: String(formData.get("readingMdx") ?? ""),
-    promptMdx: formData.get("promptMdx"),
-    starterCode: formData.get("starterCode"),
-    solutionCode: formData.get("solutionCode"),
-    hiddenTestCode: formData.get("hiddenTestCode"),
-    choiceOptionsJson: String(formData.get("choiceOptionsJson") ?? ""),
-    choiceCorrectKey: String(formData.get("choiceCorrectKey") ?? ""),
-    choiceExplanationMdx: String(formData.get("choiceExplanationMdx") ?? "")
+    courseTitle: readFormString(formData, "courseTitle"),
+    courseSlug: slugify(readFormString(formData, "courseSlug")),
+    lessonTitle: readFormString(formData, "lessonTitle"),
+    lessonSlug: slugify(readFormString(formData, "lessonSlug")),
+    bodyMdx: readFormString(formData, "bodyMdx"),
+    challengeSlug: slugify(readFormString(formData, "challengeSlug")),
+    kind: readFormString(formData, "kind"),
+    language: readFormString(formData, "language"),
+    judge0LanguageId: readFormString(formData, "judge0LanguageId"),
+    readingMdx: readFormString(formData, "readingMdx"),
+    promptMdx: readFormString(formData, "promptMdx"),
+    starterCode: readFormString(formData, "starterCode"),
+    solutionCode: readFormString(formData, "solutionCode"),
+    hiddenTestCode: readFormString(formData, "hiddenTestCode"),
+    choiceOptionsJson: readFormString(formData, "choiceOptionsJson"),
+    choiceCorrectKey: readFormString(formData, "choiceCorrectKey"),
+    choiceExplanationMdx: readFormString(formData, "choiceExplanationMdx")
   })
 
   if (!parsed.success) {
