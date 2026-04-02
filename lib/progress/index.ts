@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import { hasSupabaseEnv } from "@/lib/env"
 import { mockResumeState } from "@/lib/mock-data"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import type { DashboardState, LessonProgress, ResumeState } from "@/lib/types"
 
@@ -43,6 +44,7 @@ type ChallengeProgressResetResult = {
 }
 
 type ServerSupabaseClient = NonNullable<Awaited<ReturnType<typeof createServerClient>>>
+type ProgressStoreClient = Pick<ServerSupabaseClient, "from">
 
 function mapResumeState(row: Record<string, unknown>): ResumeState {
   return {
@@ -68,7 +70,7 @@ async function upsertResumeState(client: ServerSupabaseClient, userId: string, p
 }
 
 async function recalculateLessonProgress(
-  client: ServerSupabaseClient,
+  client: ProgressStoreClient,
   userId: string,
   lessonId: string,
   lessonChallengeIds: string[]
@@ -196,7 +198,7 @@ export async function resetChallengeProgressForCurrentUser(
     }
   }
 
-  const client = await createServerClient()
+  const client = createAdminClient() ?? (await createServerClient())
   if (!client) {
     return {
       status: 500,
@@ -204,12 +206,13 @@ export async function resetChallengeProgressForCurrentUser(
     }
   }
 
-  const { error: deleteError } = await client
+  const { data: deletedSubmissions, error: deleteError } = await client
     .from("submissions")
     .delete()
     .eq("user_id", user.id)
     .eq("challenge_id", challenge.id)
     .eq("passed", true)
+    .select("id")
 
   if (deleteError) {
     return {
@@ -229,7 +232,7 @@ export async function resetChallengeProgressForCurrentUser(
 
   return {
     status: 200,
-    body: { ok: true }
+    body: { ok: true, message: deletedSubmissions?.length ? undefined : "No stored pass mark was found for this assignment." }
   }
 }
 
