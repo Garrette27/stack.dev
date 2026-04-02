@@ -7,7 +7,7 @@ import { ChallengeWorkbench } from "@/components/code/challenge-workbench"
 import { CourseProgressStrip } from "@/components/learn/course-progress-strip"
 import { LessonSideTools } from "@/components/learn/lesson-side-tools"
 import { Badge } from "@/components/ui/badge"
-import { getEffectiveAssignmentReading } from "@/lib/content/reading"
+import { getEffectiveAssignmentReading, getEffectiveAssignmentReadingLabel } from "@/lib/content/reading"
 import { getCurrentUser, getLessonPageData } from "@/lib/data"
 import { MdxRenderer } from "@/lib/mdx"
 import { getCompletedChallengeSlugs } from "@/lib/progress"
@@ -78,6 +78,11 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
     challengeReadingMdx: activeChallenge?.readingMdx,
     challengePromptMdx: activeChallenge?.promptMdx
   })
+  const readingSourceLabel = getEffectiveAssignmentReadingLabel({
+    lessonBodyMdx: data.lesson.bodyMdx,
+    challengeReadingMdx: activeChallenge?.readingMdx,
+    challengePromptMdx: activeChallenge?.promptMdx
+  })
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-10 sm:px-6 xl:px-10">
@@ -116,6 +121,9 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
               </div>
 
               <LessonPanelSection title="Reading">
+                <div className="mb-4">
+                  <Badge className="bg-white/10 text-white">{readingSourceLabel}</Badge>
+                </div>
                 <MdxRenderer source={readingSource} tone="dark" />
               </LessonPanelSection>
 
