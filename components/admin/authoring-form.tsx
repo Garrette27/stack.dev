@@ -10,7 +10,11 @@ import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { createDefaultMultipleChoiceOptions, ensureMultipleChoiceOptionShape } from "@/lib/challenges/multiple-choice"
-import { getEffectiveAssignmentReading, getEffectiveAssignmentReadingLabel } from "@/lib/content/reading"
+import {
+  getEffectiveAssignmentReading,
+  getEffectiveAssignmentReadingLabel,
+  getMeaningfulAssignmentReadingOverride
+} from "@/lib/content/reading"
 import {
   AUTHORING_LANGUAGE_OPTIONS,
   getCodeFenceSnippet,
@@ -88,10 +92,15 @@ function loadAssignmentDraft(
     setChoiceExplanationMdx: (value: string) => void
   }
 ) {
+  const normalizedReadingOverride = getMeaningfulAssignmentReadingOverride({
+    challengeReadingMdx: challenge.readingMdx,
+    challengePromptMdx: challenge.promptMdx
+  })
+
   setters.setChallengeKind(challenge.kind)
   setters.setLanguage(challenge.language ?? "javascript")
   setters.setJudge0LanguageId(String(challenge.judge0LanguageId ?? getDefaultJudge0LanguageId("javascript")))
-  setters.setReadingMdx(challenge.readingMdx)
+  setters.setReadingMdx(normalizedReadingOverride)
   setters.setPromptMdx(challenge.promptMdx)
   setters.setStarterCode(challenge.starterCode)
   setters.setSolutionCode(challenge.solutionCode)
@@ -164,10 +173,11 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
   const learnerReadingLabel = useMemo(
     () =>
       getEffectiveAssignmentReadingLabel({
+        lessonBodyMdx: bodyMdx,
         challengeReadingMdx: readingMdx,
         challengePromptMdx: promptMdx
       }),
-    [promptMdx, readingMdx]
+    [bodyMdx, promptMdx, readingMdx]
   )
 
   const resetCodeAssignmentDraft = (nextLanguage: NonNullable<Challenge["language"]>) => {
@@ -444,7 +454,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                   rows={10}
                   value={readingMdx}
                   onChange={(event) => setReadingMdx(event.target.value)}
-                  placeholder={"Use this only when one assignment needs its own reading.\n\nLeave it blank to reuse the assignment prompt as the reading content."}
+                  placeholder={"Use this only when one assignment needs its own reading.\n\nLeave it blank to reuse the chapter reading above."}
                 />
                 <div className="mt-3 flex flex-wrap gap-3">
                   {AUTHORING_LANGUAGE_OPTIONS.map((option) => (

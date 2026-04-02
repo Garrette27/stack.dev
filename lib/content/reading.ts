@@ -4,17 +4,50 @@ type EffectiveReadingOptions = {
   challengePromptMdx?: string | null
 }
 
+function normalizeReadingComparisonText(source: string) {
+  return source.replace(/\s+/g, " ").trim()
+}
+
+/**
+ * Normalizes assignment-level reading overrides so legacy prompt-copied values
+ * do not masquerade as intentional custom reading.
+ */
+export function getMeaningfulAssignmentReadingOverride({
+  challengeReadingMdx,
+  challengePromptMdx
+}: Pick<EffectiveReadingOptions, "challengeReadingMdx" | "challengePromptMdx">) {
+  const normalizedChallengeReading = challengeReadingMdx?.trim()
+  const normalizedPrompt = challengePromptMdx?.trim()
+
+  if (!normalizedChallengeReading) {
+    return ""
+  }
+
+  if (
+    normalizedPrompt &&
+    normalizeReadingComparisonText(normalizedChallengeReading) === normalizeReadingComparisonText(normalizedPrompt)
+  ) {
+    return ""
+  }
+
+  return normalizedChallengeReading
+}
+
 /**
  * Returns the reading content a learner should see for the active assignment.
- * Assignment-specific reading wins, then chapter reading plus prompt fallback,
- * so routing and form layers do not need to duplicate that decision.
+ * Assignment-specific reading wins. If no override exists, chapter reading is
+ * the default source. A prompt-only fallback is used only when the chapter has
+ * no reading at all.
  */
 export function getEffectiveAssignmentReading({
   lessonBodyMdx,
   challengeReadingMdx,
   challengePromptMdx
 }: EffectiveReadingOptions) {
-  const normalizedChallengeReading = challengeReadingMdx?.trim()
+  const normalizedChallengeReading = getMeaningfulAssignmentReadingOverride({
+    challengeReadingMdx,
+    challengePromptMdx
+  })
   const normalizedPrompt = challengePromptMdx?.trim()
   const normalizedLessonBody = lessonBodyMdx.trim()
 
@@ -22,19 +55,19 @@ export function getEffectiveAssignmentReading({
     return normalizedChallengeReading
   }
 
-  if (!normalizedPrompt) {
+  if (normalizedLessonBody) {
     return normalizedLessonBody
   }
 
-  if (!normalizedLessonBody) {
+  if (normalizedChallengeReading) {
+    return normalizedChallengeReading
+  }
+
+  if (normalizedPrompt) {
     return normalizedPrompt
   }
 
-  return `${normalizedLessonBody}
-
-## Assignment focus
-
-${normalizedPrompt}`
+  return ""
 }
 
 /**
@@ -42,16 +75,28 @@ ${normalizedPrompt}`
  * reading source for the selected assignment.
  */
 export function getEffectiveAssignmentReadingLabel({
+  lessonBodyMdx,
   challengeReadingMdx,
   challengePromptMdx
-}: Pick<EffectiveReadingOptions, "challengeReadingMdx" | "challengePromptMdx">) {
-  if (challengeReadingMdx?.trim()) {
+}: EffectiveReadingOptions) {
+  const normalizedChallengeReading = getMeaningfulAssignmentReadingOverride({
+    challengeReadingMdx,
+    challengePromptMdx
+  })
+  const normalizedPrompt = challengePromptMdx?.trim()
+  const normalizedLessonBody = lessonBodyMdx.trim()
+
+  if (normalizedChallengeReading) {
     return "Assignment-specific reading"
   }
 
-  if (challengePromptMdx?.trim()) {
+  if (normalizedLessonBody) {
+    return "Chapter reading"
+  }
+
+  if (normalizedChallengeReading || normalizedPrompt) {
     return "Assignment prompt fallback"
   }
 
-  return "Chapter reading"
+  return "No reading yet"
 }

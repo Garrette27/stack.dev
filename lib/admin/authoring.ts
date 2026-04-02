@@ -483,10 +483,9 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   const admin = createAdminClient()
   const challengeTitle = deriveChallengeTitle(payload.promptMdx)
   const lessonSummary = deriveLessonSummary(payload.bodyMdx)
-  // New assignments default their reading override to the assignment prompt so
-  // the learner view can still change per assignment even before a richer
-  // assignment-specific explanation is authored.
-  const normalizedReadingMdx = payload.readingMdx?.trim() ? payload.readingMdx.trim() : payload.promptMdx.trim()
+    // A blank assignment-reading field means "reuse the chapter reading".
+    // Only persist a challenge-level override when the author explicitly adds one.
+    const normalizedReadingMdx = payload.readingMdx?.trim() ? payload.readingMdx.trim() : null
   const { data: courseRow, error: courseError } = await admin!
     .from("courses")
     .upsert(
