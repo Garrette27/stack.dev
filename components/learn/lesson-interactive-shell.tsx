@@ -27,6 +27,8 @@ function getSerializedCompletedChallengeSlugs(challengeSlugs: string[]) {
   return [...new Set(challengeSlugs)].sort().join("|")
 }
 
+type CompletionOverrides = Record<string, boolean>
+
 /**
  * Keeps learner progress feedback responsive on the client while the server
  * remains the source of truth for lesson content and routing.
@@ -47,20 +49,54 @@ export function LessonInteractiveShell({
   isAuthenticated,
   children
 }: LessonInteractiveShellProps) {
-  const [completedChallengeSlugs, setCompletedChallengeSlugs] = useState(initialCompletedChallengeSlugs)
+  const [completionOverrides, setCompletionOverrides] = useState<CompletionOverrides>({})
   const serializedCompletedChallengeSlugs = useMemo(
     () => getSerializedCompletedChallengeSlugs(initialCompletedChallengeSlugs),
     [initialCompletedChallengeSlugs]
   )
+  const completedChallengeSlugs = useMemo(() => {
+    const completed = new Set(initialCompletedChallengeSlugs)
+
+    Object.entries(completionOverrides).forEach(([challengeSlug, isCompleted]) => {
+      if (isCompleted) {
+        completed.add(challengeSlug)
+        return
+      }
+
+      completed.delete(challengeSlug)
+    })
+
+    return [...completed]
+  }, [completionOverrides, initialCompletedChallengeSlugs])
 
   useEffect(() => {
-    setCompletedChallengeSlugs(initialCompletedChallengeSlugs)
+    setCompletionOverrides((current) => {
+      const serverCompleted = new Set(initialCompletedChallengeSlugs)
+      const nextEntries = Object.entries(current).filter(
+        ([challengeSlug, isCompleted]) => serverCompleted.has(challengeSlug) !== isCompleted
+      )
+
+      if (nextEntries.length === Object.keys(current).length) {
+        return current
+      }
+
+      return Object.fromEntries(nextEntries)
+    })
   }, [initialCompletedChallengeSlugs, serializedCompletedChallengeSlugs])
 
   const handleCompletionChange = (challengeSlug: string, completed: boolean) => {
-    setCompletedChallengeSlugs((current) => {
-      const withoutChallenge = current.filter((slug) => slug !== challengeSlug)
-      return completed ? [...withoutChallenge, challengeSlug] : withoutChallenge
+    setCompletionOverrides((current) => {
+      const next = {
+        ...current,
+        [challengeSlug]: completed
+      }
+
+      const serverCompleted = initialCompletedChallengeSlugs.includes(challengeSlug)
+      if (serverCompleted === completed) {
+        delete next[challengeSlug]
+      }
+
+      return next
     })
   }
 
