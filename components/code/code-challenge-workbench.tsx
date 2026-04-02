@@ -11,6 +11,7 @@ import { getEditorLanguage, getSolutionFileLabel, getSourceFileLabel, getTestFil
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Challenge, SubmissionOutcome } from "@/lib/types"
+import { ResizablePaneSplit } from "@/components/code/resizable-pane-split"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
 
@@ -20,6 +21,7 @@ type CodeChallengeWorkbenchProps = {
   lessonSlug: string
   isAuthenticated: boolean
   isCompleted: boolean
+  onCompletionChange?: (challengeSlug: string, completed: boolean) => void
 }
 
 const initialResult: SubmissionOutcome | null = null
@@ -75,6 +77,7 @@ function EditorPane({
           }
         }}
         options={{
+          automaticLayout: true,
           fontSize: 15,
           minimap: { enabled: false },
           padding: { top: 16 },
@@ -97,7 +100,8 @@ export function CodeChallengeWorkbench({
   courseSlug,
   lessonSlug,
   isAuthenticated,
-  isCompleted
+  isCompleted,
+  onCompletionChange
 }: CodeChallengeWorkbenchProps) {
   const router = useRouter()
   const [sourceCode, setSourceCode] = useState(challenge.starterCode)
@@ -138,6 +142,7 @@ export function CodeChallengeWorkbench({
       setResult(payload)
 
       if (payload.passed) {
+        onCompletionChange?.(challenge.slug, true)
         router.refresh()
       }
     })
@@ -176,7 +181,7 @@ export function CodeChallengeWorkbench({
     }
 
     startResetTransition(async () => {
-      await fetch("/api/progress/challenge/reset", {
+      const response = await fetch("/api/progress/challenge/reset", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -188,7 +193,12 @@ export function CodeChallengeWorkbench({
         })
       })
 
+      if (!response.ok) {
+        return
+      }
+
       setResult(initialResult)
+      onCompletionChange?.(challenge.slug, false)
       router.refresh()
     })
   }
@@ -237,30 +247,45 @@ export function CodeChallengeWorkbench({
         </div>
       </div>
 
-      <div className={cn("border-b border-white/10", showSolutionPane && "grid gap-px bg-white/10 xl:grid-cols-2")}>
-        <EditorPane
-          editorKey={`${challenge.slug}-${activeFile}`}
-          path={visibleEditorPath}
-          language={editorLanguage}
-          value={visibleEditorValue}
-          height={editorHeight}
-          readOnly={isSourceReadOnly}
-          badgeLabel={challengeLanguage}
-          className={showSolutionPane ? "xl:border-r xl:border-white/10" : undefined}
-          onChange={setSourceCode}
-        />
-
+      <div className={cn("border-b border-white/10", showSolutionPane && "bg-white/10")}>
         {showSolutionPane ? (
-          <EditorPane
-            editorKey={`${challenge.slug}-solution`}
-            path={solutionFileLabel}
-            language={editorLanguage}
-            value={challenge.solutionCode}
-            height={editorHeight}
-            readOnly
-            badgeLabel={challengeLanguage}
+          <ResizablePaneSplit
+            left={
+              <EditorPane
+                editorKey={`${challenge.slug}-${activeFile}`}
+                path={visibleEditorPath}
+                language={editorLanguage}
+                value={visibleEditorValue}
+                height={editorHeight}
+                readOnly={isSourceReadOnly}
+                badgeLabel={challengeLanguage}
+                onChange={setSourceCode}
+              />
+            }
+            right={
+              <EditorPane
+                editorKey={`${challenge.slug}-solution`}
+                path={solutionFileLabel}
+                language={editorLanguage}
+                value={challenge.solutionCode}
+                height={editorHeight}
+                readOnly
+                badgeLabel={challengeLanguage}
+              />
+            }
           />
-        ) : null}
+        ) : (
+          <EditorPane
+            editorKey={`${challenge.slug}-${activeFile}`}
+            path={visibleEditorPath}
+            language={editorLanguage}
+            value={visibleEditorValue}
+            height={editorHeight}
+            readOnly={isSourceReadOnly}
+            badgeLabel={challengeLanguage}
+            onChange={setSourceCode}
+          />
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 bg-white/4 px-4 py-4">

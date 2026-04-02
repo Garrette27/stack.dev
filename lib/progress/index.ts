@@ -90,11 +90,16 @@ async function recalculateLessonProgress(
   const hasPassedSubmission = submissions.some((submission) => submission.passed)
 
   if (!hasAnySubmission) {
-    await client.from("lesson_progress").delete().eq("user_id", userId).eq("lesson_id", lessonId)
+    const { error } = await client.from("lesson_progress").delete().eq("user_id", userId).eq("lesson_id", lessonId)
+
+    if (error) {
+      throw new Error(`Could not clear lesson progress: ${error.message}`)
+    }
+
     return
   }
 
-  await client.from("lesson_progress").upsert(
+  const { error } = await client.from("lesson_progress").upsert(
     {
       user_id: userId,
       lesson_id: lessonId,
@@ -107,6 +112,10 @@ async function recalculateLessonProgress(
       onConflict: "user_id,lesson_id"
     }
   )
+
+  if (error) {
+    throw new Error(`Could not update lesson progress: ${error.message}`)
+  }
 }
 
 /**
@@ -195,14 +204,28 @@ export async function resetChallengeProgressForCurrentUser(
     }
   }
 
-  await client
+  const { error: deleteError } = await client
     .from("submissions")
     .delete()
     .eq("user_id", user.id)
     .eq("challenge_id", challenge.id)
     .eq("passed", true)
 
-  await recalculateLessonProgress(client, user.id, lesson.id, lesson.challengeIds)
+  if (deleteError) {
+    return {
+      status: 500,
+      body: { ok: false, message: "Could not clear progress for this assignment." }
+    }
+  }
+
+  try {
+    await recalculateLessonProgress(client, user.id, lesson.id, lesson.challengeIds)
+  } catch {
+    return {
+      status: 500,
+      body: { ok: false, message: "Could not refresh lesson progress after clearing this assignment." }
+    }
+  }
 
   return {
     status: 200,

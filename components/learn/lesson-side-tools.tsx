@@ -1,12 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { BookOpenText, Lightbulb, Search, Sparkles } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 
 type SearchableLesson = {
+  id: string
   href: string
   title: string
   sectionLabel: string
@@ -16,6 +17,24 @@ type SearchableLesson = {
 type LessonSideToolsProps = {
   currentHref: string
   entries: SearchableLesson[]
+  initialQuery?: string
+  referenceEntryId?: string | null
+}
+
+function buildReaderCardHref(currentHref: string, referenceId: string, searchQuery: string) {
+  const [pathname, currentSearch = ""] = currentHref.split("?")
+  const params = new URLSearchParams(currentSearch)
+
+  params.set("reference", referenceId)
+
+  if (searchQuery.trim()) {
+    params.set("search", searchQuery.trim())
+  } else {
+    params.delete("search")
+  }
+
+  const nextSearch = params.toString()
+  return nextSearch ? `${pathname}?${nextSearch}` : pathname
 }
 
 function stripMdx(source: string) {
@@ -52,8 +71,12 @@ function buildExcerpt(text: string, query: string) {
  * Keeps learner-side support tools together so search and future AI help can
  * grow behind one obvious module instead of being scattered across the page.
  */
-export function LessonSideTools({ currentHref, entries }: LessonSideToolsProps) {
-  const [query, setQuery] = useState("")
+export function LessonSideTools({ currentHref, entries, initialQuery = "", referenceEntryId }: LessonSideToolsProps) {
+  const [query, setQuery] = useState(initialQuery)
+
+  useEffect(() => {
+    setQuery(initialQuery)
+  }, [initialQuery])
 
   const results = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -101,13 +124,20 @@ export function LessonSideTools({ currentHref, entries }: LessonSideToolsProps) 
 
                   return (
                     <Link
-                      key={entry.href}
-                      href={entry.href}
-                      className="rounded-[1rem] border border-white/10 bg-[#171d29] px-4 py-3 transition hover:bg-white/8"
+                      key={entry.id}
+                      href={buildReaderCardHref(currentHref, entry.id, query)}
+                      className={`rounded-[1rem] border px-4 py-3 transition ${
+                        referenceEntryId === entry.id
+                          ? "border-[var(--accent-soft)] bg-[color:rgb(201_111_54/0.12)]"
+                          : "border-white/10 bg-[#171d29] hover:bg-white/8"
+                      }`}
                     >
                       <p className="text-sm font-semibold text-white">
                         {entry.title}
                         {isCurrent ? <span className="ml-2 text-xs uppercase tracking-[0.22em] text-[var(--accent-soft)]">Current</span> : null}
+                        {referenceEntryId === entry.id ? (
+                          <span className="ml-2 text-xs uppercase tracking-[0.22em] text-[var(--accent-soft)]">Open</span>
+                        ) : null}
                       </p>
                       <p className="mt-1 text-xs uppercase tracking-[0.2em] text-white/40">{entry.sectionLabel}</p>
                       <p className="mt-2 text-sm leading-7 text-white/65">{buildExcerpt(entry.bodyMdx, query)}</p>

@@ -3,8 +3,7 @@ import Link from "next/link"
 import { ArrowLeft, ChevronDown } from "lucide-react"
 import { notFound } from "next/navigation"
 
-import { ChallengeWorkbench } from "@/components/code/challenge-workbench"
-import { CourseProgressStrip } from "@/components/learn/course-progress-strip"
+import { LessonInteractiveShell } from "@/components/learn/lesson-interactive-shell"
 import { LessonSideTools } from "@/components/learn/lesson-side-tools"
 import { Badge } from "@/components/ui/badge"
 import { getEffectiveAssignmentReading, getEffectiveAssignmentReadingLabel } from "@/lib/content/reading"
@@ -20,8 +19,12 @@ type LessonPageProps = {
   }>
   searchParams: Promise<{
     assignment?: string
+    reference?: string
+    search?: string
   }>
 }
+
+export const dynamic = "force-dynamic"
 
 function getAssignmentTitle(challenge: Challenge, index: number) {
   const normalizedTitle = challenge.title.replace(/^assignment[:\s-]*/i, "").trim()
@@ -56,7 +59,7 @@ function LessonPanelSection({
 
 export default async function LessonPage({ params, searchParams }: LessonPageProps) {
   const { courseSlug, lessonSlug } = await params
-  const { assignment } = await searchParams
+  const { assignment, reference, search } = await searchParams
   const [data, user] = await Promise.all([getLessonPageData(courseSlug, lessonSlug), getCurrentUser()])
 
   if (!data) {
@@ -73,6 +76,9 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
     slug: challenge.slug,
     title: getAssignmentTitle(challenge, index)
   }))
+  const currentHref = `/learn/${data.course.slug}/${data.lesson.slug}${activeChallenge ? `?assignment=${activeChallenge.slug}` : ""}`
+  const selectedReferenceEntry =
+    data.courseReadingEntries.find((entry) => entry.id === reference) ?? null
   const readingSource = getEffectiveAssignmentReading({
     lessonBodyMdx: data.lesson.bodyMdx,
     challengeReadingMdx: activeChallenge?.readingMdx,
@@ -86,7 +92,7 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-10 sm:px-6 xl:px-10">
-      <CourseProgressStrip
+      <LessonInteractiveShell
         courseSlug={data.course.slug}
         courseTitle={data.course.title}
         courseIndex={data.courseIndex}
@@ -97,78 +103,90 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
         activeChallengeSlug={activeChallenge?.slug ?? null}
         previousChallengeSlug={previousChallengeSlug}
         nextChallengeSlug={nextChallengeSlug}
-        completedChallengeSlugs={completedChallengeSlugs}
-      />
+        initialCompletedChallengeSlugs={completedChallengeSlugs}
+        activeChallenge={activeChallenge}
+        isAuthenticated={Boolean(user)}
+      >
+        <div className="space-y-6">
+          <Link href={`/learn/${data.course.slug}`} className="inline-flex items-center gap-2 text-sm text-white/60">
+            <ArrowLeft className="h-4 w-4" />
+            Back to course
+          </Link>
 
-      <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,#131824,#101520)] text-white shadow-[0_28px_80px_rgba(11,15,24,0.32)]">
-        <div className="grid min-h-[calc(100vh-11rem)] xl:grid-cols-[minmax(430px,0.92fr)_minmax(660px,1.08fr)]">
-          <aside className="border-b border-white/10 px-6 py-6 xl:max-h-[calc(100vh-11rem)] xl:overflow-y-auto xl:border-b-0 xl:border-r">
-            <div className="space-y-6">
-              <Link href={`/learn/${data.course.slug}`} className="inline-flex items-center gap-2 text-sm text-white/60">
-                <ArrowLeft className="h-4 w-4" />
-                Back to course
-              </Link>
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge>{`CH${data.currentLessonIndex + 1}`}</Badge>
+              <Badge className="bg-white/8 text-white ring-1 ring-white/10">{`L${data.courseIndex}: ${data.course.title}`}</Badge>
+            </div>
+            <div className="space-y-4">
+              <h1 className="font-serif text-5xl tracking-tight text-white sm:text-6xl">{data.lesson.title}</h1>
+              <p className="max-w-3xl text-lg leading-8 text-slate-300">{data.lesson.summary}</p>
+            </div>
+          </div>
 
-              <div className="space-y-4">
+          <LessonPanelSection title="Reading">
+            <div className="mb-4">
+              <Badge className="bg-white/10 text-white">{readingSourceLabel}</Badge>
+            </div>
+            <MdxRenderer source={readingSource} tone="dark" />
+          </LessonPanelSection>
+
+          {activeChallenge ? (
+            <LessonPanelSection
+              title={data.challenges.length > 1 ? `Assignment ${safeActiveChallengeIndex + 1}` : "Assignment"}
+            >
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <Badge className="bg-white/10 text-white">
+                  {activeChallenge.kind === "multiple_choice" ? "multiple choice" : activeChallenge.language}
+                </Badge>
+                {data.challenges.length > 1 ? (
+                  <span className="text-xs uppercase tracking-[0.22em] text-white/45">
+                    {`${safeActiveChallengeIndex + 1} of ${data.challenges.length}`}
+                  </span>
+                ) : null}
+              </div>
+              <MdxRenderer source={activeChallenge.promptMdx} tone="dark" />
+            </LessonPanelSection>
+          ) : (
+            <div className="rounded-[1.25rem] border border-dashed border-white/10 bg-white/4 px-5 py-4 text-sm text-white/60">
+              Practice for this chapter will appear here when it is ready.
+            </div>
+          )}
+
+          {selectedReferenceEntry ? (
+            <LessonPanelSection title={selectedReferenceEntry.title} defaultOpen>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  <Badge>{`CH${data.currentLessonIndex + 1}`}</Badge>
-                  <Badge className="bg-white/8 text-white ring-1 ring-white/10">{`L${data.courseIndex}: ${data.course.title}`}</Badge>
+                  <Badge className="bg-white/10 text-white">{selectedReferenceEntry.sectionLabel}</Badge>
+                  <Badge className="bg-white/8 text-white ring-1 ring-white/10">Reference reading</Badge>
                 </div>
-                <div className="space-y-4">
-                  <h1 className="font-serif text-5xl tracking-tight text-white sm:text-6xl">{data.lesson.title}</h1>
-                  <p className="max-w-3xl text-lg leading-8 text-slate-300">{data.lesson.summary}</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link
+                    href={selectedReferenceEntry.href}
+                    className="text-sm text-white/65 underline decoration-white/20 underline-offset-4 hover:text-white"
+                  >
+                    Open source lesson
+                  </Link>
+                  <Link
+                    href={`${currentHref}${search?.trim() ? `&search=${encodeURIComponent(search.trim())}` : ""}`}
+                    className="text-sm text-white/65 underline decoration-white/20 underline-offset-4 hover:text-white"
+                  >
+                    Close
+                  </Link>
                 </div>
               </div>
+              <MdxRenderer source={selectedReferenceEntry.bodyMdx} tone="dark" />
+            </LessonPanelSection>
+          ) : null}
 
-              <LessonPanelSection title="Reading">
-                <div className="mb-4">
-                  <Badge className="bg-white/10 text-white">{readingSourceLabel}</Badge>
-                </div>
-                <MdxRenderer source={readingSource} tone="dark" />
-              </LessonPanelSection>
-
-              {activeChallenge ? (
-                <LessonPanelSection
-                  title={data.challenges.length > 1 ? `Assignment ${safeActiveChallengeIndex + 1}` : "Assignment"}
-                >
-                  <div className="mb-4 flex flex-wrap items-center gap-3">
-                    <Badge className="bg-white/10 text-white">
-                      {activeChallenge.kind === "multiple_choice" ? "multiple choice" : activeChallenge.language}
-                    </Badge>
-                    {data.challenges.length > 1 ? (
-                      <span className="text-xs uppercase tracking-[0.22em] text-white/45">
-                        {`${safeActiveChallengeIndex + 1} of ${data.challenges.length}`}
-                      </span>
-                    ) : null}
-                  </div>
-                  <MdxRenderer source={activeChallenge.promptMdx} tone="dark" />
-                </LessonPanelSection>
-              ) : (
-                <div className="rounded-[1.25rem] border border-dashed border-white/10 bg-white/4 px-5 py-4 text-sm text-white/60">
-                  Practice for this chapter will appear here when it is ready.
-                </div>
-              )}
-
-              <LessonSideTools
-                currentHref={`/learn/${data.course.slug}/${data.lesson.slug}${activeChallenge ? `?assignment=${activeChallenge.slug}` : ""}`}
-                entries={data.courseReadingEntries}
-              />
-            </div>
-          </aside>
-
-          <div className="min-h-0 p-4 sm:p-5">
-            {activeChallenge ? (
-              <ChallengeWorkbench
-                challenge={activeChallenge}
-                courseSlug={courseSlug}
-                lessonSlug={lessonSlug}
-                isAuthenticated={Boolean(user)}
-                isCompleted={completedChallengeSlugs.includes(activeChallenge.slug)}
-              />
-            ) : null}
-          </div>
+          <LessonSideTools
+            currentHref={currentHref}
+            entries={data.courseReadingEntries}
+            initialQuery={search ?? ""}
+            referenceEntryId={selectedReferenceEntry?.id ?? null}
+          />
         </div>
-      </section>
+      </LessonInteractiveShell>
     </div>
   )
 }

@@ -75,6 +75,7 @@ export type CourseWithLessons = {
 }
 
 export type CourseReadingEntry = {
+  id: string
   href: string
   title: string
   sectionLabel: string

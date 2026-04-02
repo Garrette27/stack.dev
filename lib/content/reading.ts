@@ -37,16 +37,12 @@ export function getEffectiveAssignmentReading({
     return normalizedChallengeReading
   }
 
-  if (normalizedLessonBody) {
-    return normalizedLessonBody
-  }
-
-  if (normalizedChallengeReading) {
-    return normalizedChallengeReading
-  }
-
   if (normalizedPrompt) {
     return normalizedPrompt
+  }
+
+  if (normalizedLessonBody) {
+    return normalizedLessonBody
   }
 
   return ""
@@ -72,12 +68,12 @@ export function getEffectiveAssignmentReadingLabel({
     return "Assignment-specific reading"
   }
 
-  if (normalizedLessonBody) {
-    return "Chapter reading"
+  if (normalizedPrompt) {
+    return "Assignment prompt fallback"
   }
 
-  if (normalizedChallengeReading || normalizedPrompt) {
-    return "Assignment prompt fallback"
+  if (normalizedLessonBody) {
+    return "Chapter reading"
   }
 
   return "No reading yet"

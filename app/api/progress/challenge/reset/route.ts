@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
@@ -25,5 +26,10 @@ export async function POST(request: Request) {
   }
 
   const result = await resetChallengeProgressForCurrentUser(parsed.data)
+
+  if (result.status === 200 && result.body.ok) {
+    revalidatePath(`/learn/${parsed.data.courseSlug}/${parsed.data.lessonSlug}`)
+  }
+
   return NextResponse.json(result.body, { status: result.status })
 }

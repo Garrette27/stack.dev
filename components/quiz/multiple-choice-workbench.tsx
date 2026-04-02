@@ -16,6 +16,7 @@ type MultipleChoiceWorkbenchProps = {
   lessonSlug: string
   isAuthenticated: boolean
   isCompleted: boolean
+  onCompletionChange?: (challengeSlug: string, completed: boolean) => void
 }
 
 const initialResult: SubmissionOutcome | null = null
@@ -33,7 +34,8 @@ export function MultipleChoiceWorkbench({
   courseSlug,
   lessonSlug,
   isAuthenticated,
-  isCompleted
+  isCompleted,
+  onCompletionChange
 }: MultipleChoiceWorkbenchProps) {
   const router = useRouter()
   const [selectedChoiceKey, setSelectedChoiceKey] = useState<string | null>(null)
@@ -70,6 +72,7 @@ export function MultipleChoiceWorkbench({
       setResult(payload)
 
       if (payload.passed) {
+        onCompletionChange?.(challenge.slug, true)
         router.refresh()
       }
     })
@@ -81,7 +84,7 @@ export function MultipleChoiceWorkbench({
     }
 
     startResetTransition(async () => {
-      await fetch("/api/progress/challenge/reset", {
+      const response = await fetch("/api/progress/challenge/reset", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -93,8 +96,13 @@ export function MultipleChoiceWorkbench({
         })
       })
 
+      if (!response.ok) {
+        return
+      }
+
       setSelectedChoiceKey(null)
       setResult(initialResult)
+      onCompletionChange?.(challenge.slug, false)
       router.refresh()
     })
   }

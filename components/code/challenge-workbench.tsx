@@ -8,6 +8,7 @@ type ChallengeWorkbenchProps = {
   lessonSlug: string
   isAuthenticated: boolean
   isCompleted: boolean
+  onCompletionChange?: (challengeSlug: string, completed: boolean) => void
 }
 
 /**

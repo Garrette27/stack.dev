@@ -51,7 +51,7 @@ export function CourseProgressStrip({
               const className = isCurrent
                 ? isCompleted
                   ? "h-2.5 w-2.5 border-[var(--accent-soft)] bg-[var(--accent)] shadow-[0_0_0_2px_rgba(201,111,54,0.22)]"
-                  : "h-2.5 w-2.5 border-[var(--accent-soft)] bg-transparent shadow-[0_0_0_2px_rgba(201,111,54,0.16)]"
+                  : "h-2.5 w-2.5 border-white/45 bg-transparent shadow-[0_0_0_2px_rgba(255,255,255,0.08)]"
                 : isCompleted
                   ? "h-2 w-2 border-[var(--accent-soft)] bg-[var(--accent)]/82 hover:bg-[var(--accent)]"
                   : "h-2 w-2 border-white/25 bg-white/8 hover:bg-white/24"

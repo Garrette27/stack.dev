@@ -103,6 +103,7 @@ function buildCourseReadingEntries(
   courseLessons.forEach((lesson, lessonIndex) => {
     if (lesson.bodyMdx.trim()) {
       entries.push({
+        id: `lesson:${lesson.slug}`,
         href: `/learn/${courseSlug}/${lesson.slug}`,
         title: lesson.title,
         sectionLabel: `CH${lessonIndex + 1} reading`,
@@ -122,6 +123,7 @@ function buildCourseReadingEntries(
       }
 
       entries.push({
+        id: `challenge:${challenge.slug}`,
         href: `/learn/${courseSlug}/${lesson.slug}?assignment=${challenge.slug}`,
         title: challenge.title,
         sectionLabel: `CH${lessonIndex + 1} - A${challengeIndex + 1} reading`,
