@@ -124,7 +124,9 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
                   title={data.challenges.length > 1 ? `Assignment ${safeActiveChallengeIndex + 1}` : "Assignment"}
                 >
                   <div className="mb-4 flex flex-wrap items-center gap-3">
-                    <Badge className="bg-white/10 text-white">{activeChallenge.language}</Badge>
+                    <Badge className="bg-white/10 text-white">
+                      {activeChallenge.kind === "multiple_choice" ? "multiple choice" : activeChallenge.language}
+                    </Badge>
                     {data.challenges.length > 1 ? (
                       <span className="text-xs uppercase tracking-[0.22em] text-white/45">
                         {`${safeActiveChallengeIndex + 1} of ${data.challenges.length}`}

@@ -15,6 +15,7 @@ const challenge: Challenge = {
   id: "challenge-javascript-greet",
   slug: "javascript-greet-user",
   title: "Write a greeting function",
+  kind: "code",
   language: "javascript",
   judge0LanguageId: 102,
   readingMdx: "",
@@ -38,6 +39,9 @@ if (greet("Rico") !== "Hello, Rico!") {
   throw new Error("Rico greeting is incorrect")
 }
 `,
+  choiceOptions: [],
+  correctChoiceKey: null,
+  choiceExplanationMdx: "",
   published: true
 }
 

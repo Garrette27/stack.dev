@@ -1,6 +1,6 @@
-import type { Challenge } from "@/lib/types"
+import type { CodeChallengeLanguage } from "@/lib/types"
 
-type SupportedLanguage = Challenge["language"]
+type SupportedLanguage = CodeChallengeLanguage
 
 type Judge0LanguageConfig = {
   defaultJudge0LanguageId: number

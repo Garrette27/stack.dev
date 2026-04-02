@@ -1,6 +1,7 @@
+import { normalizeMultipleChoiceOptions } from "@/lib/challenges/multiple-choice"
 import { mockContent } from "@/lib/mock-data"
 import { getDefaultJudge0LanguageId, isSupportedChallengeLanguage } from "@/lib/judge0/languages"
-import type { Challenge, ContentSnapshot, Course, Lesson } from "@/lib/types"
+import type { Challenge, ChallengeKind, ContentSnapshot, Course, Lesson } from "@/lib/types"
 
 export function createMockSnapshot(reason: string): ContentSnapshot {
   return {
@@ -43,20 +44,32 @@ export function mapLesson(row: Record<string, unknown>, courseSlug: string, chal
 }
 
 export function mapChallenge(row: Record<string, unknown>): Challenge {
-  const languageValue = String(row.language ?? "python")
-  const language = isSupportedChallengeLanguage(languageValue) ? languageValue : "python"
+  const kindValue = String(row.kind ?? "code")
+  const kind: ChallengeKind = kindValue === "multiple_choice" ? "multiple_choice" : "code"
+  const languageValue = row.language == null ? null : String(row.language)
+  const language = languageValue && isSupportedChallengeLanguage(languageValue) ? languageValue : kind === "code" ? "python" : null
+  const judge0LanguageId =
+    typeof row.judge0_language_id === "number"
+      ? row.judge0_language_id
+      : language
+        ? getDefaultJudge0LanguageId(language)
+        : null
 
   return {
     id: String(row.id),
     slug: String(row.slug),
     title: String(row.title),
+    kind,
     language,
-    judge0LanguageId: Number(row.judge0_language_id ?? getDefaultJudge0LanguageId(language)),
+    judge0LanguageId,
     readingMdx: String(row.reading_mdx ?? ""),
     promptMdx: String(row.prompt_mdx ?? ""),
     starterCode: String(row.starter_code ?? ""),
     solutionCode: String(row.solution_code ?? ""),
     hiddenTestCode: String(row.hidden_test_code ?? ""),
+    choiceOptions: normalizeMultipleChoiceOptions(row.choice_options),
+    correctChoiceKey: row.choice_correct_key ? String(row.choice_correct_key) : null,
+    choiceExplanationMdx: String(row.choice_explanation_mdx ?? ""),
     published: Boolean(row.published ?? true)
   }
 }

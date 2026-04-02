@@ -17,7 +17,8 @@ export const submissionSchema = z.object({
   challengeSlug: z.string().min(3),
   courseSlug: z.string().min(3),
   lessonSlug: z.string().min(3),
-  sourceCode: z.string().min(1)
+  sourceCode: z.string().optional(),
+  selectedChoiceKey: z.string().optional()
 })
 
 export type SubmissionPayload = z.infer<typeof submissionSchema>
@@ -43,6 +44,32 @@ function createOutcome(
   }
 }
 
+function buildMultipleChoiceOutcome(
+  challenge: Challenge,
+  selectedChoiceKey: string | undefined
+): SubmissionOutcome {
+  if (!selectedChoiceKey) {
+    return createOutcome("bad_request", "Choose an answer first.")
+  }
+
+  if (!challenge.choiceOptions.length || !challenge.correctChoiceKey) {
+    return createOutcome("invalid_assignment", "This multiple-choice assignment is not configured yet.", {
+      configured: true
+    })
+  }
+
+  if (!challenge.choiceOptions.some((option) => option.key === selectedChoiceKey)) {
+    return createOutcome("bad_request", "The selected answer choice is not available for this assignment.")
+  }
+
+  const passed = selectedChoiceKey === challenge.correctChoiceKey
+
+  return createOutcome(passed ? "correct" : "incorrect", passed ? "Correct answer." : "That choice is not correct yet.", {
+    configured: true,
+    passed
+  })
+}
+
 /**
  * Builds the source Judge0 executes and keeps runner-specific plumbing hidden
  * behind one entry point. JavaScript checks receive `stackOutput` so hidden
@@ -55,7 +82,7 @@ function indentCode(source: string, prefix: string) {
     .join("\n")
 }
 
-function buildRunnerSource(language: Challenge["language"], sourceCode: string, hiddenTestCode: string) {
+function buildRunnerSource(language: NonNullable<Challenge["language"]>, sourceCode: string, hiddenTestCode: string) {
   if (language === "javascript" || language === "typescript") {
     return `const __stackDevOutput = []
 const __stackDevConsoleLog = console.log.bind(console)
@@ -193,7 +220,7 @@ function buildOutcomeFromJudge0Payload(payload: Record<string, unknown>): Submis
 }
 
 async function runJudge0Submission(
-  language: Challenge["language"],
+  language: NonNullable<Challenge["language"]>,
   judge0LanguageId: number,
   sourceCode: string,
   hiddenTestCode: string
@@ -286,7 +313,7 @@ async function persistSubmissionOutcome(payload: SubmissionPayload, outcome: Sub
     .insert({
       user_id: user.id,
       challenge_id: challengeRow?.id ?? null,
-      source_code: payload.sourceCode,
+      source_code: payload.sourceCode ?? payload.selectedChoiceKey ?? "",
       status: outcome.status,
       stdout: outcome.stdout,
       stderr: outcome.stderr,
@@ -340,12 +367,17 @@ export async function submitChallenge(payload: SubmissionPayload): Promise<Submi
     }
   }
 
-  const outcome = await runJudge0Submission(
-    challenge.language,
-    challenge.judge0LanguageId,
-    payload.sourceCode,
-    challenge.hiddenTestCode
-  )
+  const outcome =
+    challenge.kind === "multiple_choice"
+      ? buildMultipleChoiceOutcome(challenge, payload.selectedChoiceKey)
+      : !payload.sourceCode
+        ? createOutcome("bad_request", "Write an answer before running the checker.")
+        : await runJudge0Submission(
+            challenge.language ?? "javascript",
+            challenge.judge0LanguageId ?? 102,
+            payload.sourceCode,
+            challenge.hiddenTestCode
+          )
 
   await persistSubmissionOutcome(payload, outcome)
 

@@ -1,3 +1,12 @@
+export type CodeChallengeLanguage = "python" | "javascript" | "typescript" | "go" | "sqlite"
+
+export type ChallengeKind = "code" | "multiple_choice"
+
+export type MultipleChoiceOption = {
+  key: string
+  label: string
+}
+
 export type Course = {
   id: string
   slug: string
@@ -26,13 +35,17 @@ export type Challenge = {
   id: string
   slug: string
   title: string
-  language: "python" | "javascript" | "typescript" | "go" | "sqlite"
-  judge0LanguageId: number
+  kind: ChallengeKind
+  language: CodeChallengeLanguage | null
+  judge0LanguageId: number | null
   readingMdx: string
   promptMdx: string
   starterCode: string
   solutionCode: string
   hiddenTestCode: string
+  choiceOptions: MultipleChoiceOption[]
+  correctChoiceKey: string | null
+  choiceExplanationMdx: string
   published: boolean
 }
 

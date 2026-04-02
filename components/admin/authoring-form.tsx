@@ -3,11 +3,13 @@
 import { useActionState, useEffect, useMemo, useState } from "react"
 
 import { upsertAuthoringBundleAction, type AuthoringActionState } from "@/app/admin/actions"
+import { MultipleChoiceOptionsEditor } from "@/components/admin/multiple-choice-options-editor"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { createDefaultMultipleChoiceOptions, ensureMultipleChoiceOptionShape } from "@/lib/challenges/multiple-choice"
 import { getEffectiveAssignmentReading, getEffectiveAssignmentReadingLabel } from "@/lib/content/reading"
 import {
   AUTHORING_LANGUAGE_OPTIONS,
@@ -17,7 +19,7 @@ import {
   getStarterTemplate,
   getSolutionTemplate
 } from "@/lib/judge0/languages"
-import type { Challenge, ContentSnapshot, Lesson } from "@/lib/types"
+import type { Challenge, ChallengeKind, ContentSnapshot, Lesson, MultipleChoiceOption } from "@/lib/types"
 import { slugify } from "@/lib/utils"
 
 const NEW_COURSE = "__new_course__"
@@ -40,7 +42,7 @@ function getAssignmentLabel(challenge: Challenge, index: number) {
   return `A${index + 1}: ${shortTitle}`
 }
 
-function appendCodeFence(source: string, language: Challenge["language"]) {
+function appendCodeFence(source: string, language: NonNullable<Challenge["language"]>) {
   const { label, example } = getCodeFenceSnippet(language)
   const trimmed = source.trimEnd()
   const prefix = trimmed ? "\n\n" : ""
@@ -73,22 +75,30 @@ function getChallengesForLesson(snapshot: ContentSnapshot, lesson: Lesson | null
 function loadAssignmentDraft(
   challenge: Challenge,
   setters: {
-    setLanguage: (value: Challenge["language"]) => void
+    setChallengeKind: (value: ChallengeKind) => void
+    setLanguage: (value: NonNullable<Challenge["language"]>) => void
     setJudge0LanguageId: (value: string) => void
     setReadingMdx: (value: string) => void
     setPromptMdx: (value: string) => void
     setStarterCode: (value: string) => void
     setSolutionCode: (value: string) => void
     setHiddenTestCode: (value: string) => void
+    setChoiceOptions: (value: MultipleChoiceOption[]) => void
+    setCorrectChoiceKey: (value: string) => void
+    setChoiceExplanationMdx: (value: string) => void
   }
 ) {
-  setters.setLanguage(challenge.language)
-  setters.setJudge0LanguageId(String(challenge.judge0LanguageId))
+  setters.setChallengeKind(challenge.kind)
+  setters.setLanguage(challenge.language ?? "javascript")
+  setters.setJudge0LanguageId(String(challenge.judge0LanguageId ?? getDefaultJudge0LanguageId("javascript")))
   setters.setReadingMdx(challenge.readingMdx)
   setters.setPromptMdx(challenge.promptMdx)
   setters.setStarterCode(challenge.starterCode)
   setters.setSolutionCode(challenge.solutionCode)
   setters.setHiddenTestCode(challenge.hiddenTestCode)
+  setters.setChoiceOptions(ensureMultipleChoiceOptionShape(challenge.choiceOptions))
+  setters.setCorrectChoiceKey(challenge.correctChoiceKey ?? challenge.choiceOptions[0]?.key ?? "")
+  setters.setChoiceExplanationMdx(challenge.choiceExplanationMdx)
 }
 
 /**
@@ -110,13 +120,17 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
   const [lessonTitle, setLessonTitle] = useState(initialLesson?.title ?? "")
   const [bodyMdx, setBodyMdx] = useState(initialLesson?.bodyMdx ?? "")
 
-  const [language, setLanguage] = useState<Challenge["language"]>("javascript")
+  const [challengeKind, setChallengeKind] = useState<ChallengeKind>("code")
+  const [language, setLanguage] = useState<NonNullable<Challenge["language"]>>("javascript")
   const [judge0LanguageId, setJudge0LanguageId] = useState(String(getDefaultJudge0LanguageId("javascript")))
   const [readingMdx, setReadingMdx] = useState("")
   const [promptMdx, setPromptMdx] = useState("")
   const [starterCode, setStarterCode] = useState(getStarterTemplate("javascript"))
   const [solutionCode, setSolutionCode] = useState(getSolutionTemplate("javascript"))
   const [hiddenTestCode, setHiddenTestCode] = useState(getHiddenTestTemplate("javascript"))
+  const [choiceOptions, setChoiceOptions] = useState<MultipleChoiceOption[]>(createDefaultMultipleChoiceOptions())
+  const [correctChoiceKey, setCorrectChoiceKey] = useState(createDefaultMultipleChoiceOptions()[0]?.key ?? "")
+  const [choiceExplanationMdx, setChoiceExplanationMdx] = useState("")
 
   const selectedCourse = useMemo(
     () => snapshot.courses.find((course) => course.slug === courseSelection) ?? null,
@@ -156,7 +170,8 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     [promptMdx, readingMdx]
   )
 
-  const resetAssignmentDraft = (nextLanguage: Challenge["language"]) => {
+  const resetCodeAssignmentDraft = (nextLanguage: NonNullable<Challenge["language"]>) => {
+    setChallengeKind("code")
     setLanguage(nextLanguage)
     setJudge0LanguageId(String(getDefaultJudge0LanguageId(nextLanguage)))
     setReadingMdx("")
@@ -164,6 +179,33 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     setStarterCode(getStarterTemplate(nextLanguage))
     setSolutionCode(getSolutionTemplate(nextLanguage))
     setHiddenTestCode(getHiddenTestTemplate(nextLanguage))
+    const defaultOptions = createDefaultMultipleChoiceOptions()
+    setChoiceOptions(defaultOptions)
+    setCorrectChoiceKey(defaultOptions[0]?.key ?? "")
+    setChoiceExplanationMdx("")
+  }
+
+  const resetMultipleChoiceAssignmentDraft = () => {
+    const defaultOptions = createDefaultMultipleChoiceOptions()
+
+    setChallengeKind("multiple_choice")
+    setReadingMdx("")
+    setPromptMdx("")
+    setStarterCode("")
+    setSolutionCode("")
+    setHiddenTestCode("")
+    setChoiceOptions(defaultOptions)
+    setCorrectChoiceKey(defaultOptions[0]?.key ?? "")
+    setChoiceExplanationMdx("")
+  }
+
+  const handleChallengeKindChange = (nextKind: ChallengeKind) => {
+    if (nextKind === "multiple_choice") {
+      resetMultipleChoiceAssignmentDraft()
+      return
+    }
+
+    resetCodeAssignmentDraft(language)
   }
 
   useEffect(() => {
@@ -183,14 +225,14 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
       setLessonTitle("")
       setBodyMdx("")
       setAssignmentSelection(NEW_ASSIGNMENT)
-      resetAssignmentDraft("javascript")
+      resetCodeAssignmentDraft("javascript")
       return
     }
 
     setLessonTitle(selectedLesson.title)
     setBodyMdx(selectedLesson.bodyMdx)
     setAssignmentSelection(NEW_ASSIGNMENT)
-    resetAssignmentDraft("javascript")
+    resetCodeAssignmentDraft("javascript")
   }, [lessonSelection, selectedLesson])
 
   const resolvedCourseSlug = selectedCourse?.slug ?? slugify(courseTitle)
@@ -211,6 +253,10 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
           <input type="hidden" name="lessonTitle" value={lessonTitle} readOnly />
           <input type="hidden" name="lessonSlug" value={resolvedLessonSlug} readOnly />
           <input type="hidden" name="challengeSlug" value={selectedAssignment?.slug ?? ""} readOnly />
+          <input type="hidden" name="kind" value={challengeKind} readOnly />
+          <input type="hidden" name="choiceOptionsJson" value={JSON.stringify(choiceOptions)} readOnly />
+          <input type="hidden" name="choiceCorrectKey" value={correctChoiceKey} readOnly />
+          <input type="hidden" name="choiceExplanationMdx" value={choiceExplanationMdx} readOnly />
 
           <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,247,241,0.9))]">
             <CardHeader className="border-b border-black/6 bg-white/70">
@@ -319,7 +365,11 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                     setAssignmentSelection(nextAssignment)
 
                     if (nextAssignment === NEW_ASSIGNMENT) {
-                      resetAssignmentDraft(language)
+                      if (challengeKind === "multiple_choice") {
+                        resetMultipleChoiceAssignmentDraft()
+                      } else {
+                        resetCodeAssignmentDraft(language)
+                      }
                       return
                     }
 
@@ -328,13 +378,17 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
 
                     if (nextSelectedAssignment) {
                       loadAssignmentDraft(nextSelectedAssignment, {
+                        setChallengeKind,
                         setLanguage,
                         setJudge0LanguageId,
                         setReadingMdx,
                         setPromptMdx,
                         setStarterCode,
                         setSolutionCode,
-                        setHiddenTestCode
+                        setHiddenTestCode,
+                        setChoiceOptions,
+                        setCorrectChoiceKey,
+                        setChoiceExplanationMdx
                       })
                     }
                   }}
@@ -373,35 +427,16 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                 />
               </div>
 
-              <section className="grid gap-5 lg:grid-cols-2">
-                <Field label="Answer language">
-                  <select
-                    name="language"
-                    value={language}
-                    onChange={(event) => {
-                      const nextLanguage = event.target.value as Challenge["language"]
-                      setLanguage(nextLanguage)
-                      setJudge0LanguageId(String(getDefaultJudge0LanguageId(nextLanguage)))
-                    }}
-                    className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
-                  >
-                    {AUTHORING_LANGUAGE_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Checker language id">
-                  <Input
-                    name="judge0LanguageId"
-                    type="number"
-                    value={judge0LanguageId}
-                    onChange={(event) => setJudge0LanguageId(event.target.value)}
-                    required
-                  />
-                </Field>
-              </section>
+              <Field label="Assignment type">
+                <select
+                  value={challengeKind}
+                  onChange={(event) => handleChallengeKindChange(event.target.value as ChallengeKind)}
+                  className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
+                >
+                  <option value="code">Code assignment</option>
+                  <option value="multiple_choice">Multiple choice</option>
+                </select>
+              </Field>
 
               <Field label="Assignment reading (optional)">
                 <Textarea
@@ -437,35 +472,81 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                 />
               </Field>
 
-              <Field label="Starter code">
-                <Textarea
-                  name="starterCode"
-                  rows={14}
-                  value={starterCode}
-                  onChange={(event) => setStarterCode(event.target.value)}
-                  required
-                />
-              </Field>
+              {challengeKind === "code" ? (
+                <>
+                  <section className="grid gap-5 lg:grid-cols-2">
+                    <Field label="Answer language">
+                      <select
+                        name="language"
+                        value={language}
+                        onChange={(event) => {
+                          const nextLanguage = event.target.value as NonNullable<Challenge["language"]>
+                          setLanguage(nextLanguage)
+                          setJudge0LanguageId(String(getDefaultJudge0LanguageId(nextLanguage)))
+                          setStarterCode(getStarterTemplate(nextLanguage))
+                          setSolutionCode(getSolutionTemplate(nextLanguage))
+                          setHiddenTestCode(getHiddenTestTemplate(nextLanguage))
+                        }}
+                        className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
+                      >
+                        {AUTHORING_LANGUAGE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Checker language id">
+                      <Input
+                        name="judge0LanguageId"
+                        type="number"
+                        value={judge0LanguageId}
+                        onChange={(event) => setJudge0LanguageId(event.target.value)}
+                        required
+                      />
+                    </Field>
+                  </section>
 
-              <Field label="Reference solution">
-                <Textarea
-                  name="solutionCode"
-                  rows={14}
-                  value={solutionCode}
-                  onChange={(event) => setSolutionCode(event.target.value)}
-                  required
-                />
-              </Field>
+                  <Field label="Starter code">
+                    <Textarea
+                      name="starterCode"
+                      rows={14}
+                      value={starterCode}
+                      onChange={(event) => setStarterCode(event.target.value)}
+                      required
+                    />
+                  </Field>
 
-              <Field label="Hidden checker tests">
-                <Textarea
-                  name="hiddenTestCode"
-                  rows={12}
-                  value={hiddenTestCode}
-                  onChange={(event) => setHiddenTestCode(event.target.value)}
-                  required
+                  <Field label="Reference solution">
+                    <Textarea
+                      name="solutionCode"
+                      rows={14}
+                      value={solutionCode}
+                      onChange={(event) => setSolutionCode(event.target.value)}
+                      required
+                    />
+                  </Field>
+
+                  <Field label="Hidden checker tests">
+                    <Textarea
+                      name="hiddenTestCode"
+                      rows={12}
+                      value={hiddenTestCode}
+                      onChange={(event) => setHiddenTestCode(event.target.value)}
+                      required
+                    />
+                  </Field>
+                </>
+              ) : (
+                <MultipleChoiceOptionsEditor
+                  options={choiceOptions}
+                  correctChoiceKey={correctChoiceKey}
+                  explanationMdx={choiceExplanationMdx}
+                  onOptionsChange={setChoiceOptions}
+                  onCorrectChoiceKeyChange={setCorrectChoiceKey}
+                  onExplanationChange={setChoiceExplanationMdx}
                 />
-              </Field>
+              )}
             </CardContent>
           </Card>
 
