@@ -154,7 +154,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                                   >
                                     <div className="min-w-0">
                                       <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`A${challengeIndex + 1}`}</p>
-                                      <p className="mt-1 truncate text-sm font-semibold text-[var(--ink-strong)]">{challenge.title}</p>
+                                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                                        <p className="truncate text-sm font-semibold text-[var(--ink-strong)]">{challenge.title}</p>
+                                        <Badge className="bg-white text-[var(--ink-muted)] ring-1 ring-black/8">
+                                          {challenge.publicationState === "draft" ? "Draft" : challenge.publicationState === "archived" ? "Archived" : "Published"}
+                                        </Badge>
+                                      </div>
                                     </div>
                                     <form action={deleteChallengeAction}>
                                       <input type="hidden" name="courseSlug" value={lesson.courseSlug} />

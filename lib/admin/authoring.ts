@@ -15,6 +15,8 @@ export type AuthoringSaveResult = {
   message: string
 }
 
+export type AuthoringSaveMode = "draft" | "publish"
+
 const authoringBaseSchema = z.object({
   courseTitle: z.string().min(3),
   courseSlug: z.string().min(3),
@@ -22,6 +24,7 @@ const authoringBaseSchema = z.object({
   lessonSlug: z.string().min(3),
   bodyMdx: z.string().min(20),
   challengeSlug: z.string().optional(),
+  saveMode: z.enum(["draft", "publish"]),
   kind: z.enum(["code", "multiple_choice"]),
   language: z.string().optional(),
   judge0LanguageId: z.string().optional(),
@@ -42,6 +45,7 @@ type CodeAuthoringBundleInput = {
   lessonSlug: string
   bodyMdx: string
   challengeSlug?: string
+  saveMode: AuthoringSaveMode
   kind: "code"
   language: CodeChallengeLanguage
   judge0LanguageId: number
@@ -59,6 +63,7 @@ type MultipleChoiceAuthoringBundleInput = {
   lessonSlug: string
   bodyMdx: string
   challengeSlug?: string
+  saveMode: AuthoringSaveMode
   kind: "multiple_choice"
   language: null
   judge0LanguageId: null
@@ -130,6 +135,7 @@ export function parseAuthoringBundleFormData(formData: FormData): ParsedAuthorin
     lessonSlug: slugify(readFormString(formData, "lessonSlug")),
     bodyMdx: readFormString(formData, "bodyMdx"),
     challengeSlug: slugify(readFormString(formData, "challengeSlug")),
+    saveMode: readFormString(formData, "saveMode") || "publish",
     kind: readFormString(formData, "kind"),
     language: readFormString(formData, "language"),
     judge0LanguageId: readFormString(formData, "judge0LanguageId"),
@@ -187,6 +193,7 @@ export function parseAuthoringBundleFormData(formData: FormData): ParsedAuthorin
         lessonSlug: parsed.data.lessonSlug,
         bodyMdx: parsed.data.bodyMdx,
         challengeSlug: parsed.data.challengeSlug,
+        saveMode: parsed.data.saveMode,
         kind: "code",
         language,
         judge0LanguageId,
@@ -239,9 +246,10 @@ export function parseAuthoringBundleFormData(formData: FormData): ParsedAuthorin
       courseSlug: parsed.data.courseSlug,
       lessonTitle: parsed.data.lessonTitle,
       lessonSlug: parsed.data.lessonSlug,
-      bodyMdx: parsed.data.bodyMdx,
-      challengeSlug: parsed.data.challengeSlug,
-      kind: "multiple_choice",
+        bodyMdx: parsed.data.bodyMdx,
+        challengeSlug: parsed.data.challengeSlug,
+        saveMode: parsed.data.saveMode,
+        kind: "multiple_choice",
       language: null,
       judge0LanguageId: null,
       readingMdx: parsed.data.readingMdx,
@@ -372,22 +380,46 @@ async function resolveChallengeSlug(
 }
 
 /**
- * Persists assignment content while tolerating older databases that have not
- * added the optional reading override column yet.
+ * Treats missing versioning tables as a legacy schema so authoring can keep
+ * saving direct challenge rows until the migration is applied.
  */
-async function upsertChallengeRecord(
-  admin: NonNullable<ReturnType<typeof createAdminClient>>,
-  payload: AuthoringBundleInput,
+function isMissingChallengeVersionSchema(error: { code?: string; message?: string } | null) {
+  if (!error) {
+    return false
+  }
+
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    error.message?.includes("challenge_versions") === true ||
+    error.message?.includes("current_published_version_id") === true ||
+    error.message?.includes("current_draft_version_id") === true
+  )
+}
+
+type StableChallengeRow = {
+  id: string
+  published: boolean
+  currentPublishedVersionId: string | null
+  currentDraftVersionId: string | null
+}
+
+function buildChallengeMirrorRow(
   challengeSlug: string,
   challengeTitle: string,
-  readingMdx: string | null
+  payload: AuthoringBundleInput,
+  readingMdx: string | null,
+  published: boolean
 ) {
-  const baseChallengeRow = {
+  return {
     slug: challengeSlug,
     title: challengeTitle,
     kind: payload.kind,
     language: payload.language,
     judge0_language_id: payload.judge0LanguageId,
+    reading_mdx: readingMdx,
     prompt_mdx: payload.promptMdx,
     starter_code: payload.starterCode,
     solution_code: payload.solutionCode,
@@ -395,16 +427,56 @@ async function upsertChallengeRecord(
     choice_options: payload.kind === "multiple_choice" ? payload.choiceOptions : [],
     choice_correct_key: payload.kind === "multiple_choice" ? payload.correctChoiceKey : null,
     choice_explanation_mdx: payload.kind === "multiple_choice" ? payload.choiceExplanationMdx : "",
-    published: true
+    published,
+    updated_at: new Date().toISOString()
+  }
+}
+
+async function loadStableChallengeRow(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  challengeSlug: string
+) {
+  const result = await admin
+    .from("challenges")
+    .select("id,published,current_published_version_id,current_draft_version_id")
+    .eq("slug", challengeSlug)
+    .maybeSingle()
+
+  if (result.error) {
+    return { data: null, error: result.error }
   }
 
+  if (!result.data) {
+    return { data: null, error: null }
+  }
+
+  return {
+    data: {
+      id: String(result.data.id),
+      published: Boolean(result.data.published ?? true),
+      currentPublishedVersionId: result.data.current_published_version_id
+        ? String(result.data.current_published_version_id)
+        : null,
+      currentDraftVersionId: result.data.current_draft_version_id
+        ? String(result.data.current_draft_version_id)
+        : null
+    } satisfies StableChallengeRow,
+    error: null
+  }
+}
+
+async function upsertLegacyChallengeRecord(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  payload: AuthoringBundleInput,
+  challengeSlug: string,
+  challengeTitle: string,
+  readingMdx: string | null,
+  published: boolean
+) {
   const fullResult = await admin
     .from("challenges")
     .upsert(
-      {
-        ...baseChallengeRow,
-        reading_mdx: readingMdx
-      },
+      buildChallengeMirrorRow(challengeSlug, challengeTitle, payload, readingMdx, published),
       {
         onConflict: "slug"
       }
@@ -442,7 +514,7 @@ async function upsertChallengeRecord(
         starter_code: payload.kind === "code" ? payload.starterCode : "",
         solution_code: payload.kind === "code" ? payload.solutionCode : "",
         hidden_test_code: payload.kind === "code" ? payload.hiddenTestCode : "",
-        published: true
+        published
       },
       {
         onConflict: "slug"
@@ -450,6 +522,303 @@ async function upsertChallengeRecord(
     )
     .select("id")
     .single()
+}
+
+async function getNextChallengeVersionNumber(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  challengeId: string
+) {
+  const { data, error } = await admin
+    .from("challenge_versions")
+    .select("version_number")
+    .eq("challenge_id", challengeId)
+    .order("version_number", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return Number(data?.version_number ?? 0) + 1
+}
+
+async function archivePublishedChallengeVersion(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  versionId: string | null,
+  exceptVersionId: string | null
+) {
+  if (!versionId || versionId === exceptVersionId) {
+    return
+  }
+
+  const { error } = await admin
+    .from("challenge_versions")
+    .update({
+      status: "archived",
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", versionId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+async function upsertVersionedChallengeRecord(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  userId: string,
+  payload: AuthoringBundleInput,
+  challengeSlug: string,
+  challengeTitle: string,
+  readingMdx: string | null
+) {
+  const existingChallengeResult = await loadStableChallengeRow(admin, challengeSlug)
+  if (existingChallengeResult.error) {
+    if (isMissingChallengeVersionSchema(existingChallengeResult.error)) {
+      return upsertLegacyChallengeRecord(
+        admin,
+        payload,
+        challengeSlug,
+        challengeTitle,
+        readingMdx,
+        payload.saveMode === "publish"
+      )
+    }
+
+    return {
+      data: null,
+      error: existingChallengeResult.error
+    }
+  }
+
+  const existingChallenge = existingChallengeResult.data
+  const mirrorPublishedContent = payload.saveMode === "publish" || !existingChallenge?.currentPublishedVersionId
+  const mirroredChallengeRow = buildChallengeMirrorRow(
+    challengeSlug,
+    challengeTitle,
+    payload,
+    readingMdx,
+    payload.saveMode === "publish" ? true : Boolean(existingChallenge?.currentPublishedVersionId)
+  )
+
+  const stableChallengeResult = await admin
+    .from("challenges")
+    .upsert(
+      mirrorPublishedContent
+        ? mirroredChallengeRow
+        : {
+            slug: challengeSlug,
+            title: existingChallenge ? challengeTitle : mirroredChallengeRow.title,
+            published: existingChallenge?.published ?? false,
+            updated_at: new Date().toISOString()
+          },
+      {
+        onConflict: "slug"
+      }
+    )
+    .select("id,published,current_published_version_id,current_draft_version_id")
+    .single()
+
+  if (stableChallengeResult.error) {
+    if (isMissingChallengeVersionSchema(stableChallengeResult.error)) {
+      return upsertLegacyChallengeRecord(
+        admin,
+        payload,
+        challengeSlug,
+        challengeTitle,
+        readingMdx,
+        payload.saveMode === "publish"
+      )
+    }
+
+    return {
+      data: null,
+      error: stableChallengeResult.error
+    }
+  }
+
+  const challengeRow = {
+    id: String(stableChallengeResult.data.id),
+    published: Boolean(stableChallengeResult.data.published ?? false),
+    currentPublishedVersionId: stableChallengeResult.data.current_published_version_id
+      ? String(stableChallengeResult.data.current_published_version_id)
+      : null,
+    currentDraftVersionId: stableChallengeResult.data.current_draft_version_id
+      ? String(stableChallengeResult.data.current_draft_version_id)
+      : null
+  } satisfies StableChallengeRow
+
+  const now = new Date().toISOString()
+  const versionPayload = {
+    challenge_id: challengeRow.id,
+    title: challengeTitle,
+    kind: payload.kind,
+    language: payload.language,
+    judge0_language_id: payload.judge0LanguageId,
+    reading_mdx: readingMdx,
+    prompt_mdx: payload.promptMdx,
+    starter_code: payload.starterCode,
+    solution_code: payload.solutionCode,
+    hidden_test_code: payload.hiddenTestCode,
+    choice_options: payload.kind === "multiple_choice" ? payload.choiceOptions : [],
+    choice_correct_key: payload.kind === "multiple_choice" ? payload.correctChoiceKey : null,
+    choice_explanation_mdx: payload.kind === "multiple_choice" ? payload.choiceExplanationMdx : "",
+    updated_at: now
+  }
+
+  if (payload.saveMode === "draft") {
+    let draftVersionId = challengeRow.currentDraftVersionId
+
+    if (draftVersionId) {
+      const { error: draftUpdateError } = await admin
+        .from("challenge_versions")
+        .update({
+          ...versionPayload,
+          status: "draft"
+        })
+        .eq("id", draftVersionId)
+
+      if (draftUpdateError) {
+        return { data: null, error: draftUpdateError }
+      }
+    } else {
+      const nextVersionNumber = await getNextChallengeVersionNumber(admin, challengeRow.id)
+      const { data: draftRow, error: draftInsertError } = await admin
+        .from("challenge_versions")
+        .insert({
+          ...versionPayload,
+          version_number: nextVersionNumber,
+          status: "draft",
+          source_version_id: challengeRow.currentPublishedVersionId,
+          created_by: userId
+        })
+        .select("id")
+        .single()
+
+      if (draftInsertError) {
+        return { data: null, error: draftInsertError }
+      }
+
+      draftVersionId = String(draftRow.id)
+    }
+
+    const { data: updatedChallenge, error: challengeUpdateError } = await admin
+      .from("challenges")
+      .update({
+        current_draft_version_id: draftVersionId,
+        published: Boolean(challengeRow.currentPublishedVersionId),
+        updated_at: now
+      })
+      .eq("id", challengeRow.id)
+      .select("id")
+      .single()
+
+    if (challengeUpdateError) {
+      return { data: null, error: challengeUpdateError }
+    }
+
+    return {
+      data: updatedChallenge,
+      error: null
+    }
+  }
+
+  let publishedVersionId = challengeRow.currentDraftVersionId
+
+  if (publishedVersionId) {
+    const { error: publishDraftError } = await admin
+      .from("challenge_versions")
+      .update({
+        ...versionPayload,
+        status: "published",
+        published_at: now,
+        published_by: userId
+      })
+      .eq("id", publishedVersionId)
+
+    if (publishDraftError) {
+      return { data: null, error: publishDraftError }
+    }
+  } else {
+    const nextVersionNumber = await getNextChallengeVersionNumber(admin, challengeRow.id)
+    const { data: publishedRow, error: publishInsertError } = await admin
+      .from("challenge_versions")
+      .insert({
+        ...versionPayload,
+        version_number: nextVersionNumber,
+        status: "published",
+        source_version_id: challengeRow.currentPublishedVersionId,
+        created_by: userId,
+        published_by: userId,
+        published_at: now
+      })
+      .select("id")
+      .single()
+
+    if (publishInsertError) {
+      return { data: null, error: publishInsertError }
+    }
+
+    publishedVersionId = String(publishedRow.id)
+  }
+
+  await archivePublishedChallengeVersion(admin, challengeRow.currentPublishedVersionId, publishedVersionId)
+
+  const { data: updatedChallenge, error: publishedChallengeError } = await admin
+    .from("challenges")
+    .update({
+      ...mirroredChallengeRow,
+      current_published_version_id: publishedVersionId,
+      current_draft_version_id: null
+    })
+    .eq("id", challengeRow.id)
+    .select("id")
+    .single()
+
+  if (publishedChallengeError) {
+    return { data: null, error: publishedChallengeError }
+  }
+
+  return {
+    data: updatedChallenge,
+    error: null
+  }
+}
+
+/**
+ * Persists assignment content while tolerating older databases that have not
+ * added challenge-versioning tables yet.
+ */
+async function upsertChallengeRecord(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  userId: string,
+  payload: AuthoringBundleInput,
+  challengeSlug: string,
+  challengeTitle: string,
+  readingMdx: string | null
+) {
+  const versionProbe = await admin.from("challenge_versions").select("id").limit(1)
+
+  if (versionProbe.error && isMissingChallengeVersionSchema(versionProbe.error)) {
+    return upsertLegacyChallengeRecord(
+      admin,
+      payload,
+      challengeSlug,
+      challengeTitle,
+      readingMdx,
+      payload.saveMode === "publish"
+    )
+  }
+
+  if (versionProbe.error) {
+    return {
+      data: null,
+      error: versionProbe.error
+    }
+  }
+
+  return upsertVersionedChallengeRecord(admin, userId, payload, challengeSlug, challengeTitle, readingMdx)
 }
 
 /**
@@ -483,9 +852,9 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   const admin = createAdminClient()
   const challengeTitle = deriveChallengeTitle(payload.promptMdx)
   const lessonSummary = deriveLessonSummary(payload.bodyMdx)
-    // A blank assignment-reading field means "reuse the chapter reading".
-    // Only persist a challenge-level override when the author explicitly adds one.
-    const normalizedReadingMdx = payload.readingMdx?.trim() ? payload.readingMdx.trim() : null
+  // A blank assignment-reading field means "reuse the chapter reading".
+  // Only persist a challenge-level override when the author explicitly adds one.
+  const normalizedReadingMdx = payload.readingMdx?.trim() ? payload.readingMdx.trim() : null
   const { data: courseRow, error: courseError } = await admin!
     .from("courses")
     .upsert(
@@ -514,6 +883,7 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   const challengeSlug = await resolveChallengeSlug(admin!, payload.lessonSlug, payload.challengeSlug)
   const { data: challengeRow, error: challengeError } = await upsertChallengeRecord(
     admin!,
+    user.id,
     payload,
     challengeSlug,
     challengeTitle,
@@ -594,6 +964,6 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
 
   return {
     success: true,
-    message: "Chapter and assignment saved."
+    message: payload.saveMode === "draft" ? "Draft saved." : "Chapter and assignment published."
   }
 }

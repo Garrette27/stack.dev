@@ -73,19 +73,38 @@ async function recalculateLessonProgress(
   client: ProgressStoreClient,
   userId: string,
   lessonId: string,
-  lessonChallengeIds: string[]
+  lessonChallenges: Array<Pick<Challenge, "id" | "versionId">>
 ) {
-  const { data: remainingSubmissions } = await client
-    .from("submissions")
-    .select("id,passed,created_at,challenge_id")
-    .eq("user_id", userId)
-    .in("challenge_id", lessonChallengeIds)
-    .order("created_at", { ascending: false })
+  const challengeIds = lessonChallenges.map((challenge) => challenge.id)
+  const challengeVersionIds = lessonChallenges
+    .map((challenge) => challenge.versionId)
+    .filter((versionId): versionId is string => Boolean(versionId))
 
-  const submissions = (remainingSubmissions ?? []).map((row) => ({
-    id: String(row.id),
-    passed: Boolean(row.passed)
-  }))
+  const [versionSubmissionRows, legacySubmissionRows] = await Promise.all([
+    challengeVersionIds.length
+      ? client
+          .from("submissions")
+          .select("id,passed,created_at,challenge_id,challenge_version_id")
+          .eq("user_id", userId)
+          .in("challenge_version_id", challengeVersionIds)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+    challengeIds.length
+      ? client
+          .from("submissions")
+          .select("id,passed,created_at,challenge_id,challenge_version_id")
+          .eq("user_id", userId)
+          .is("challenge_version_id", null)
+          .in("challenge_id", challengeIds)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] })
+  ])
+
+  const submissions = [...(versionSubmissionRows.data ?? []), ...(legacySubmissionRows.data ?? [])]
+    .map((row) => ({
+      id: String(row.id),
+      passed: Boolean(row.passed),
+      createdAt: String(row.created_at ?? "")
+    }))
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
 
   const latestSubmissionId = submissions[0]?.id ?? null
   const hasAnySubmission = submissions.length > 0
@@ -190,6 +209,9 @@ export async function resetChallengeProgressForCurrentUser(
   const course = snapshot.courses.find((item) => item.slug === payload.courseSlug)
   const lesson = snapshot.lessons.find((item) => item.courseId === course?.id && item.slug === payload.lessonSlug)
   const challenge = snapshot.challenges.find((item) => item.slug === payload.challengeSlug)
+  const lessonChallenges = (lesson?.challengeIds ?? [])
+    .map((challengeId) => snapshot.challenges.find((item) => item.id === challengeId) ?? null)
+    .filter((item): item is Challenge => Boolean(item))
 
   if (!course || !lesson || !challenge || !lesson.challengeIds.includes(challenge.id)) {
     return {
@@ -206,15 +228,12 @@ export async function resetChallengeProgressForCurrentUser(
     }
   }
 
-  const { data: deletedSubmissions, error: deleteError } = await client
-    .from("submissions")
-    .delete()
-    .eq("user_id", user.id)
-    .eq("challenge_id", challenge.id)
-    .eq("passed", true)
-    .select("id")
+  const deleteQuery = client.from("submissions").delete().eq("user_id", user.id).eq("passed", true)
+  const deleteResult = challenge.versionId
+    ? await deleteQuery.eq("challenge_version_id", challenge.versionId).select("id")
+    : await deleteQuery.eq("challenge_id", challenge.id).select("id")
 
-  if (deleteError) {
+  if (deleteResult.error) {
     return {
       status: 500,
       body: { ok: false, message: "Could not clear progress for this assignment." }
@@ -222,7 +241,7 @@ export async function resetChallengeProgressForCurrentUser(
   }
 
   try {
-    await recalculateLessonProgress(client, user.id, lesson.id, lesson.challengeIds)
+    await recalculateLessonProgress(client, user.id, lesson.id, lessonChallenges)
   } catch {
     return {
       status: 500,
@@ -232,7 +251,7 @@ export async function resetChallengeProgressForCurrentUser(
 
   return {
     status: 200,
-    body: { ok: true, message: deletedSubmissions?.length ? undefined : "No stored pass mark was found for this assignment." }
+    body: { ok: true, message: deleteResult.data?.length ? undefined : "No stored pass mark was found for this assignment." }
   }
 }
 
@@ -333,14 +352,42 @@ export async function getCompletedChallengeSlugs(challenges: Challenge[]): Promi
   }
 
   const challengeSlugById = new Map(challenges.map((challenge) => [challenge.id, challenge.slug]))
+  const challengeSlugByVersionId = new Map(
+    challenges
+      .filter((challenge) => challenge.versionId)
+      .map((challenge) => [challenge.versionId as string, challenge.slug])
+  )
   const challengeIds = challenges.map((challenge) => challenge.id)
+  const challengeVersionIds = challenges
+    .map((challenge) => challenge.versionId)
+    .filter((versionId): versionId is string => Boolean(versionId))
 
-  const { data } = await supabase
-    .from("submissions")
-    .select("challenge_id")
-    .eq("user_id", user.id)
-    .eq("passed", true)
-    .in("challenge_id", challengeIds)
+  const [versionRows, legacyRows] = await Promise.all([
+    challengeVersionIds.length
+      ? supabase
+          .from("submissions")
+          .select("challenge_version_id")
+          .eq("user_id", user.id)
+          .eq("passed", true)
+          .in("challenge_version_id", challengeVersionIds)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+    challengeIds.length
+      ? supabase
+          .from("submissions")
+          .select("challenge_id")
+          .eq("user_id", user.id)
+          .eq("passed", true)
+          .is("challenge_version_id", null)
+          .in("challenge_id", challengeIds)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] })
+  ])
 
-  return [...new Set((data ?? []).map((row) => challengeSlugById.get(String(row.challenge_id))).filter(Boolean))] as string[]
+  return [
+    ...new Set(
+      [...(versionRows.data ?? [])]
+        .map((row) => challengeSlugByVersionId.get(String(row.challenge_version_id)))
+        .concat((legacyRows.data ?? []).map((row) => challengeSlugById.get(String(row.challenge_id))))
+        .filter(Boolean)
+    )
+  ] as string[]
 }

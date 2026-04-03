@@ -4,7 +4,7 @@ import { hasSupabaseEnv } from "@/lib/env"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import type { CourseReadingEntry, CourseWithLessons, LessonBundle } from "@/lib/types"
 
-import { loadOptionalLessonChallengeRows, loadSnapshotFromRows } from "./snapshot-loader"
+import { loadOptionalChallengeVersionRows, loadOptionalLessonChallengeRows, loadSnapshotFromRows } from "./snapshot-loader"
 import { sortLessons } from "./shared"
 
 async function getSupabaseContent() {
@@ -28,10 +28,22 @@ async function getSupabaseContent() {
         }
       }
 
-      const [{ data: courseRows }, { data: lessonRows }, { data: challengeRows }, lessonChallengeRows] = await Promise.all([
+      const [{ data: courseRows }, { data: lessonRows }, { data: challengeRows }, challengeVersionRows, lessonChallengeRows] = await Promise.all([
         supabase.from("courses").select("*").eq("published", true).order("title"),
         supabase.from("lessons").select("*").eq("published", true).order("order_index"),
         supabase.from("challenges").select("*").eq("published", true).order("title"),
+        loadOptionalChallengeVersionRows(async () => {
+          const result = await supabase
+            .from("challenge_versions")
+            .select("*")
+            .order("challenge_id")
+            .order("version_number", { ascending: false })
+
+          return {
+            data: (result.data ?? null) as Record<string, unknown>[] | null,
+            error: result.error ? { code: result.error.code, message: result.error.message } : null
+          }
+        }),
         loadOptionalLessonChallengeRows(async () => {
           const result = await supabase
             .from("lesson_challenges")
@@ -51,6 +63,7 @@ async function getSupabaseContent() {
           courseRows: (courseRows ?? []) as Record<string, unknown>[],
           lessonRows: (lessonRows ?? []) as Record<string, unknown>[],
           challengeRows: (challengeRows ?? []) as Record<string, unknown>[],
+          challengeVersionRows,
           lessonChallengeRows
         }
       }

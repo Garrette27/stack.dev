@@ -59,6 +59,16 @@ export function mapChallenge(row: Record<string, unknown>): Challenge {
     id: String(row.id),
     slug: String(row.slug),
     title: String(row.title),
+    versionId: row.id ? String(row.id) : null,
+    versionNumber: typeof row.version_number === "number" ? row.version_number : row.version_number ? Number(row.version_number) : null,
+    publishedVersionId: row.current_published_version_id ? String(row.current_published_version_id) : null,
+    draftVersionId: row.current_draft_version_id ? String(row.current_draft_version_id) : null,
+    publicationState:
+      String(row.status ?? (row.published ?? true ? "published" : "draft")) === "draft"
+        ? "draft"
+        : String(row.status ?? "") === "archived"
+          ? "archived"
+          : "published",
     kind,
     language,
     judge0LanguageId,

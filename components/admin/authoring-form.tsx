@@ -431,6 +431,20 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                 />
               </div>
 
+              <div className="rounded-[1.5rem] border border-black/8 bg-[color:rgb(25_31_45/0.03)] px-4 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--ink-strong)]">Publishing workflow</p>
+                    <p className="mt-1 text-sm leading-7 text-[var(--ink-muted)]">
+                      Drafts stay visible in admin so you can keep iterating. Publishing promotes the selected draft to the live learner version for this assignment.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-muted)] ring-1 ring-black/8">
+                    {selectedAssignment ? selectedAssignment.publicationState.replace("_", " ") : "new draft"}
+                  </span>
+                </div>
+              </div>
+
               <Field label="Assignment type">
                 <select
                   value={challengeKind}
@@ -563,8 +577,11 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
           </Card>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving..." : "Save chapter and assignment"}
+            <Button type="submit" name="saveMode" value="publish" disabled={pending}>
+              {pending ? "Saving..." : "Publish chapter and assignment"}
+            </Button>
+            <Button type="submit" name="saveMode" value="draft" variant="secondary" disabled={pending}>
+              {pending ? "Saving..." : "Save draft"}
             </Button>
             {state.message ? (
               <p className={state.success ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>{state.message}</p>

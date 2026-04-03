@@ -5,7 +5,8 @@ import { mockContent } from "@/lib/mock-data"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { Challenge, ContentSnapshot } from "@/lib/types"
 
-import { loadOptionalLessonChallengeRows, loadSnapshotFromRows } from "@/lib/content/snapshot-loader"
+import { mapChallengesFromRows } from "@/lib/content/challenge-versions"
+import { loadOptionalChallengeVersionRows, loadOptionalLessonChallengeRows, loadSnapshotFromRows } from "@/lib/content/snapshot-loader"
 import { mapChallenge } from "@/lib/content/shared"
 
 /**
@@ -23,7 +24,24 @@ export async function getRunnerChallengeBySlug(challengeSlug: string): Promise<C
     return null
   }
 
-  return mapChallenge(data as Record<string, unknown>)
+  const challengeRow = data as Record<string, unknown>
+  const currentPublishedVersionId = challengeRow.current_published_version_id ? String(challengeRow.current_published_version_id) : null
+
+  if (!currentPublishedVersionId) {
+    return mapChallenge(challengeRow)
+  }
+
+  const { data: versionRow, error: versionError } = await admin!
+    .from("challenge_versions")
+    .select("*")
+    .eq("id", currentPublishedVersionId)
+    .maybeSingle()
+
+  if (versionError?.code === "42P01" || versionError?.code === "PGRST205" || !versionRow) {
+    return mapChallenge(challengeRow)
+  }
+
+  return mapChallengesFromRows([challengeRow], [versionRow as Record<string, unknown>], "published")[0] ?? null
 }
 
 /**
@@ -43,10 +61,22 @@ export async function getAdminSnapshot(): Promise<ContentSnapshot> {
       }
 
       const admin = createAdminClient()
-      const [{ data: courseRows }, { data: lessonRows }, { data: challengeRows }, lessonChallengeRows] = await Promise.all([
+      const [{ data: courseRows }, { data: lessonRows }, { data: challengeRows }, challengeVersionRows, lessonChallengeRows] = await Promise.all([
         admin!.from("courses").select("*").order("title"),
         admin!.from("lessons").select("*").order("order_index"),
         admin!.from("challenges").select("*").order("title"),
+        loadOptionalChallengeVersionRows(async () => {
+          const result = await admin!
+            .from("challenge_versions")
+            .select("*")
+            .order("challenge_id")
+            .order("version_number", { ascending: false })
+
+          return {
+            data: (result.data ?? null) as Record<string, unknown>[] | null,
+            error: result.error ? { code: result.error.code, message: result.error.message } : null
+          }
+        }),
         loadOptionalLessonChallengeRows(async () => {
           const result = await admin!
             .from("lesson_challenges")
@@ -66,9 +96,11 @@ export async function getAdminSnapshot(): Promise<ContentSnapshot> {
           courseRows: (courseRows ?? []) as Record<string, unknown>[],
           lessonRows: (lessonRows ?? []) as Record<string, unknown>[],
           challengeRows: (challengeRows ?? []) as Record<string, unknown>[],
+          challengeVersionRows,
           lessonChallengeRows
         }
       }
-    }
+    },
+    challengeVersionMode: "draft_or_published"
   })
 }

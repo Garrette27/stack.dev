@@ -282,7 +282,7 @@ async function runJudge0Submission(
   })
 }
 
-async function persistSubmissionOutcome(payload: SubmissionPayload, outcome: SubmissionOutcome) {
+async function persistSubmissionOutcome(payload: SubmissionPayload, challenge: Challenge, outcome: SubmissionOutcome) {
   if (!hasSupabaseEnv()) {
     return
   }
@@ -296,9 +296,8 @@ async function persistSubmissionOutcome(payload: SubmissionPayload, outcome: Sub
     return
   }
 
-  const [{ data: courseRow }, { data: challengeRow }] = await Promise.all([
-    supabase!.from("courses").select("id").eq("slug", payload.courseSlug).maybeSingle(),
-    supabase!.from("challenges").select("id").eq("slug", payload.challengeSlug).maybeSingle()
+  const [{ data: courseRow }] = await Promise.all([
+    supabase!.from("courses").select("id").eq("slug", payload.courseSlug).maybeSingle()
   ])
 
   const { data: lessonRow } = await supabase!
@@ -312,7 +311,8 @@ async function persistSubmissionOutcome(payload: SubmissionPayload, outcome: Sub
     .from("submissions")
     .insert({
       user_id: user.id,
-      challenge_id: challengeRow?.id ?? null,
+      challenge_id: challenge.id,
+      challenge_version_id: challenge.versionId,
       source_code: payload.sourceCode ?? payload.selectedChoiceKey ?? "",
       status: outcome.status,
       stdout: outcome.stdout,
@@ -379,7 +379,7 @@ export async function submitChallenge(payload: SubmissionPayload): Promise<Submi
             challenge.hiddenTestCode
           )
 
-  await persistSubmissionOutcome(payload, outcome)
+  await persistSubmissionOutcome(payload, challenge, outcome)
 
   return {
     status: 200,

@@ -1,6 +1,7 @@
 export type CodeChallengeLanguage = "python" | "javascript" | "typescript" | "go" | "sqlite"
 
 export type ChallengeKind = "code" | "multiple_choice"
+export type ChallengePublicationState = "draft" | "published" | "archived"
 
 export type MultipleChoiceOption = {
   key: string
@@ -35,6 +36,11 @@ export type Challenge = {
   id: string
   slug: string
   title: string
+  versionId: string | null
+  versionNumber: number | null
+  publishedVersionId: string | null
+  draftVersionId: string | null
+  publicationState: ChallengePublicationState
   kind: ChallengeKind
   language: CodeChallengeLanguage | null
   judge0LanguageId: number | null

@@ -1,11 +1,13 @@
 import type { ContentSnapshot } from "@/lib/types"
 
+import { mapChallengesFromRows, type ChallengeVersionLoadMode } from "./challenge-versions"
 import { createMockSnapshot, mapChallenge, mapCourse, mapLesson } from "./shared"
 
 type SnapshotRows = {
   courseRows?: Record<string, unknown>[] | null
   lessonRows?: Record<string, unknown>[] | null
   challengeRows?: Record<string, unknown>[] | null
+  challengeVersionRows?: Record<string, unknown>[] | null
   lessonChallengeRows?: Record<string, unknown>[] | null
 }
 
@@ -19,6 +21,7 @@ type SnapshotLoaderOptions = {
   contentSourceReason: string
   emptyContentReason: string
   emptyMode: "mock" | "database"
+  challengeVersionMode?: ChallengeVersionLoadMode
 }
 
 type OptionalRowsResult = {
@@ -52,8 +55,14 @@ function buildLessonChallengeIdsByLessonId(rows: SnapshotRows, challengeIdBySlug
   return challengeIdsByLessonId
 }
 
-function buildDatabaseSnapshot(rows: SnapshotRows, contentSourceReason: string): ContentSnapshot {
-  const challenges = (rows.challengeRows ?? []).map((row) => mapChallenge(row))
+function buildDatabaseSnapshot(
+  rows: SnapshotRows,
+  contentSourceReason: string,
+  challengeVersionMode: ChallengeVersionLoadMode
+): ContentSnapshot {
+  const challenges = rows.challengeVersionRows
+    ? mapChallengesFromRows(rows.challengeRows ?? [], rows.challengeVersionRows, challengeVersionMode)
+    : (rows.challengeRows ?? []).map((row) => mapChallenge(row))
   const challengeIdBySlug = new Map(challenges.map((challenge) => [challenge.slug, challenge.id]))
   const lessonChallengeIdsByLessonId = buildLessonChallengeIdsByLessonId(rows, challengeIdBySlug)
   const courses = (rows.courseRows ?? []).map((row) => mapCourse(row))
@@ -86,7 +95,7 @@ export async function loadSnapshotFromRows(options: SnapshotLoaderOptions): Prom
     return createMockSnapshot(fallbackReason)
   }
 
-  const snapshot = buildDatabaseSnapshot(rows, options.contentSourceReason)
+  const snapshot = buildDatabaseSnapshot(rows, options.contentSourceReason, options.challengeVersionMode ?? "published")
   const hasLessonStructure = snapshot.courses.length > 0 && snapshot.lessons.length > 0
   const hasAnyRows = snapshot.courses.length > 0 || snapshot.lessons.length > 0 || snapshot.challenges.length > 0
 
@@ -102,6 +111,26 @@ export async function loadSnapshotFromRows(options: SnapshotLoaderOptions): Prom
   }
 
   return snapshot
+}
+
+/**
+ * Reads challenge version rows when versioning has been migrated and silently
+ * falls back to direct challenge content while older databases catch up.
+ */
+export async function loadOptionalChallengeVersionRows(
+  loadRows: () => Promise<OptionalRowsResult>
+): Promise<Record<string, unknown>[] | null> {
+  const { data, error } = await loadRows()
+
+  if (!error) {
+    return data ?? []
+  }
+
+  if (error.code === "42P01" || error.code === "PGRST205") {
+    return null
+  }
+
+  throw new Error(error.message ?? "Unable to load challenge version rows.")
 }
 
 /**
