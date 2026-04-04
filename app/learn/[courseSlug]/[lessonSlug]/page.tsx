@@ -89,6 +89,11 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
     challengeReadingMdx: activeChallenge?.readingMdx,
     challengePromptMdx: activeChallenge?.promptMdx
   })
+  const chapterReferenceReading = data.lesson.bodyMdx.trim()
+  const shouldShowChapterReference = Boolean(
+    chapterReferenceReading &&
+      chapterReferenceReading !== readingSource.trim()
+  )
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-10 sm:px-6 xl:px-10">
@@ -152,6 +157,15 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
               Practice for this chapter will appear here when it is ready.
             </div>
           )}
+
+          {shouldShowChapterReference ? (
+            <LessonPanelSection title="Chapter guide" defaultOpen={false}>
+              <div className="mb-4">
+                <Badge className="bg-white/10 text-white">Chapter reading</Badge>
+              </div>
+              <MdxRenderer source={chapterReferenceReading} tone="dark" />
+            </LessonPanelSection>
+          ) : null}
 
           {selectedReferenceEntry ? (
             <LessonPanelSection title={selectedReferenceEntry.title} defaultOpen>

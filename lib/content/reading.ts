@@ -17,9 +17,10 @@ export function getMeaningfulAssignmentReadingOverride({
 
 /**
  * Returns the reading content a learner should see for the active assignment.
- * Assignment-specific reading wins. If no override exists, chapter reading is
- * the default source. A prompt-only fallback is used only when the chapter has
- * no reading at all.
+ * Assignment-specific reading wins. If no override exists, the assignment
+ * prompt becomes the primary reading so switching assignments updates the main
+ * reading card consistently. Chapter reading remains a separate chapter-level
+ * reference for the lesson.
  */
 export function getEffectiveAssignmentReading({
   lessonBodyMdx,
@@ -37,20 +38,19 @@ export function getEffectiveAssignmentReading({
     return normalizedChallengeReading
   }
 
-  if (normalizedLessonBody) {
-    return normalizedLessonBody
-  }
-
   if (normalizedPrompt) {
     return normalizedPrompt
+  }
+
+  if (normalizedLessonBody) {
+    return normalizedLessonBody
   }
 
   return ""
 }
 
 /**
- * Describes whether the learner is seeing a chapter-level or assignment-level
- * reading source for the selected assignment.
+ * Describes which source currently owns the main learner reading card.
  */
 export function getEffectiveAssignmentReadingLabel({
   lessonBodyMdx,
@@ -68,12 +68,12 @@ export function getEffectiveAssignmentReadingLabel({
     return "Assignment-specific reading"
   }
 
-  if (normalizedLessonBody) {
-    return "Chapter reading"
-  }
-
   if (normalizedPrompt) {
     return "Assignment prompt fallback"
+  }
+
+  if (normalizedLessonBody) {
+    return "Chapter reading"
   }
 
   return "No reading yet"
