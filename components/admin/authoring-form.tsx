@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { upsertAuthoringBundleAction, type AuthoringActionState } from "@/app/admin/actions"
+import { AuthoringCodeFenceField } from "@/components/admin/authoring-code-fence-field"
 import { MultipleChoiceOptionsEditor } from "@/components/admin/multiple-choice-options-editor"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,7 +32,6 @@ import {
 } from "@/lib/admin/authoring-session"
 import {
   AUTHORING_LANGUAGE_OPTIONS,
-  getCodeFenceSnippet,
   getDefaultJudge0LanguageId,
   getHiddenTestTemplate,
   getStarterTemplate,
@@ -59,14 +59,6 @@ function getAssignmentLabel(challenge: Challenge, index: number) {
   const safeTitle = normalizedTitle || `Assignment ${index + 1}`
   const shortTitle = safeTitle.length > 34 ? `${safeTitle.slice(0, 31).trimEnd()}...` : safeTitle
   return `A${index + 1}: ${shortTitle}`
-}
-
-function appendCodeFence(source: string, language: NonNullable<Challenge["language"]>) {
-  const { label, example } = getCodeFenceSnippet(language)
-  const trimmed = source.trimEnd()
-  const prefix = trimmed ? "\n\n" : ""
-
-  return `${trimmed}${prefix}\`\`\`${label}\n${example}\n\`\`\`\n`
 }
 
 function getLessonsForCourse(snapshot: ContentSnapshot, courseId: string | null) {
@@ -895,40 +887,17 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                 </span>
               </p>
 
-              <Field label="Chapter guide (optional)">
-                <Textarea
-                  name="bodyMdx"
-                  rows={16}
-                  value={bodyMdx}
-                  onChange={(event) => setBodyMdx(event.target.value)}
-                  placeholder={"Optional background for the whole chapter.\n\nLeave it blank if each assignment should stand on its own."}
-                />
-                <div className="mt-3 flex flex-wrap gap-3">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setBodyMdx("")}
-                  >
-                    No chapter guide
-                  </Button>
-                  {AUTHORING_LANGUAGE_OPTIONS.map((option) => (
-                    <Button
-                      key={`chapter-fence-${option}`}
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setBodyMdx((current) => appendCodeFence(current, option))}
-                    >
-                      {`Insert ${option} code block`}
-                    </Button>
-                  ))}
-                </div>
-                <p className="text-sm leading-7 text-[var(--ink-muted)]">
-                  Code examples render in a read-only code panel on the learner page. This chapter guide is optional:
-                  when present, learners can open it separately from the assignment reading.
-                </p>
-              </Field>
+              <AuthoringCodeFenceField
+                label="Chapter guide (optional)"
+                name="bodyMdx"
+                rows={16}
+                value={bodyMdx}
+                onChange={setBodyMdx}
+                onClear={() => setBodyMdx("")}
+                placeholder={"Optional background for the whole chapter.\n\nLeave it blank if each assignment should stand on its own."}
+                emptyActionLabel="No chapter guide"
+                helperText="Code examples render in a read-only code panel on the learner page. This chapter guide is optional: when present, learners can open it separately from the assignment reading."
+              />
             </CardContent>
           </Card>
 
@@ -1022,40 +991,17 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                 </select>
               </Field>
 
-              <Field label="Assignment reading (optional, only for the selected assignment)">
-                <Textarea
-                  name="readingMdx"
-                  rows={10}
-                  value={readingMdx}
-                  onChange={(event) => setReadingMdx(event.target.value)}
-                  placeholder={"Use this only when one assignment needs its own reading.\n\nLeave it blank to use the assignment prompt as the main learner reading."}
-                />
-                <div className="mt-3 flex flex-wrap gap-3">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setReadingMdx("")}
-                  >
-                    Use assignment prompt
-                  </Button>
-                  {AUTHORING_LANGUAGE_OPTIONS.map((option) => (
-                    <Button
-                      key={`assignment-fence-${option}`}
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setReadingMdx((current) => appendCodeFence(current, option))}
-                    >
-                      {`Insert ${option} code block`}
-                    </Button>
-                  ))}
-                </div>
-                <p className="text-sm leading-7 text-[var(--ink-muted)]">
-                  Leave this blank when the assignment prompt already explains the work well enough. Fill it only when
-                  this question needs separate study text.
-                </p>
-              </Field>
+              <AuthoringCodeFenceField
+                label="Assignment reading (optional, only for the selected assignment)"
+                name="readingMdx"
+                rows={10}
+                value={readingMdx}
+                onChange={setReadingMdx}
+                onClear={() => setReadingMdx("")}
+                placeholder={"Use this only when one assignment needs its own reading.\n\nLeave it blank to use the assignment prompt as the main learner reading."}
+                emptyActionLabel="Use assignment prompt"
+                helperText="Leave this blank when the assignment prompt already explains the work well enough. Fill it only when this question needs separate study text."
+              />
 
               <Field label="Assignment prompt (MDX)">
                 <Textarea

@@ -90,9 +90,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </div>
       </section>
 
-      <AnalyticsOverview snapshot={analytics} />
-
       <AuthoringForm snapshot={snapshot} initialSelection={initialSelection} />
+
+      <AnalyticsOverview snapshot={analytics} />
 
       <section className="grid gap-5">
         <Card>

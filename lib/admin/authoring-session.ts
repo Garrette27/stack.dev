@@ -32,13 +32,15 @@ type PersistedAuthoringSession = {
   selection: PersistedAuthoringSelection | null
   lessonDraftsByKey: Record<string, PersistedLessonDraft>
   assignmentDraftsByKey: Record<string, PersistedAssignmentDraft>
+  codeFenceToolOrder: string[]
 }
 
 function getEmptySession(): PersistedAuthoringSession {
   return {
     selection: null,
     lessonDraftsByKey: {},
-    assignmentDraftsByKey: {}
+    assignmentDraftsByKey: {},
+    codeFenceToolOrder: []
   }
 }
 
@@ -82,7 +84,10 @@ function readPersistedAuthoringSession(): PersistedAuthoringSession {
       assignmentDraftsByKey:
         parsed.assignmentDraftsByKey && typeof parsed.assignmentDraftsByKey === "object"
           ? (parsed.assignmentDraftsByKey as Record<string, PersistedAssignmentDraft>)
-          : {}
+          : {},
+      codeFenceToolOrder: Array.isArray(parsed.codeFenceToolOrder)
+        ? parsed.codeFenceToolOrder.filter((value): value is string => typeof value === "string")
+        : []
     }
   } catch {
     return getEmptySession()
@@ -141,5 +146,15 @@ export function readPersistedAssignmentDraft(draftKey: string) {
 export function writePersistedAssignmentDraft(draftKey: string, draft: PersistedAssignmentDraft) {
   const session = readPersistedAuthoringSession()
   session.assignmentDraftsByKey[draftKey] = draft
+  writePersistedAuthoringSession(session)
+}
+
+export function readPersistedCodeFenceToolOrder() {
+  return readPersistedAuthoringSession().codeFenceToolOrder
+}
+
+export function writePersistedCodeFenceToolOrder(order: string[]) {
+  const session = readPersistedAuthoringSession()
+  session.codeFenceToolOrder = order
   writePersistedAuthoringSession(session)
 }

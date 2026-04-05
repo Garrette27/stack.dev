@@ -22,11 +22,13 @@ const C_LIKE_KEYWORDS = new Set([
   "export",
   "extends",
   "false",
+  "final",
   "finally",
   "for",
   "from",
   "function",
   "if",
+  "implements",
   "import",
   "in",
   "instanceof",
@@ -34,14 +36,22 @@ const C_LIKE_KEYWORDS = new Set([
   "let",
   "new",
   "null",
+  "package",
+  "private",
+  "protected",
+  "public",
   "return",
+  "static",
+  "super",
   "switch",
+  "this",
   "throw",
   "true",
   "try",
   "typeof",
   "undefined",
   "var",
+  "void",
   "while"
 ])
 
@@ -159,6 +169,7 @@ function getLanguageFamily(language: string | null) {
     case "typescript":
     case "ts":
     case "go":
+    case "java":
       return "clike"
     case "python":
     case "py":
