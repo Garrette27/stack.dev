@@ -13,11 +13,11 @@ import {
 
 function readDocumentTheme(): AppTheme {
   if (typeof document === "undefined") {
-    return "light"
+    return "dark"
   }
 
   const theme = document.documentElement.dataset.theme
-  return isAppTheme(theme) ? theme : "light"
+  return isAppTheme(theme) ? theme : "dark"
 }
 
 function persistTheme(theme: AppTheme) {
@@ -32,7 +32,7 @@ function persistTheme(theme: AppTheme) {
  * behind one focused client component.
  */
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<AppTheme>("light")
+  const [theme, setTheme] = useState<AppTheme>("dark")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {

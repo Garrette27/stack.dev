@@ -16,27 +16,16 @@ export default async function LearnIndexPage() {
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-10 px-4 py-12 sm:px-6 xl:px-10">
-      <section className="grid gap-5">
-        <Badge>Curriculum</Badge>
-        <h1 className="max-w-5xl font-serif text-5xl tracking-tight text-[var(--ink-strong)]">
-          Choose your next course, project, or focused training block.
-        </h1>
+      <section className="grid gap-3">
+        <h1 className="max-w-5xl font-serif text-5xl tracking-tight text-[var(--ink-strong)]">Practice</h1>
         <p className="max-w-3xl text-lg leading-8 text-[var(--ink)]">
-          The catalog is now prepared for larger learning paths, guided projects, portfolio milestones, and deeper
-          follow-up topics without forcing every experience into one flat list.
+          Pick up where you left off or start a new course.
         </p>
       </section>
 
       {curriculum.trackCards.length ? (
         <section className="grid gap-5">
-          <div className="space-y-2">
-            <Badge className="bg-[color:rgb(25_31_45/0.08)] text-[var(--ink-strong)]">Curated paths</Badge>
-            <h2 className="font-serif text-3xl tracking-tight text-[var(--ink-strong)]">Start from a larger path</h2>
-            <p className="max-w-3xl text-sm leading-7 text-[var(--ink-muted)]">
-              These path cards sit above individual courses so you can scale into Boot.dev-style learning tracks later
-              without rebuilding the content model.
-            </p>
-          </div>
+          <h2 className="font-serif text-3xl tracking-tight text-[var(--ink-strong)]">Paths</h2>
 
           <div className="grid gap-5 lg:grid-cols-3">
             {curriculum.trackCards.map((track) => (
@@ -136,13 +125,10 @@ export default async function LearnIndexPage() {
           <CardHeader>
             <div className="flex items-center gap-2 text-[var(--accent)]">
               <Sparkles className="h-4 w-4" />
-              <CardDescription>Curriculum is ready</CardDescription>
+              <CardDescription>Coming soon</CardDescription>
             </div>
             <CardTitle>No published courses yet</CardTitle>
-            <CardDescription>
-              The curriculum layer is in place. Once you publish more courses, projects, or training content, they will
-              group into the right shelves automatically.
-            </CardDescription>
+            <CardDescription>New courses and practice paths will show up here once they are available.</CardDescription>
           </CardHeader>
         </Card>
       ) : null}
