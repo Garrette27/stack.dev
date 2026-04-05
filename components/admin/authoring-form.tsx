@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { createDefaultMultipleChoiceOptions, ensureMultipleChoiceOptionShape } from "@/lib/challenges/multiple-choice"
 import {
   getEffectiveAssignmentReading,
-  getEffectiveAssignmentReadingLabel
+  getEffectiveAssignmentReadingLabel,
+  getChapterGuideReading
 } from "@/lib/content/reading"
 import {
   buildPersistedAssignmentDraftKey,
@@ -317,6 +318,15 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
   const learnerReadingLabel = useMemo(
     () =>
       getEffectiveAssignmentReadingLabel({
+        lessonBodyMdx: bodyMdx,
+        challengeReadingMdx: readingMdx,
+        challengePromptMdx: promptMdx
+      }),
+    [bodyMdx, promptMdx, readingMdx]
+  )
+  const chapterGuidePreview = useMemo(
+    () =>
+      getChapterGuideReading({
         lessonBodyMdx: bodyMdx,
         challengeReadingMdx: readingMdx,
         challengePromptMdx: promptMdx
@@ -885,16 +895,23 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                 </span>
               </p>
 
-              <Field label="Chapter reading (shared across this chapter)">
+              <Field label="Chapter guide (optional)">
                 <Textarea
                   name="bodyMdx"
                   rows={16}
                   value={bodyMdx}
                   onChange={(event) => setBodyMdx(event.target.value)}
-                  placeholder={"# Variables\n\nExplain the concept clearly.\n\n- Keep it short\n- Keep it practical"}
-                  required
+                  placeholder={"Optional background for the whole chapter.\n\nLeave it blank if each assignment should stand on its own."}
                 />
                 <div className="mt-3 flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setBodyMdx("")}
+                  >
+                    No chapter guide
+                  </Button>
                   {AUTHORING_LANGUAGE_OPTIONS.map((option) => (
                     <Button
                       key={`chapter-fence-${option}`}
@@ -908,8 +925,8 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                   ))}
                 </div>
                 <p className="text-sm leading-7 text-[var(--ink-muted)]">
-                  Code examples render in a read-only code panel on the learner page. These buttons insert the fenced Markdown for you.
-                  Edits here affect every assignment in this chapter; use the assignment reading field below only when one assignment needs its own study text.
+                  Code examples render in a read-only code panel on the learner page. This chapter guide is optional:
+                  when present, learners can open it separately from the assignment reading.
                 </p>
               </Field>
             </CardContent>
@@ -959,12 +976,12 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                   <div>
                     <p className="text-sm font-semibold text-[var(--ink-strong)]">Learner reading preview</p>
                     <p className="mt-1 text-sm leading-7 text-[var(--ink-muted)]">
-                      Switching assignments changes this preview immediately. Chapter reading stays in the chapter editor above; this preview shows what the learner will actually read for the selected assignment.
+                      Switching assignments changes this preview immediately. If assignment reading is blank, the
+                      assignment prompt becomes the main learner reading.
                     </p>
-                    {learnerReadingLabel === "Shared chapter reading" ? (
+                    {chapterGuidePreview ? (
                       <p className="mt-2 text-sm leading-7 text-[var(--ink-muted)]">
-                        This assignment is using the shared chapter guide right now. Add assignment reading below only if
-                        this one question needs its own study text.
+                        The chapter guide is available separately on the learner page whenever you add one here.
                       </p>
                     ) : null}
                   </div>
@@ -1011,7 +1028,7 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                   rows={10}
                   value={readingMdx}
                   onChange={(event) => setReadingMdx(event.target.value)}
-                  placeholder={"Use this only when one assignment needs its own reading.\n\nLeave it blank to reuse the chapter reading above."}
+                  placeholder={"Use this only when one assignment needs its own reading.\n\nLeave it blank to use the assignment prompt as the main learner reading."}
                 />
                 <div className="mt-3 flex flex-wrap gap-3">
                   <Button
@@ -1020,7 +1037,7 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                     size="sm"
                     onClick={() => setReadingMdx("")}
                   >
-                    Use chapter reading
+                    Use assignment prompt
                   </Button>
                   {AUTHORING_LANGUAGE_OPTIONS.map((option) => (
                     <Button
@@ -1035,7 +1052,8 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                   ))}
                 </div>
                 <p className="text-sm leading-7 text-[var(--ink-muted)]">
-                  Leave this blank when the assignment should use the chapter reading. Fill it only when one assignment needs its own study text.
+                  Leave this blank when the assignment prompt already explains the work well enough. Fill it only when
+                  this question needs separate study text.
                 </p>
               </Field>
 

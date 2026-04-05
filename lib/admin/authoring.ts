@@ -25,7 +25,7 @@ const authoringBaseSchema = z.object({
   courseSlug: z.string().min(3),
   lessonTitle: z.string().min(3),
   lessonSlug: z.string().min(3),
-  bodyMdx: z.string().min(20),
+  bodyMdx: z.string(),
   challengeSlug: z.string().optional(),
   saveMode: z.enum(["draft", "publish"]),
   kind: z.enum(["code", "multiple_choice"]),
@@ -328,17 +328,18 @@ function deriveChallengeTitle(promptMdx: string) {
 }
 
 /**
- * Derives a compact chapter summary from the authored reading text so the admin
- * form does not need a second field for the same concept.
+ * Derives a compact chapter summary from the optional guide text when present.
+ * Blank chapter guides fall back to the lesson title so authors can leave the
+ * guide empty without degrading the lesson card copy.
  */
-function deriveLessonSummary(bodyMdx: string) {
+function deriveLessonSummary(bodyMdx: string, lessonTitle: string) {
   const firstMeaningfulLine = bodyMdx
     .split(/\r?\n/)
     .map((line) => line.replace(/^#+\s*/, "").replace(/^[-*]\s*/, "").trim())
     .find(Boolean)
 
   if (!firstMeaningfulLine) {
-    return "Practical reading and assignment."
+    return `${lessonTitle} practice and assignments.`
   }
 
   return firstMeaningfulLine.length > 120
@@ -854,9 +855,10 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
 
   const admin = createAdminClient()
   const challengeTitle = deriveChallengeTitle(payload.promptMdx)
-  const lessonSummary = deriveLessonSummary(payload.bodyMdx)
-  // A blank assignment-reading field means "reuse the chapter reading".
-  // Only persist a challenge-level override when the author explicitly adds one.
+  const lessonSummary = deriveLessonSummary(payload.bodyMdx, payload.lessonTitle)
+  // Only persist a challenge-level reading override when the author explicitly
+  // adds one. Blank input means the assignment should fall back to its own
+  // prompt, with the chapter guide remaining optional.
   const normalizedReadingMdx = payload.readingMdx?.trim() ? payload.readingMdx.trim() : null
   const { data: courseRow, error: courseError } = await admin!
     .from("courses")

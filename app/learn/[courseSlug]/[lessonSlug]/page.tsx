@@ -6,7 +6,7 @@ import { notFound } from "next/navigation"
 import { LessonInteractiveShell } from "@/components/learn/lesson-interactive-shell"
 import { LessonSideTools } from "@/components/learn/lesson-side-tools"
 import { Badge } from "@/components/ui/badge"
-import { getEffectiveAssignmentReading } from "@/lib/content/reading"
+import { resolveAssignmentReading } from "@/lib/content/reading"
 import { getCurrentUser, getLessonPageData } from "@/lib/data"
 import { MdxRenderer } from "@/lib/mdx"
 import { getCompletedChallengeSlugs } from "@/lib/progress"
@@ -79,16 +79,14 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
   const currentHref = `/learn/${data.course.slug}/${data.lesson.slug}${activeChallenge ? `?assignment=${activeChallenge.slug}` : ""}`
   const selectedReferenceEntry =
     data.courseReadingEntries.find((entry) => entry.id === reference) ?? null
-  const readingSource = getEffectiveAssignmentReading({
+  const readingState = resolveAssignmentReading({
     lessonBodyMdx: data.lesson.bodyMdx,
     challengeReadingMdx: activeChallenge?.readingMdx,
     challengePromptMdx: activeChallenge?.promptMdx
   })
-  const chapterReferenceReading = data.lesson.bodyMdx.trim()
-  const shouldShowChapterReference = Boolean(
-    chapterReferenceReading &&
-      chapterReferenceReading !== readingSource.trim()
-  )
+  const readingSource = readingState.mainReadingMdx
+  const chapterReferenceReading = readingState.chapterGuideMdx
+  const shouldShowChapterReference = Boolean(chapterReferenceReading)
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-10 sm:px-6 xl:px-10">
@@ -152,9 +150,6 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
 
           {shouldShowChapterReference ? (
             <LessonPanelSection title="Chapter guide" defaultOpen={false}>
-              <div className="mb-4">
-                <Badge className="bg-white/10 text-white">Chapter reading</Badge>
-              </div>
               <MdxRenderer source={chapterReferenceReading} tone="dark" />
             </LessonPanelSection>
           ) : null}
