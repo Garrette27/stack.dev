@@ -13,6 +13,9 @@ import { slugify } from "@/lib/utils"
 export type AuthoringSaveResult = {
   success: boolean
   message: string
+  savedCourseSlug?: string
+  savedLessonSlug?: string
+  savedChallengeSlug?: string
 }
 
 export type AuthoringSaveMode = "draft" | "publish"
@@ -964,6 +967,9 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
 
   return {
     success: true,
-    message: payload.saveMode === "draft" ? "Draft saved." : "Chapter and assignment published."
+    message: payload.saveMode === "draft" ? "Draft saved." : "Chapter and assignment published.",
+    savedCourseSlug: payload.courseSlug,
+    savedLessonSlug: payload.lessonSlug,
+    savedChallengeSlug: challengeSlug
   }
 }

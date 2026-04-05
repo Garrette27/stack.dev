@@ -14,6 +14,9 @@ import {
 export type AuthoringActionState = {
   success: boolean
   message: string
+  savedCourseSlug?: string
+  savedLessonSlug?: string
+  savedChallengeSlug?: string
 }
 
 export type AdminAccessActionState = {

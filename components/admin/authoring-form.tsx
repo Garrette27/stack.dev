@@ -1,6 +1,7 @@
 "use client"
 
-import { useActionState, useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { upsertAuthoringBundleAction, type AuthoringActionState } from "@/app/admin/actions"
 import { MultipleChoiceOptionsEditor } from "@/components/admin/multiple-choice-options-editor"
@@ -14,6 +15,15 @@ import {
   getEffectiveAssignmentReading,
   getEffectiveAssignmentReadingLabel
 } from "@/lib/content/reading"
+import {
+  buildPersistedAuthoringDraftKey,
+  readPersistedAuthoringDraft,
+  readPersistedAuthoringSelection,
+  writePersistedAuthoringDraft,
+  writePersistedAuthoringSelection,
+  type PersistedAuthoringDraft,
+  type PersistedAuthoringSelection
+} from "@/lib/admin/authoring-session"
 import {
   AUTHORING_LANGUAGE_OPTIONS,
   getCodeFenceSnippet,
@@ -72,6 +82,79 @@ function getChallengesForLesson(snapshot: ContentSnapshot, lesson: Lesson | null
 }
 
 /**
+ * Captures the full authoring surface so admins can safely return to unfinished
+ * edits without re-pasting chapter or assignment content.
+ */
+function buildPersistedDraft({
+  courseTitle,
+  lessonTitle,
+  bodyMdx,
+  challengeKind,
+  language,
+  judge0LanguageId,
+  readingMdx,
+  promptMdx,
+  starterCode,
+  solutionCode,
+  hiddenTestCode,
+  choiceOptions,
+  correctChoiceKey,
+  choiceExplanationMdx
+}: PersistedAuthoringDraft): PersistedAuthoringDraft {
+  return {
+    courseTitle,
+    lessonTitle,
+    bodyMdx,
+    challengeKind,
+    language,
+    judge0LanguageId,
+    readingMdx,
+    promptMdx,
+    starterCode,
+    solutionCode,
+    hiddenTestCode,
+    choiceOptions,
+    correctChoiceKey,
+    choiceExplanationMdx
+  }
+}
+
+function applyPersistedDraft(
+  draft: PersistedAuthoringDraft,
+  setters: {
+    setCourseTitle: (value: string) => void
+    setLessonTitle: (value: string) => void
+    setBodyMdx: (value: string) => void
+    setChallengeKind: (value: ChallengeKind) => void
+    setLanguage: (value: NonNullable<Challenge["language"]>) => void
+    setJudge0LanguageId: (value: string) => void
+    setReadingMdx: (value: string) => void
+    setPromptMdx: (value: string) => void
+    setStarterCode: (value: string) => void
+    setSolutionCode: (value: string) => void
+    setHiddenTestCode: (value: string) => void
+    setChoiceOptions: (value: MultipleChoiceOption[]) => void
+    setCorrectChoiceKey: (value: string) => void
+    setChoiceExplanationMdx: (value: string) => void
+  }
+) {
+  setters.setCourseTitle(draft.courseTitle)
+  setters.setLessonTitle(draft.lessonTitle)
+  setters.setBodyMdx(draft.bodyMdx)
+  setters.setChallengeKind(draft.challengeKind)
+  setters.setLanguage((draft.language as NonNullable<Challenge["language"]>) || "javascript")
+  setters.setJudge0LanguageId(draft.judge0LanguageId)
+  setters.setReadingMdx(draft.readingMdx)
+  setters.setPromptMdx(draft.promptMdx)
+  setters.setStarterCode(draft.starterCode)
+  setters.setSolutionCode(draft.solutionCode)
+  setters.setHiddenTestCode(draft.hiddenTestCode)
+  setters.setChoiceOptions(ensureMultipleChoiceOptionShape(draft.choiceOptions))
+  setters.setCorrectChoiceKey(draft.correctChoiceKey)
+  setters.setChoiceExplanationMdx(draft.choiceExplanationMdx)
+}
+
+/**
  * Loads the selected assignment draft into the form so authors can revise one
  * assignment at a time without manually syncing every field.
  */
@@ -109,31 +192,50 @@ function loadAssignmentDraft(
  * The form keeps routing and internal challenge identity hidden behind generated fields.
  */
 export function AuthoringForm({ snapshot }: AuthoringFormProps) {
+  const router = useRouter()
   const [state, formAction, pending] = useActionState(upsertAuthoringBundleAction, initialState)
 
   const initialCourse = snapshot.courses[0] ?? null
   const initialLessons = getLessonsForCourse(snapshot, initialCourse?.id ?? null)
   const initialLesson = initialLessons[0] ?? null
+  const initialAssignments = getChallengesForLesson(snapshot, initialLesson)
+  const initialAssignment = initialAssignments[0] ?? null
+  const initialChoiceOptions = initialAssignment
+    ? ensureMultipleChoiceOptionShape(initialAssignment.choiceOptions)
+    : createDefaultMultipleChoiceOptions()
 
   const [courseSelection, setCourseSelection] = useState(initialCourse?.slug ?? NEW_COURSE)
   const [lessonSelection, setLessonSelection] = useState(initialLesson?.slug ?? NEW_CHAPTER)
-  const [assignmentSelection, setAssignmentSelection] = useState(NEW_ASSIGNMENT)
+  const [assignmentSelection, setAssignmentSelection] = useState(initialAssignment?.slug ?? NEW_ASSIGNMENT)
+  const [lastAppliedSaveSelectionKey, setLastAppliedSaveSelectionKey] = useState("")
 
   const [courseTitle, setCourseTitle] = useState(initialCourse?.title ?? "")
   const [lessonTitle, setLessonTitle] = useState(initialLesson?.title ?? "")
   const [bodyMdx, setBodyMdx] = useState(initialLesson?.bodyMdx ?? "")
 
-  const [challengeKind, setChallengeKind] = useState<ChallengeKind>("code")
-  const [language, setLanguage] = useState<NonNullable<Challenge["language"]>>("javascript")
-  const [judge0LanguageId, setJudge0LanguageId] = useState(String(getDefaultJudge0LanguageId("javascript")))
-  const [readingMdx, setReadingMdx] = useState("")
-  const [promptMdx, setPromptMdx] = useState("")
-  const [starterCode, setStarterCode] = useState(getStarterTemplate("javascript"))
-  const [solutionCode, setSolutionCode] = useState(getSolutionTemplate("javascript"))
-  const [hiddenTestCode, setHiddenTestCode] = useState(getHiddenTestTemplate("javascript"))
-  const [choiceOptions, setChoiceOptions] = useState<MultipleChoiceOption[]>(createDefaultMultipleChoiceOptions())
-  const [correctChoiceKey, setCorrectChoiceKey] = useState(createDefaultMultipleChoiceOptions()[0]?.key ?? "")
-  const [choiceExplanationMdx, setChoiceExplanationMdx] = useState("")
+  const [challengeKind, setChallengeKind] = useState<ChallengeKind>(initialAssignment?.kind ?? "code")
+  const [language, setLanguage] = useState<NonNullable<Challenge["language"]>>(initialAssignment?.language ?? "javascript")
+  const [judge0LanguageId, setJudge0LanguageId] = useState(
+    String(initialAssignment?.judge0LanguageId ?? getDefaultJudge0LanguageId(initialAssignment?.language ?? "javascript"))
+  )
+  const [readingMdx, setReadingMdx] = useState(initialAssignment?.readingMdx ?? "")
+  const [promptMdx, setPromptMdx] = useState(initialAssignment?.promptMdx ?? "")
+  const [starterCode, setStarterCode] = useState(
+    initialAssignment?.starterCode || getStarterTemplate(initialAssignment?.language ?? "javascript")
+  )
+  const [solutionCode, setSolutionCode] = useState(
+    initialAssignment?.solutionCode || getSolutionTemplate(initialAssignment?.language ?? "javascript")
+  )
+  const [hiddenTestCode, setHiddenTestCode] = useState(
+    initialAssignment?.hiddenTestCode || getHiddenTestTemplate(initialAssignment?.language ?? "javascript")
+  )
+  const [choiceOptions, setChoiceOptions] = useState<MultipleChoiceOption[]>(initialChoiceOptions)
+  const [correctChoiceKey, setCorrectChoiceKey] = useState(
+    initialAssignment?.correctChoiceKey ?? initialChoiceOptions[0]?.key ?? ""
+  )
+  const [choiceExplanationMdx, setChoiceExplanationMdx] = useState(initialAssignment?.choiceExplanationMdx ?? "")
+  const restoredSelectionRef = useRef(false)
+  const previousLessonSlugRef = useRef<string | null>(initialLesson?.slug ?? null)
 
   const selectedCourse = useMemo(
     () => snapshot.courses.find((course) => course.slug === courseSelection) ?? null,
@@ -174,6 +276,105 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     [bodyMdx, promptMdx, readingMdx]
   )
 
+  const applyStoredDraft = useCallback((draft: PersistedAuthoringDraft) => {
+    applyPersistedDraft(draft, {
+      setCourseTitle,
+      setLessonTitle,
+      setBodyMdx,
+      setChallengeKind,
+      setLanguage,
+      setJudge0LanguageId,
+      setReadingMdx,
+      setPromptMdx,
+      setStarterCode,
+      setSolutionCode,
+      setHiddenTestCode,
+      setChoiceOptions,
+      setCorrectChoiceKey,
+      setChoiceExplanationMdx
+    })
+  }, [])
+
+  const loadExistingAssignmentDraft = useCallback((challenge: Challenge) => {
+    loadAssignmentDraft(challenge, {
+      setChallengeKind,
+      setLanguage,
+      setJudge0LanguageId,
+      setReadingMdx,
+      setPromptMdx,
+      setStarterCode,
+      setSolutionCode,
+      setHiddenTestCode,
+      setChoiceOptions,
+      setCorrectChoiceKey,
+      setChoiceExplanationMdx
+    })
+  }, [])
+
+  const rememberSelection = useCallback((selection: PersistedAuthoringSelection | null) => {
+    writePersistedAuthoringSelection(selection)
+  }, [])
+
+  const buildSelection = useCallback(
+    (challengeSlug: string, override?: Partial<PersistedAuthoringSelection>) => {
+      const courseSlug =
+        override?.courseSlug ??
+        selectedCourse?.slug ??
+        (courseSelection === NEW_COURSE ? slugify(courseTitle) : courseSelection)
+      const lessonSlug =
+        override?.lessonSlug ??
+        selectedLesson?.slug ??
+        (lessonSelection === NEW_CHAPTER ? slugify(lessonTitle) : lessonSelection)
+
+      if (!courseSlug || !lessonSlug) {
+        return null
+      }
+
+      return {
+        courseSlug,
+        lessonSlug,
+        challengeSlug: override?.challengeSlug ?? challengeSlug
+      } satisfies PersistedAuthoringSelection
+    },
+    [courseSelection, courseTitle, lessonSelection, lessonTitle, selectedCourse?.slug, selectedLesson?.slug]
+  )
+
+  const loadPersistedDraftForSelection = useCallback(
+    (selection: PersistedAuthoringSelection | null) => {
+      if (!selection) {
+        return false
+      }
+
+      const storedDraft = readPersistedAuthoringDraft(buildPersistedAuthoringDraftKey(selection))
+      if (!storedDraft) {
+        return false
+      }
+
+      applyStoredDraft(storedDraft)
+      return true
+    },
+    [applyStoredDraft]
+  )
+
+  const openExistingAssignment = useCallback((
+    challenge: Challenge,
+    selectionOverride?: PersistedAuthoringSelection | null
+  ) => {
+    const nextSelection = selectionOverride ?? buildSelection(challenge.slug)
+
+    setAssignmentSelection(challenge.slug)
+
+    if (nextSelection) {
+      rememberSelection(nextSelection)
+    }
+
+    if (loadPersistedDraftForSelection(nextSelection)) {
+      return
+    }
+
+    loadExistingAssignmentDraft(challenge)
+  }, [buildSelection, loadExistingAssignmentDraft, loadPersistedDraftForSelection, rememberSelection])
+
   const resetCodeAssignmentDraft = (nextLanguage: NonNullable<Challenge["language"]>) => {
     setChallengeKind("code")
     setLanguage(nextLanguage)
@@ -212,6 +413,23 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     resetCodeAssignmentDraft(language)
   }
 
+  const openNewAssignmentDraft = useCallback((selectionOverride?: PersistedAuthoringSelection | null) => {
+    const nextSelection = selectionOverride ?? buildSelection(NEW_ASSIGNMENT)
+
+    setAssignmentSelection(NEW_ASSIGNMENT)
+
+    if (loadPersistedDraftForSelection(nextSelection)) {
+      return
+    }
+
+    if (challengeKind === "multiple_choice") {
+      resetMultipleChoiceAssignmentDraft()
+      return
+    }
+
+    resetCodeAssignmentDraft(language)
+  }, [buildSelection, challengeKind, language, loadPersistedDraftForSelection])
+
   useEffect(() => {
     if (!selectedCourse) {
       setCourseTitle("")
@@ -220,27 +438,176 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     }
 
     setCourseTitle(selectedCourse.title)
-    const nextLesson = courseLessons[0] ?? null
+    const nextLesson =
+      courseLessons.find((lesson) => lesson.slug === lessonSelection) ??
+      courseLessons[0] ??
+      null
     setLessonSelection(nextLesson?.slug ?? NEW_CHAPTER)
-  }, [courseSelection, selectedCourse, courseLessons])
+  }, [courseSelection, selectedCourse, courseLessons, lessonSelection])
 
   useEffect(() => {
+    const currentLessonSlug = selectedLesson?.slug ?? null
+    const lessonChanged = previousLessonSlugRef.current !== currentLessonSlug
+    previousLessonSlugRef.current = currentLessonSlug
+
     if (!selectedLesson) {
       setLessonTitle("")
       setBodyMdx("")
-      setAssignmentSelection(NEW_ASSIGNMENT)
-      resetCodeAssignmentDraft("javascript")
+      openNewAssignmentDraft()
       return
     }
 
     setLessonTitle(selectedLesson.title)
     setBodyMdx(selectedLesson.bodyMdx)
-    setAssignmentSelection(NEW_ASSIGNMENT)
-    resetCodeAssignmentDraft("javascript")
-  }, [lessonSelection, selectedLesson])
+
+    if (lessonChanged) {
+      const firstAssignment = chapterAssignments[0] ?? null
+      if (firstAssignment) {
+        openExistingAssignment(firstAssignment)
+        return
+      }
+
+      openNewAssignmentDraft(
+        buildSelection(NEW_ASSIGNMENT, {
+          courseSlug: selectedCourse?.slug ?? undefined,
+          lessonSlug: selectedLesson.slug
+        })
+      )
+      return
+    }
+
+    if (assignmentSelection === NEW_ASSIGNMENT) {
+      return
+    }
+
+    const currentAssignment =
+      chapterAssignments.find((challenge) => challenge.slug === assignmentSelection) ?? null
+
+    if (currentAssignment) {
+      return
+    }
+
+    const fallbackAssignment = chapterAssignments[0] ?? null
+    if (fallbackAssignment) {
+      openExistingAssignment(fallbackAssignment)
+      return
+    }
+
+    openNewAssignmentDraft()
+  }, [assignmentSelection, buildSelection, chapterAssignments, openExistingAssignment, openNewAssignmentDraft, selectedCourse?.slug, selectedLesson])
+
+  useEffect(() => {
+    if (restoredSelectionRef.current) {
+      return
+    }
+
+    restoredSelectionRef.current = true
+
+    const storedSelection = readPersistedAuthoringSelection()
+    if (!storedSelection) {
+      return
+    }
+
+    const storedCourse = snapshot.courses.find((course) => course.slug === storedSelection.courseSlug) ?? null
+    const storedLessons = getLessonsForCourse(snapshot, storedCourse?.id ?? null)
+    const storedLesson = storedLessons.find((lesson) => lesson.slug === storedSelection.lessonSlug) ?? null
+    const storedAssignments = getChallengesForLesson(snapshot, storedLesson)
+    const storedAssignment =
+      storedAssignments.find((challenge) => challenge.slug === storedSelection.challengeSlug) ?? null
+
+    if (!storedCourse || !storedLesson || !storedAssignment) {
+      rememberSelection(null)
+      return
+    }
+
+    setCourseSelection(storedSelection.courseSlug)
+    setLessonSelection(storedSelection.lessonSlug)
+    openExistingAssignment(storedAssignment, storedSelection)
+  }, [openExistingAssignment, rememberSelection, snapshot])
+
+  useEffect(() => {
+    if (!state.success || !state.savedCourseSlug || !state.savedLessonSlug || !state.savedChallengeSlug) {
+      return
+    }
+
+    const saveSelectionKey = `${state.savedCourseSlug}|${state.savedLessonSlug}|${state.savedChallengeSlug}|${state.message}`
+    if (saveSelectionKey === lastAppliedSaveSelectionKey) {
+      return
+    }
+
+    setLastAppliedSaveSelectionKey(saveSelectionKey)
+
+    const savedSelection = {
+      courseSlug: state.savedCourseSlug,
+      lessonSlug: state.savedLessonSlug,
+      challengeSlug: state.savedChallengeSlug
+    } satisfies PersistedAuthoringSelection
+
+    setCourseSelection(savedSelection.courseSlug)
+    setLessonSelection(savedSelection.lessonSlug)
+    setAssignmentSelection(savedSelection.challengeSlug)
+    rememberSelection(savedSelection)
+    router.refresh()
+  }, [lastAppliedSaveSelectionKey, rememberSelection, router, state])
 
   const resolvedCourseSlug = selectedCourse?.slug ?? slugify(courseTitle)
   const resolvedLessonSlug = selectedLesson?.slug ?? slugify(lessonTitle)
+  const currentDraftSelection = useMemo(() => {
+    const courseSlug = selectedCourse?.slug ?? resolvedCourseSlug
+    const lessonSlug = selectedLesson?.slug ?? resolvedLessonSlug
+
+    if (!courseSlug || !lessonSlug) {
+      return null
+    }
+
+    return {
+      courseSlug,
+      lessonSlug,
+      challengeSlug: assignmentSelection
+    } satisfies PersistedAuthoringSelection
+  }, [assignmentSelection, resolvedCourseSlug, resolvedLessonSlug, selectedCourse?.slug, selectedLesson?.slug])
+
+  useEffect(() => {
+    if (!currentDraftSelection) {
+      return
+    }
+
+    writePersistedAuthoringDraft(
+      buildPersistedAuthoringDraftKey(currentDraftSelection),
+      buildPersistedDraft({
+        courseTitle,
+        lessonTitle,
+        bodyMdx,
+        challengeKind,
+        language,
+        judge0LanguageId,
+        readingMdx,
+        promptMdx,
+        starterCode,
+        solutionCode,
+        hiddenTestCode,
+        choiceOptions,
+        correctChoiceKey,
+        choiceExplanationMdx
+      })
+    )
+  }, [
+    bodyMdx,
+    challengeKind,
+    choiceExplanationMdx,
+    choiceOptions,
+    correctChoiceKey,
+    courseTitle,
+    currentDraftSelection,
+    hiddenTestCode,
+    judge0LanguageId,
+    language,
+    lessonTitle,
+    promptMdx,
+    readingMdx,
+    solutionCode,
+    starterCode
+  ])
 
   return (
     <Card className="overflow-hidden">
@@ -256,7 +623,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
           <input type="hidden" name="courseSlug" value={resolvedCourseSlug} readOnly />
           <input type="hidden" name="lessonTitle" value={lessonTitle} readOnly />
           <input type="hidden" name="lessonSlug" value={resolvedLessonSlug} readOnly />
-          <input type="hidden" name="challengeSlug" value={selectedAssignment?.slug ?? ""} readOnly />
+          <input type="hidden" name="challengeSlug" value={assignmentSelection === NEW_ASSIGNMENT ? "" : assignmentSelection} readOnly />
           <input type="hidden" name="kind" value={challengeKind} readOnly />
           <input type="hidden" name="choiceOptionsJson" value={JSON.stringify(choiceOptions)} readOnly />
           <input type="hidden" name="choiceCorrectKey" value={correctChoiceKey} readOnly />
@@ -366,14 +733,9 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                   value={assignmentSelection}
                   onChange={(event) => {
                     const nextAssignment = event.target.value
-                    setAssignmentSelection(nextAssignment)
 
                     if (nextAssignment === NEW_ASSIGNMENT) {
-                      if (challengeKind === "multiple_choice") {
-                        resetMultipleChoiceAssignmentDraft()
-                      } else {
-                        resetCodeAssignmentDraft(language)
-                      }
+                      openNewAssignmentDraft()
                       return
                     }
 
@@ -381,19 +743,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                       chapterAssignments.find((challenge) => challenge.slug === nextAssignment) ?? null
 
                     if (nextSelectedAssignment) {
-                      loadAssignmentDraft(nextSelectedAssignment, {
-                        setChallengeKind,
-                        setLanguage,
-                        setJudge0LanguageId,
-                        setReadingMdx,
-                        setPromptMdx,
-                        setStarterCode,
-                        setSolutionCode,
-                        setHiddenTestCode,
-                        setChoiceOptions,
-                        setCorrectChoiceKey,
-                        setChoiceExplanationMdx
-                      })
+                      openExistingAssignment(nextSelectedAssignment)
                     }
                   }}
                   className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
@@ -408,7 +758,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
               </Field>
 
               <p className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3 text-sm text-[var(--ink-muted)]">
-                The assignment slug is generated for you when you create a new assignment. Pick an existing assignment above to revise it.
+                Existing assignments stay selected after you save, so you can keep refining the same work without accidentally creating duplicates.
               </p>
 
               <div className="rounded-[1.5rem] border border-black/8 bg-[color:rgb(25_31_45/0.03)] px-4 py-4">
