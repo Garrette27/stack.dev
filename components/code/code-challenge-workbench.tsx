@@ -6,7 +6,6 @@ import { useEffect, useState, useTransition } from "react"
 import { CheckCircle2, LoaderCircle, Play, RotateCcw, Save, Send, Sparkles, Terminal } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-import { Badge } from "@/components/ui/badge"
 import { getEditorLanguage, getSolutionFileLabel, getSourceFileLabel, getTestFileLabel } from "@/lib/judge0/languages"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -26,10 +25,6 @@ type CodeChallengeWorkbenchProps = {
 
 const initialResult: SubmissionOutcome | null = null
 
-function getReadableModeLabel(readOnly: boolean) {
-  return readOnly ? "Read only" : "Editable"
-}
-
 type EditorPaneProps = {
   editorKey: string
   path: string
@@ -37,7 +32,6 @@ type EditorPaneProps = {
   value: string
   height: string
   readOnly: boolean
-  badgeLabel: string
   className?: string
   onChange?: (value: string) => void
 }
@@ -49,20 +43,15 @@ function EditorPane({
   value,
   height,
   readOnly,
-  badgeLabel,
   className,
   onChange
 }: EditorPaneProps) {
   return (
     <div className={cn("min-w-0 overflow-hidden bg-[#171d29]", className)}>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#1b2230] px-4 py-3">
+      <div className="flex items-center border-b border-white/10 bg-[#1b2230] px-4 py-3">
         <span className="rounded-t-xl border border-white/15 bg-[#232b39] px-3 py-2 text-sm font-semibold text-white">
           {path}
         </span>
-        <div className="flex items-center gap-2">
-          <Badge className="bg-white/10 text-white">{badgeLabel}</Badge>
-          <span className="text-xs uppercase tracking-[0.22em] text-white/45">{getReadableModeLabel(readOnly)}</span>
-        </div>
       </div>
       <MonacoEditor
         key={editorKey}
@@ -203,11 +192,10 @@ export function CodeChallengeWorkbench({
     })
   }
 
-  const challengeLanguage = challenge.language ?? "javascript"
-  const editorLanguage = getEditorLanguage(challengeLanguage)
-  const sourceFileLabel = getSourceFileLabel(challengeLanguage)
-  const testFileLabel = getTestFileLabel(challengeLanguage)
-  const solutionFileLabel = getSolutionFileLabel(challengeLanguage)
+  const editorLanguage = getEditorLanguage(challenge.language ?? "javascript")
+  const sourceFileLabel = getSourceFileLabel(challenge.language ?? "javascript")
+  const testFileLabel = getTestFileLabel(challenge.language ?? "javascript")
+  const solutionFileLabel = getSolutionFileLabel(challenge.language ?? "javascript")
   const isShowingTests = activeFile === "tests"
   const editorHeight = showSolutionPane ? "58vh" : "62vh"
   const visibleEditorPath = isShowingTests ? testFileLabel : sourceFileLabel
@@ -241,10 +229,6 @@ export function CodeChallengeWorkbench({
             {testFileLabel}
           </button>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge className="bg-white/10 text-white">{challengeLanguage}</Badge>
-          <span className="text-xs uppercase tracking-[0.22em] text-white/45">{getReadableModeLabel(isSourceReadOnly)}</span>
-        </div>
       </div>
 
       <div className={cn("border-b border-white/10", showSolutionPane && "bg-white/10")}>
@@ -258,7 +242,6 @@ export function CodeChallengeWorkbench({
                 value={visibleEditorValue}
                 height={editorHeight}
                 readOnly={isSourceReadOnly}
-                badgeLabel={challengeLanguage}
                 onChange={setSourceCode}
               />
             }
@@ -270,7 +253,6 @@ export function CodeChallengeWorkbench({
                 value={challenge.solutionCode}
                 height={editorHeight}
                 readOnly
-                badgeLabel={challengeLanguage}
               />
             }
           />
@@ -282,7 +264,6 @@ export function CodeChallengeWorkbench({
             value={visibleEditorValue}
             height={editorHeight}
             readOnly={isSourceReadOnly}
-            badgeLabel={challengeLanguage}
             onChange={setSourceCode}
           />
         )}

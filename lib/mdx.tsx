@@ -2,7 +2,7 @@ import { Children, Fragment, isValidElement, type ReactNode } from "react"
 import { compileMDX } from "next-mdx-remote/rsc"
 import remarkGfm from "remark-gfm"
 
-import { renderHighlightedCode } from "@/lib/code-highlighting"
+import { ReadOnlyCodePanel } from "@/components/code/read-only-code-panel"
 
 type MdxRendererProps = {
   source: string
@@ -56,32 +56,6 @@ function getCodeBlockLanguage(children: ReactNode) {
   return languageMatch?.[1] ?? null
 }
 
-function getCodeBlockFileLabel(language: string | null) {
-  switch (language) {
-    case "javascript":
-    case "js":
-      return "example.js"
-    case "typescript":
-    case "ts":
-      return "example.ts"
-    case "python":
-    case "py":
-      return "example.py"
-    case "go":
-      return "example.go"
-    case "sql":
-    case "sqlite":
-      return "example.sql"
-    case "json":
-      return "example.json"
-    case "bash":
-    case "sh":
-      return "example.sh"
-    default:
-      return "example.txt"
-  }
-}
-
 function getCodeBlockText(children: ReactNode) {
   const child = Children.toArray(children)[0]
 
@@ -97,20 +71,14 @@ function getCodeBlockText(children: ReactNode) {
 }
 
 function renderCodePanel(code: string, language: string | null, colors: ToneColors, tone: "light" | "dark") {
-  const fileLabel = getCodeBlockFileLabel(language)
-
   return (
-    <div className={`mt-6 overflow-hidden rounded-[1.5rem] border ${colors.pre}`}>
-      <div className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 ${colors.preHeader}`}>
-        <span className="rounded-t-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white">
-          {fileLabel}
-        </span>
-        <span className="text-xs uppercase tracking-[0.22em]">Read only</span>
-      </div>
-      <pre className="overflow-x-auto p-5 text-sm">
-        {renderHighlightedCode(code, language, tone)}
-      </pre>
-    </div>
+    <ReadOnlyCodePanel
+      code={code}
+      language={language}
+      tone={tone}
+      className={colors.pre}
+      headerClassName={colors.preHeader}
+    />
   )
 }
 
@@ -391,22 +359,18 @@ function getMdxComponents(colors: ToneColors, tone: "light" | "dark") {
         />
       )
     },
-    pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => {
+    pre: ({ children }: React.HTMLAttributes<HTMLPreElement>) => {
       const language = getCodeBlockLanguage(children)
       const code = getCodeBlockText(children)
 
       return (
-        <div className={`mt-6 overflow-hidden rounded-[1.5rem] border ${colors.pre}`}>
-          <div className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 ${colors.preHeader}`}>
-            <span className="rounded-t-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white">
-              {getCodeBlockFileLabel(language)}
-            </span>
-            <span className="text-xs uppercase tracking-[0.22em]">Read only</span>
-          </div>
-          <pre className="overflow-x-auto p-5 text-sm" {...props}>
-            {renderHighlightedCode(code, language, tone)}
-          </pre>
-        </div>
+        <ReadOnlyCodePanel
+          code={code}
+          language={language}
+          tone={tone}
+          className={colors.pre}
+          headerClassName={colors.preHeader}
+        />
       )
     },
     blockquote: (props: React.HTMLAttributes<HTMLQuoteElement>) => (
