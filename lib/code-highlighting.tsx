@@ -169,6 +169,7 @@ function getLanguageFamily(language: string | null) {
     case "typescript":
     case "ts":
     case "go":
+    case "c":
     case "java":
       return "clike"
     case "python":

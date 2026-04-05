@@ -4,6 +4,7 @@ export type AuthoringCodeFenceLanguage =
   | "python"
   | "go"
   | "sqlite"
+  | "c"
   | "java"
 
 type CodeFenceToolConfig = {
@@ -37,6 +38,12 @@ const CODE_FENCE_TOOL_CONFIGS: Record<AuthoringCodeFenceLanguage, CodeFenceToolC
     fenceLabel: "sql",
     example: "select 'Hello from stack.dev.ph' as message;",
     buttonLabel: "Insert sqlite code block"
+  },
+  c: {
+    fenceLabel: "c",
+    example:
+      '#include <stdio.h>\n\nint main(void) {\n    printf("Hello from stack.dev.ph\\n");\n    return 0;\n}',
+    buttonLabel: "Insert c code block"
   },
   java: {
     fenceLabel: "java",

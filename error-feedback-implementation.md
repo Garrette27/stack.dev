@@ -12,7 +12,7 @@ different questions clearly:
 The current pipeline already runs code and stores `stdout`, `stderr`,
 `compile_output`, and a `feedback` string. The missing piece is a deeper,
 language-aware failure model that can normalize JavaScript, TypeScript, SQLite,
-Python, and future Java behavior behind one small interface.
+Python, C, and future Java behavior behind one small interface.
 
 This plan follows `AGENTS.md` by:
 
@@ -269,6 +269,39 @@ Parser behavior:
 This gives SQLite a clean authoring contract without inventing fake SQL
 exceptions.
 
+### C
+
+C should follow the same high-level model as Java:
+
+1. compile learner code first
+2. distinguish compiler diagnostics from runtime crashes
+3. give hidden tests a stable checker-failure path
+4. normalize line-aware messages from `gcc` or `clang`
+
+Recommended contract:
+
+- start with single-file authored exercises
+- compile to one entry program
+- let hidden tests fail through a sentinel-prefixed assertion helper
+
+Recommended checker helper style:
+
+```c
+fprintf(stderr, "__STACK_CHECK_FAILED__:Expected output was missing\n");
+exit(1);
+```
+
+If you later support multi-file C projects, keep that complexity below one
+server-only runner adapter instead of exposing file-assembly rules in pages.
+
+Parser behavior:
+
+- `error:` diagnostics from compiler output -> `compile_error`
+- `warning:` lines should not fail the submission by themselves
+- segmentation faults / aborts / non-zero runtime exits -> `runtime_error`
+- sentinel-prefixed hidden-test failures -> `checker_failed`
+- extract `file:line:column` when available
+
 ### Java
 
 Java is not exposed in authoring yet, but the error model should be designed now
@@ -352,6 +385,7 @@ Add short help text in admin for hidden tests:
 - JavaScript / TypeScript: `throw new Error("...")`
 - Python: `assert ...`
 - SQLite: emit sentinel failure rows
+- C: print a checker sentinel to stderr, then exit non-zero
 - Java: `throw new AssertionError("...")`
 
 This keeps author behavior aligned with parser expectations.
@@ -414,6 +448,22 @@ Extract:
 
 - `Main.java:line`
 
+### C
+
+Look for:
+
+- `error:`
+- `warning:`
+- `Segmentation fault`
+- `Aborted`
+- `__STACK_CHECK_FAILED__:`
+- `__STACK_RUNTIME_FAILED__:`
+
+Extract:
+
+- first `file:line:column` compiler location
+- runtime crash summary when the process exits abnormally
+
 ## UI Recommendation
 
 For the learner result card, prefer this order:
@@ -446,7 +496,7 @@ This feature is ready when:
 3. SQLite checker failures use a stable sentinel contract instead of opaque SQL
    errors
 4. the learner result panel can render one normalized error shape across
-   JavaScript, TypeScript, Python, SQLite, and future Java
+   JavaScript, TypeScript, Python, SQLite, C, and future Java
 5. page components do not contain language-specific error parsing rules
 
 ## Recommended Build Order

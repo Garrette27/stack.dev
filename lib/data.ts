@@ -1,5 +1,6 @@
 export { getCurrentUser, isCurrentUserAdmin } from "./auth"
 export { getAdminSnapshot, getRunnerChallengeBySlug } from "./admin"
 export { getCatalog, getContentSnapshot, getCoursePageData, getLessonPageData } from "./content"
+export { getCurriculumLandingPageData } from "./curriculum"
 export { getDashboardState } from "./progress"
 export { getCoursePracticePageData, getPracticeSessionForCourse } from "./review"
