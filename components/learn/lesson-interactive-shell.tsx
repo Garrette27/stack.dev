@@ -4,22 +4,41 @@ import { useEffect, useMemo, useState, type ReactNode } from "react"
 
 import { ChallengeWorkbench } from "@/components/code/challenge-workbench"
 import { CourseProgressStrip } from "@/components/learn/course-progress-strip"
-import type { Challenge, Lesson } from "@/lib/types"
+import type { Challenge } from "@/lib/types"
+
+type LessonNavigationOption = {
+  value: string
+  label: string
+  href: string
+}
+
+type ChallengeNavigationOption = {
+  slug: string
+  title: string
+  href: string
+}
+
+type PracticeSessionStripState = {
+  modeLabel: string
+  queuePosition: number
+  queueLength: number
+}
 
 type LessonInteractiveShellProps = {
   courseSlug: string
   courseTitle: string
   courseIndex: number
-  courseLessons: Lesson[]
-  currentLessonIndex: number
-  currentLessonSlug: string
-  challengeOptions: Array<{ slug: string; title: string }>
+  lessonOptions: LessonNavigationOption[]
+  currentLessonValue: string
+  lessonSlug: string
+  challengeOptions: ChallengeNavigationOption[]
   activeChallengeSlug: string | null
-  previousChallengeSlug: string | null
-  nextChallengeSlug: string | null
+  previousChallengeHref: string | null
+  nextChallengeHref: string | null
   initialCompletedChallengeSlugs: string[]
   activeChallenge: Challenge | null
   isAuthenticated: boolean
+  practiceSession?: PracticeSessionStripState | null
   children: ReactNode
 }
 
@@ -37,16 +56,17 @@ export function LessonInteractiveShell({
   courseSlug,
   courseTitle,
   courseIndex,
-  courseLessons,
-  currentLessonIndex,
-  currentLessonSlug,
+  lessonOptions,
+  currentLessonValue,
+  lessonSlug,
   challengeOptions,
   activeChallengeSlug,
-  previousChallengeSlug,
-  nextChallengeSlug,
+  previousChallengeHref,
+  nextChallengeHref,
   initialCompletedChallengeSlugs,
   activeChallenge,
   isAuthenticated,
+  practiceSession = null,
   children
 }: LessonInteractiveShellProps) {
   const [completionOverrides, setCompletionOverrides] = useState<CompletionOverrides>({})
@@ -103,17 +123,16 @@ export function LessonInteractiveShell({
   return (
     <>
       <CourseProgressStrip
-        courseSlug={courseSlug}
         courseTitle={courseTitle}
         courseIndex={courseIndex}
-        courseLessons={courseLessons}
-        currentLessonIndex={currentLessonIndex}
-        currentLessonSlug={currentLessonSlug}
+        lessonOptions={lessonOptions}
+        currentLessonValue={currentLessonValue}
         challengeOptions={challengeOptions}
         activeChallengeSlug={activeChallengeSlug}
-        previousChallengeSlug={previousChallengeSlug}
-        nextChallengeSlug={nextChallengeSlug}
+        previousChallengeHref={previousChallengeHref}
+        nextChallengeHref={nextChallengeHref}
         completedChallengeSlugs={completedChallengeSlugs}
+        practiceSession={practiceSession}
       />
 
       <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,#131824,#101520)] text-white shadow-[0_28px_80px_rgba(11,15,24,0.32)]">
@@ -127,7 +146,7 @@ export function LessonInteractiveShell({
               <ChallengeWorkbench
                 challenge={activeChallenge}
                 courseSlug={courseSlug}
-                lessonSlug={currentLessonSlug}
+                lessonSlug={lessonSlug}
                 isAuthenticated={isAuthenticated}
                 isCompleted={completedChallengeSlugs.includes(activeChallenge.slug)}
                 onCompletionChange={handleCompletionChange}

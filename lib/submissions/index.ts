@@ -5,6 +5,7 @@ import { z } from "zod"
 import { getRunnerChallengeBySlug } from "@/lib/admin"
 import { hasJudge0Env, hasSupabaseEnv } from "@/lib/env"
 import { saveResumeStateForUser } from "@/lib/progress"
+import { saveChallengeReviewResult } from "@/lib/review"
 import { createClient } from "@/lib/supabase/server"
 import type { Challenge, SubmissionOutcome } from "@/lib/types"
 
@@ -68,6 +69,10 @@ function buildMultipleChoiceOutcome(
     configured: true,
     passed
   })
+}
+
+function shouldPersistReviewResult(outcome: SubmissionOutcome) {
+  return outcome.configured && !["bad_request", "invalid_assignment", "runner_error", "runner_not_configured", "runner_timeout"].includes(outcome.status)
 }
 
 /**
@@ -322,6 +327,15 @@ async function persistSubmissionOutcome(payload: SubmissionPayload, challenge: C
     })
     .select("id")
     .single()
+
+  if (submissionRow?.id && shouldPersistReviewResult(outcome)) {
+    await saveChallengeReviewResult(supabase!, {
+      userId: user.id,
+      challengeId: challenge.id,
+      submissionId: String(submissionRow.id),
+      result: outcome.passed ? "passed" : "failed"
+    })
+  }
 
   if (lessonRow?.id) {
     const { data: existingProgress } = await supabase!

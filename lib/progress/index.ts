@@ -11,6 +11,7 @@ import type { DashboardState, LessonProgress, ResumeState } from "@/lib/types"
 import { getCurrentUser } from "@/lib/auth"
 import { getContentSnapshot } from "@/lib/content"
 import { sortLessons } from "@/lib/content/shared"
+import { clearChallengeReviewState } from "@/lib/review"
 import type { Challenge } from "@/lib/types"
 
 export const resumeSchema = z.object({
@@ -237,6 +238,18 @@ export async function resetChallengeProgressForCurrentUser(
     return {
       status: 500,
       body: { ok: false, message: "Could not clear progress for this assignment." }
+    }
+  }
+
+  try {
+    await clearChallengeReviewState(client, {
+      userId: user.id,
+      challengeId: challenge.id
+    })
+  } catch {
+    return {
+      status: 500,
+      body: { ok: false, message: "Could not clear the saved review state for this assignment." }
     }
   }
 

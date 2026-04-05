@@ -7,7 +7,7 @@ import { LessonInteractiveShell } from "@/components/learn/lesson-interactive-sh
 import { LessonSideTools } from "@/components/learn/lesson-side-tools"
 import { Badge } from "@/components/ui/badge"
 import { resolveAssignmentReading } from "@/lib/content/reading"
-import { getCurrentUser, getLessonPageData } from "@/lib/data"
+import { getCurrentUser, getLessonPageData, getPracticeSessionForCourse } from "@/lib/data"
 import { MdxRenderer } from "@/lib/mdx"
 import { getCompletedChallengeSlugs } from "@/lib/progress"
 import type { Challenge } from "@/lib/types"
@@ -21,6 +21,8 @@ type LessonPageProps = {
     assignment?: string
     reference?: string
     search?: string
+    practiceMode?: string
+    practiceSeed?: string
   }>
 }
 
@@ -57,9 +59,34 @@ function LessonPanelSection({
   )
 }
 
+function buildLessonHref(
+  courseSlug: string,
+  lessonSlug: string,
+  challengeSlug: string | null,
+  practiceMode?: string,
+  practiceSeed?: string
+) {
+  const params = new URLSearchParams()
+
+  if (challengeSlug) {
+    params.set("assignment", challengeSlug)
+  }
+
+  if (practiceMode) {
+    params.set("practiceMode", practiceMode)
+  }
+
+  if (practiceSeed) {
+    params.set("practiceSeed", practiceSeed)
+  }
+
+  const query = params.toString()
+  return query ? `/learn/${courseSlug}/${lessonSlug}?${query}` : `/learn/${courseSlug}/${lessonSlug}`
+}
+
 export default async function LessonPage({ params, searchParams }: LessonPageProps) {
   const { courseSlug, lessonSlug } = await params
-  const { assignment, reference, search } = await searchParams
+  const { assignment, reference, search, practiceMode, practiceSeed } = await searchParams
   const [data, user] = await Promise.all([getLessonPageData(courseSlug, lessonSlug), getCurrentUser()])
 
   if (!data) {
@@ -69,14 +96,42 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
   const activeChallengeIndex = data.challenges.findIndex((challenge) => challenge.slug === assignment)
   const safeActiveChallengeIndex = activeChallengeIndex >= 0 ? activeChallengeIndex : 0
   const activeChallenge = data.challenges[safeActiveChallengeIndex] ?? null
-  const previousChallengeSlug = data.challenges[safeActiveChallengeIndex - 1]?.slug ?? null
-  const nextChallengeSlug = data.challenges[safeActiveChallengeIndex + 1]?.slug ?? null
+  const practiceSession = practiceMode
+    ? await getPracticeSessionForCourse(courseSlug, activeChallenge?.slug ?? null, {
+        mode: practiceMode,
+        seed: practiceSeed
+      })
+    : null
+  const previousChallengeHref = practiceSession
+    ? practiceSession.previousHref
+    : data.challenges[safeActiveChallengeIndex - 1]?.slug
+      ? buildLessonHref(courseSlug, lessonSlug, data.challenges[safeActiveChallengeIndex - 1]?.slug ?? null)
+      : null
+  const nextChallengeHref = practiceSession
+    ? practiceSession.nextHref
+    : data.challenges[safeActiveChallengeIndex + 1]?.slug
+      ? buildLessonHref(courseSlug, lessonSlug, data.challenges[safeActiveChallengeIndex + 1]?.slug ?? null)
+      : null
   const completedChallengeSlugs = await getCompletedChallengeSlugs(data.challenges)
-  const challengeOptions = data.challenges.map((challenge, index) => ({
-    slug: challenge.slug,
-    title: getAssignmentTitle(challenge, index)
+  const challengeOptions = practiceSession
+    ? practiceSession.challengeOptions
+    : data.challenges.map((challenge, index) => ({
+        slug: challenge.slug,
+        title: getAssignmentTitle(challenge, index),
+        href: buildLessonHref(data.course.slug, data.lesson.slug, challenge.slug)
+      }))
+  const lessonOptions = data.courseLessons.map((lesson, index) => ({
+    value: lesson.slug,
+    label: `CH${index + 1}: ${lesson.title}`,
+    href: buildLessonHref(data.course.slug, lesson.slug, null)
   }))
-  const currentHref = `/learn/${data.course.slug}/${data.lesson.slug}${activeChallenge ? `?assignment=${activeChallenge.slug}` : ""}`
+  const currentHref = buildLessonHref(
+    data.course.slug,
+    data.lesson.slug,
+    activeChallenge?.slug ?? null,
+    practiceSession?.mode,
+    practiceSession?.seed
+  )
   const selectedReferenceEntry =
     data.courseReadingEntries.find((entry) => entry.id === reference) ?? null
   const readingState = resolveAssignmentReading({
@@ -94,27 +149,44 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
         courseSlug={data.course.slug}
         courseTitle={data.course.title}
         courseIndex={data.courseIndex}
-        courseLessons={data.courseLessons}
-        currentLessonIndex={data.currentLessonIndex}
-        currentLessonSlug={data.lesson.slug}
+        lessonOptions={lessonOptions}
+        currentLessonValue={data.lesson.slug}
+        lessonSlug={data.lesson.slug}
         challengeOptions={challengeOptions}
         activeChallengeSlug={activeChallenge?.slug ?? null}
-        previousChallengeSlug={previousChallengeSlug}
-        nextChallengeSlug={nextChallengeSlug}
+        previousChallengeHref={previousChallengeHref}
+        nextChallengeHref={nextChallengeHref}
         initialCompletedChallengeSlugs={completedChallengeSlugs}
         activeChallenge={activeChallenge}
         isAuthenticated={Boolean(user)}
+        practiceSession={
+          practiceSession
+            ? {
+                modeLabel: practiceSession.modeLabel,
+                queuePosition: practiceSession.activeIndex + 1,
+                queueLength: practiceSession.queueEntries.length
+              }
+            : null
+        }
       >
         <div className="space-y-6">
-          <Link href={`/learn/${data.course.slug}`} className="inline-flex items-center gap-2 text-sm text-white/60">
+          <Link
+            href={practiceSession ? `/learn/${data.course.slug}/practice` : `/learn/${data.course.slug}`}
+            className="inline-flex items-center gap-2 text-sm text-white/60"
+          >
             <ArrowLeft className="h-4 w-4" />
-            Back to practice path
+            {practiceSession ? "Back to practice hub" : "Back to practice path"}
           </Link>
 
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
               <Badge>{`CH${data.currentLessonIndex + 1}`}</Badge>
               <Badge className="bg-white/8 text-white ring-1 ring-white/10">{`L${data.courseIndex}: ${data.course.title}`}</Badge>
+              {practiceSession ? (
+                <Badge className="bg-[color:rgb(201_111_54/0.16)] text-white ring-1 ring-[var(--accent-soft)]/30">
+                  {practiceSession.modeLabel}
+                </Badge>
+              ) : null}
             </div>
             <div className="space-y-4">
               <h1 className="font-serif text-5xl tracking-tight text-white sm:text-6xl">{data.lesson.title}</h1>
@@ -134,7 +206,11 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
                 <Badge className="bg-white/10 text-white">
                   {activeChallenge.kind === "multiple_choice" ? "multiple choice" : activeChallenge.language}
                 </Badge>
-                {data.challenges.length > 1 ? (
+                {practiceSession ? (
+                  <span className="text-xs uppercase tracking-[0.22em] text-white/45">
+                    {`${practiceSession.activeIndex + 1} of ${practiceSession.queueEntries.length} in ${practiceSession.modeLabel.toLowerCase()}`}
+                  </span>
+                ) : data.challenges.length > 1 ? (
                   <span className="text-xs uppercase tracking-[0.22em] text-white/45">
                     {`${safeActiveChallengeIndex + 1} of ${data.challenges.length}`}
                   </span>
