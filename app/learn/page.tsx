@@ -55,6 +55,14 @@ export default async function LearnIndexPage() {
                   <div className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-white/6 p-4 text-sm leading-7 text-white/82">
                     <p>{track.totalLessons} chapters currently available</p>
                     <p>{track.totalChallenges} assignments currently available</p>
+                    <p>
+                      {track.progress.completedCourseCount} / {track.progress.availableCourseCount} courses fully
+                      completed
+                    </p>
+                    <p>
+                      {track.progress.completedChallengeCount} / {track.progress.totalChallengeCount} assignments
+                      completed
+                    </p>
                   </div>
                   {track.primaryHref ? (
                     <Link href={track.primaryHref}>
@@ -84,26 +92,35 @@ export default async function LearnIndexPage() {
           </div>
 
           <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
-            {section.courses.map(({ course, lessons, kindLabel, totalLessons, totalChallenges }) => (
+            {section.courses.map(({ course, lessons, kindLabel, progress }) => (
               <Card key={course.id} className="overflow-hidden">
                 <div className="h-2" style={{ backgroundColor: course.accent }} />
                 <CardHeader>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge>{kindLabel}</Badge>
                     <Badge className="bg-[color:rgb(25_31_45/0.08)] text-[var(--ink-strong)]">{course.difficulty}</Badge>
+                    <Badge className="bg-[color:rgb(25_31_45/0.08)] text-[var(--ink-strong)]">
+                      {progress.status.replace("_", " ")}
+                    </Badge>
                   </div>
                   <CardTitle>{course.title}</CardTitle>
                   <CardDescription>{course.summary}</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4">
                   <div className="grid gap-3 rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] p-4 text-sm leading-7 text-[var(--ink)]">
-                    <p>{totalLessons} chapter{totalLessons === 1 ? "" : "s"}</p>
-                    <p>{totalChallenges} assignment{totalChallenges === 1 ? "" : "s"}</p>
+                    <p>
+                      {progress.completedLessonCount} / {progress.totalLessonCount} chapter
+                      {progress.totalLessonCount === 1 ? "" : "s"} completed
+                    </p>
+                    <p>
+                      {progress.completedChallengeCount} / {progress.totalChallengeCount} assignment
+                      {progress.totalChallengeCount === 1 ? "" : "s"} completed
+                    </p>
                     <p>First chapter takes about {formatRelativeMinutes(lessons[0]?.estimatedMinutes ?? 10)}.</p>
                   </div>
-                  <Link href={`/learn/${course.slug}`}>
+                  <Link href={progress.continueHref ?? `/learn/${course.slug}`}>
                     <Button variant="secondary">
-                      Open {kindLabel.toLowerCase()}
+                      {progress.status === "not_started" ? `Start ${kindLabel.toLowerCase()}` : `Continue ${kindLabel.toLowerCase()}`}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>

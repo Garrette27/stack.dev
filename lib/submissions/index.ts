@@ -72,7 +72,14 @@ function buildMultipleChoiceOutcome(
 }
 
 function shouldPersistReviewResult(outcome: SubmissionOutcome) {
-  return outcome.configured && !["bad_request", "invalid_assignment", "runner_error", "runner_not_configured", "runner_timeout"].includes(outcome.status)
+  return outcome.configured && ![
+    "bad_request",
+    "invalid_assignment",
+    "runner_error",
+    "runner_not_configured",
+    "runner_timeout",
+    "local_lab_cli_required"
+  ].includes(outcome.status)
 }
 
 /**
@@ -384,6 +391,12 @@ export async function submitChallenge(payload: SubmissionPayload): Promise<Submi
   const outcome =
     challenge.kind === "multiple_choice"
       ? buildMultipleChoiceOutcome(challenge, payload.selectedChoiceKey)
+      : challenge.kind === "local_lab"
+        ? createOutcome(
+            "local_lab_cli_required",
+            "This assignment is completed through the local CLI workflow, not the in-browser runner.",
+            { configured: true }
+          )
       : !payload.sourceCode
         ? createOutcome("bad_request", "Write an answer before running the checker.")
         : await runJudge0Submission(

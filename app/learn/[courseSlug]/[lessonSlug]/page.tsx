@@ -6,6 +6,7 @@ import { notFound } from "next/navigation"
 import { LessonInteractiveShell } from "@/components/learn/lesson-interactive-shell"
 import { LessonSideTools } from "@/components/learn/lesson-side-tools"
 import { Badge } from "@/components/ui/badge"
+import { getChallengeTypeLabel } from "@/lib/challenges/presentation"
 import { resolveAssignmentReading } from "@/lib/content/reading"
 import { getCurrentUser, getLessonPageData, getPracticeSessionForCourse } from "@/lib/data"
 import { MdxRenderer } from "@/lib/mdx"
@@ -204,7 +205,7 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
             >
               <div className="mb-4 flex flex-wrap items-center gap-3">
                 <Badge className="bg-white/10 text-white">
-                  {activeChallenge.kind === "multiple_choice" ? "multiple choice" : activeChallenge.language}
+                  {getChallengeTypeLabel(activeChallenge)}
                 </Badge>
                 {practiceSession ? (
                   <span className="text-xs uppercase tracking-[0.22em] text-white/45">

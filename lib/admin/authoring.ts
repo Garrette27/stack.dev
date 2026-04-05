@@ -6,6 +6,7 @@ import { normalizeMultipleChoiceOptions } from "@/lib/challenges/multiple-choice
 import { getCurrentUser, isCurrentUserAdmin } from "@/lib/auth"
 import { hasSupabaseAdminEnv } from "@/lib/env"
 import { isSupportedChallengeLanguage } from "@/lib/judge0/languages"
+import { buildDefaultLocalLabCommandTemplate, buildDefaultLocalLabManifestSource, parseLocalLabManifestSource } from "@/lib/local-labs"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { CodeChallengeLanguage, MultipleChoiceOption } from "@/lib/types"
 import { slugify } from "@/lib/utils"
@@ -28,7 +29,7 @@ const authoringBaseSchema = z.object({
   bodyMdx: z.string(),
   challengeSlug: z.string().optional(),
   saveMode: z.enum(["draft", "publish"]),
-  kind: z.enum(["code", "multiple_choice"]),
+  kind: z.enum(["code", "multiple_choice", "local_lab"]),
   language: z.string().optional(),
   judge0LanguageId: z.string().optional(),
   readingMdx: z.string().optional(),
@@ -80,7 +81,25 @@ type MultipleChoiceAuthoringBundleInput = {
   choiceExplanationMdx: string
 }
 
-type AuthoringBundleInput = CodeAuthoringBundleInput | MultipleChoiceAuthoringBundleInput
+type LocalLabAuthoringBundleInput = {
+  courseTitle: string
+  courseSlug: string
+  lessonTitle: string
+  lessonSlug: string
+  bodyMdx: string
+  challengeSlug?: string
+  saveMode: AuthoringSaveMode
+  kind: "local_lab"
+  language: null
+  judge0LanguageId: null
+  readingMdx?: string
+  promptMdx: string
+  starterCode: string
+  solutionCode: string
+  hiddenTestCode: string
+}
+
+type AuthoringBundleInput = CodeAuthoringBundleInput | MultipleChoiceAuthoringBundleInput | LocalLabAuthoringBundleInput
 
 type ParsedAuthoringBundle =
   | {
@@ -116,6 +135,18 @@ function isMissingMultipleChoiceColumn(error: { code?: string; message?: string 
     error.message?.includes("choice_options") === true ||
     error.message?.includes("choice_correct_key") === true ||
     error.message?.includes("choice_explanation_mdx") === true
+  )
+}
+
+function isMissingChallengeKindColumn(error: { code?: string; message?: string } | null) {
+  if (!error) {
+    return false
+  }
+
+  return (
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    error.message?.includes("kind") === true
   )
 }
 
@@ -200,6 +231,48 @@ export function parseAuthoringBundleFormData(formData: FormData): ParsedAuthorin
         kind: "code",
         language,
         judge0LanguageId,
+        readingMdx: parsed.data.readingMdx,
+        promptMdx: parsed.data.promptMdx,
+        starterCode,
+        solutionCode,
+        hiddenTestCode
+      }
+    }
+  }
+
+  if (parsed.data.kind === "local_lab") {
+    const starterCode = parsed.data.starterCode?.trim() || buildDefaultLocalLabCommandTemplate()
+    const solutionCode = parsed.data.solutionCode?.trim() ?? ""
+    const hiddenTestCode = parsed.data.hiddenTestCode?.trim() || buildDefaultLocalLabManifestSource()
+    const manifestResult = parseLocalLabManifestSource(hiddenTestCode)
+
+    if (starterCode.length < 3) {
+      return {
+        success: false,
+        message: "Local labs need a CLI submit command template."
+      }
+    }
+
+    if (!manifestResult.success) {
+      return {
+        success: false,
+        message: manifestResult.message
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        courseTitle: parsed.data.courseTitle,
+        courseSlug: parsed.data.courseSlug,
+        lessonTitle: parsed.data.lessonTitle,
+        lessonSlug: parsed.data.lessonSlug,
+        bodyMdx: parsed.data.bodyMdx,
+        challengeSlug: parsed.data.challengeSlug,
+        saveMode: parsed.data.saveMode,
+        kind: "local_lab",
+        language: null,
+        judge0LanguageId: null,
         readingMdx: parsed.data.readingMdx,
         promptMdx: parsed.data.promptMdx,
         starterCode,
@@ -502,7 +575,17 @@ async function upsertLegacyChallengeRecord(
     }
   }
 
-  if (!isMissingReadingColumn(fullResult.error) && !isMissingMultipleChoiceColumn(fullResult.error)) {
+  if (payload.kind === "local_lab" && isMissingChallengeKindColumn(fullResult.error)) {
+    return {
+      data: null,
+      error: {
+        ...fullResult.error,
+        message: "Apply the local-lab challenge migration before saving local lab assignments."
+      }
+    }
+  }
+
+  if (!isMissingReadingColumn(fullResult.error) && !isMissingMultipleChoiceColumn(fullResult.error) && !isMissingChallengeKindColumn(fullResult.error)) {
     return fullResult
   }
 
@@ -512,12 +595,12 @@ async function upsertLegacyChallengeRecord(
       {
         slug: challengeSlug,
         title: challengeTitle,
-        language: payload.kind === "code" ? payload.language : "javascript",
-        judge0_language_id: payload.kind === "code" ? payload.judge0LanguageId : 102,
+        language: payload.kind === "code" ? payload.language : null,
+        judge0_language_id: payload.kind === "code" ? payload.judge0LanguageId : null,
         prompt_mdx: payload.promptMdx,
-        starter_code: payload.kind === "code" ? payload.starterCode : "",
-        solution_code: payload.kind === "code" ? payload.solutionCode : "",
-        hidden_test_code: payload.kind === "code" ? payload.hiddenTestCode : "",
+        starter_code: payload.starterCode,
+        solution_code: payload.solutionCode,
+        hidden_test_code: payload.hiddenTestCode,
         published
       },
       {

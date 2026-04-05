@@ -7,7 +7,12 @@ export type ChallengeVersionLoadMode = "published" | "draft_or_published"
 type ChallengeContentRow = Record<string, unknown>
 
 function mapChallengeKind(value: unknown): ChallengeKind {
-  return String(value ?? "code") === "multiple_choice" ? "multiple_choice" : "code"
+  const normalizedValue = String(value ?? "code")
+  if (normalizedValue === "multiple_choice" || normalizedValue === "local_lab") {
+    return normalizedValue
+  }
+
+  return "code"
 }
 
 function mapChallengeLanguage(value: unknown, kind: ChallengeKind) {
@@ -69,11 +74,11 @@ function mapChallengeFromContentRows(challengeRow: Record<string, unknown>, cont
   const kind = mapChallengeKind(contentRow?.kind ?? challengeRow.kind)
   const language = mapChallengeLanguage(contentRow?.language ?? challengeRow.language, kind)
   const judge0LanguageId =
-    typeof contentRow?.judge0_language_id === "number"
+    kind === "code" && typeof contentRow?.judge0_language_id === "number"
       ? contentRow.judge0_language_id
-      : typeof challengeRow.judge0_language_id === "number"
+      : kind === "code" && typeof challengeRow.judge0_language_id === "number"
         ? challengeRow.judge0_language_id
-        : language
+        : kind === "code" && language
           ? getDefaultJudge0LanguageId(language)
           : null
 
@@ -126,4 +131,3 @@ export function mapChallengesFromRows(
     mapChallengeFromContentRows(challengeRow, getActiveChallengeVersionRow(challengeRow, versionById, mode))
   )
 }
-

@@ -1,4 +1,5 @@
 import { CodeChallengeWorkbench } from "@/components/code/code-challenge-workbench"
+import { LocalLabWorkbench } from "@/components/labs/local-lab-workbench"
 import { MultipleChoiceWorkbench } from "@/components/quiz/multiple-choice-workbench"
 import type { Challenge } from "@/lib/types"
 
@@ -18,6 +19,10 @@ type ChallengeWorkbenchProps = {
 export function ChallengeWorkbench(props: ChallengeWorkbenchProps) {
   if (props.challenge.kind === "multiple_choice") {
     return <MultipleChoiceWorkbench {...props} />
+  }
+
+  if (props.challenge.kind === "local_lab") {
+    return <LocalLabWorkbench {...props} />
   }
 
   return <CodeChallengeWorkbench {...props} />

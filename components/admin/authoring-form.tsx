@@ -5,6 +5,7 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState } fro
 
 import { upsertAuthoringBundleAction, type AuthoringActionState } from "@/app/admin/actions"
 import { AuthoringCodeFenceField } from "@/components/admin/authoring-code-fence-field"
+import { LocalLabAuthoringFields } from "@/components/admin/local-lab-authoring-fields"
 import { MultipleChoiceOptionsEditor } from "@/components/admin/multiple-choice-options-editor"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,6 +38,8 @@ import {
   getStarterTemplate,
   getSolutionTemplate
 } from "@/lib/judge0/languages"
+import { getChallengeKindOptionLabel } from "@/lib/challenges/presentation"
+import { buildDefaultLocalLabCommandTemplate, buildDefaultLocalLabManifestSource } from "@/lib/local-labs"
 import type { Challenge, ChallengeKind, ContentSnapshot, Lesson, MultipleChoiceOption } from "@/lib/types"
 import { slugify } from "@/lib/utils"
 
@@ -512,6 +515,8 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
     const defaultOptions = createDefaultMultipleChoiceOptions()
 
     setChallengeKind("multiple_choice")
+    setLanguage("javascript")
+    setJudge0LanguageId(String(getDefaultJudge0LanguageId("javascript")))
     setReadingMdx("")
     setPromptMdx("")
     setStarterCode("")
@@ -522,9 +527,30 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
     setChoiceExplanationMdx("")
   }
 
+  const resetLocalLabAssignmentDraft = () => {
+    const defaultOptions = createDefaultMultipleChoiceOptions()
+
+    setChallengeKind("local_lab")
+    setLanguage("javascript")
+    setJudge0LanguageId(String(getDefaultJudge0LanguageId("javascript")))
+    setReadingMdx("")
+    setPromptMdx("")
+    setStarterCode(buildDefaultLocalLabCommandTemplate())
+    setSolutionCode("")
+    setHiddenTestCode(buildDefaultLocalLabManifestSource())
+    setChoiceOptions(defaultOptions)
+    setCorrectChoiceKey(defaultOptions[0]?.key ?? "")
+    setChoiceExplanationMdx("")
+  }
+
   const handleChallengeKindChange = (nextKind: ChallengeKind) => {
     if (nextKind === "multiple_choice") {
       resetMultipleChoiceAssignmentDraft()
+      return
+    }
+
+    if (nextKind === "local_lab") {
+      resetLocalLabAssignmentDraft()
       return
     }
 
@@ -551,6 +577,11 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
 
     if (challengeKind === "multiple_choice") {
       resetMultipleChoiceAssignmentDraft()
+      return
+    }
+
+    if (challengeKind === "local_lab") {
+      resetLocalLabAssignmentDraft()
       return
     }
 
@@ -986,8 +1017,9 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                   onChange={(event) => handleChallengeKindChange(event.target.value as ChallengeKind)}
                   className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
                 >
-                  <option value="code">Code assignment</option>
-                  <option value="multiple_choice">Multiple choice</option>
+                  <option value="code">{getChallengeKindOptionLabel("code")}</option>
+                  <option value="multiple_choice">{getChallengeKindOptionLabel("multiple_choice")}</option>
+                  <option value="local_lab">{getChallengeKindOptionLabel("local_lab")}</option>
                 </select>
               </Field>
 
@@ -1079,6 +1111,15 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                     />
                   </Field>
                 </>
+              ) : challengeKind === "local_lab" ? (
+                <LocalLabAuthoringFields
+                  submitCommandTemplate={starterCode}
+                  solutionNotes={solutionCode}
+                  manifestSource={hiddenTestCode}
+                  onSubmitCommandTemplateChange={setStarterCode}
+                  onSolutionNotesChange={setSolutionCode}
+                  onManifestSourceChange={setHiddenTestCode}
+                />
               ) : (
                 <MultipleChoiceOptionsEditor
                   options={choiceOptions}

@@ -1,6 +1,6 @@
 export type CodeChallengeLanguage = "python" | "javascript" | "typescript" | "go" | "sqlite"
 
-export type ChallengeKind = "code" | "multiple_choice"
+export type ChallengeKind = "code" | "multiple_choice" | "local_lab"
 export type ChallengePublicationState = "draft" | "published" | "archived"
 
 export type MultipleChoiceOption = {

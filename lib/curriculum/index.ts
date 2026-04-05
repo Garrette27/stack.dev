@@ -1,6 +1,10 @@
 import { cache } from "react"
 
 import { getCatalog } from "@/lib/content"
+import { getContentSnapshot } from "@/lib/content"
+import { getCurrentUser } from "@/lib/auth"
+import { hasSupabaseEnv } from "@/lib/env"
+import { createClient as createServerClient } from "@/lib/supabase/server"
 import type { CourseWithLessons } from "@/lib/types"
 
 type CurriculumCourseKind = "course" | "guided_project" | "portfolio_project" | "training"
@@ -35,6 +39,7 @@ export type CurriculumCourseCard = CourseWithLessons & {
   totalLessons: number
   totalChallenges: number
   trackSlugs: CurriculumTrackSlug[]
+  progress: CurriculumCourseProgress
 }
 
 export type CurriculumTrackCard = {
@@ -47,6 +52,7 @@ export type CurriculumTrackCard = {
   totalChallenges: number
   primaryHref: string | null
   primaryCourseTitle: string | null
+  progress: CurriculumTrackProgress
 }
 
 export type CurriculumSection = {
@@ -59,6 +65,22 @@ export type CurriculumSection = {
 export type CurriculumLandingPageData = {
   trackCards: CurriculumTrackCard[]
   sections: CurriculumSection[]
+}
+
+export type CurriculumCourseProgress = {
+  status: "not_started" | "in_progress" | "completed"
+  completedLessonCount: number
+  totalLessonCount: number
+  completedChallengeCount: number
+  totalChallengeCount: number
+  continueHref: string | null
+}
+
+export type CurriculumTrackProgress = {
+  completedCourseCount: number
+  availableCourseCount: number
+  completedChallengeCount: number
+  totalChallengeCount: number
 }
 
 const TRACK_DEFINITIONS: CurriculumTrackDefinition[] = [
@@ -383,6 +405,20 @@ function compareCurriculumCourses(left: CurriculumCourseCard, right: CurriculumC
   return left.course.title.localeCompare(right.course.title)
 }
 
+function buildDefaultCourseProgress(entry: CourseWithLessons): CurriculumCourseProgress {
+  const totalLessonCount = entry.lessons.length
+  const totalChallengeCount = entry.lessons.reduce((total, lesson) => total + lesson.challengeIds.length, 0)
+
+  return {
+    status: "not_started",
+    completedLessonCount: 0,
+    totalLessonCount,
+    completedChallengeCount: 0,
+    totalChallengeCount,
+    continueHref: entry.lessons[0] ? `/learn/${entry.course.slug}/${entry.lessons[0].slug}` : `/learn/${entry.course.slug}`
+  }
+}
+
 function buildCurriculumCourseCard(entry: CourseWithLessons): CurriculumCourseCard {
   const metadata = COURSE_METADATA_BY_SLUG[entry.course.slug] ?? getDefaultCourseMetadata()
 
@@ -392,7 +428,8 @@ function buildCurriculumCourseCard(entry: CourseWithLessons): CurriculumCourseCa
     kindLabel: getCourseKindLabel(metadata.kind),
     totalLessons: entry.lessons.length,
     totalChallenges: entry.lessons.reduce((total, lesson) => total + lesson.challengeIds.length, 0),
-    trackSlugs: metadata.trackSlugs ?? []
+    trackSlugs: metadata.trackSlugs ?? [],
+    progress: buildDefaultCourseProgress(entry)
   }
 }
 
@@ -417,7 +454,16 @@ function buildCurriculumTrackCard(
     totalLessons: availableCourses.reduce((total, course) => total + course.totalLessons, 0),
     totalChallenges: availableCourses.reduce((total, course) => total + course.totalChallenges, 0),
     primaryHref: availableCourses[0] ? `/learn/${availableCourses[0].course.slug}` : null,
-    primaryCourseTitle: availableCourses[0]?.course.title ?? null
+    primaryCourseTitle: availableCourses[0]?.course.title ?? null,
+    progress: {
+      completedCourseCount: availableCourses.filter((course) => course.progress.status === "completed").length,
+      availableCourseCount: availableCourses.length,
+      completedChallengeCount: availableCourses.reduce(
+        (total, course) => total + course.progress.completedChallengeCount,
+        0
+      ),
+      totalChallengeCount: availableCourses.reduce((total, course) => total + course.progress.totalChallengeCount, 0)
+    }
   }
 }
 
@@ -453,6 +499,111 @@ function buildCurriculumSection(
   }
 }
 
+async function loadCourseProgressBySlug(courseCards: CurriculumCourseCard[]) {
+  const user = await getCurrentUser()
+
+  if (!user || !hasSupabaseEnv()) {
+    return new Map<string, CurriculumCourseProgress>()
+  }
+
+  const supabase = await createServerClient()
+  if (!supabase) {
+    return new Map<string, CurriculumCourseProgress>()
+  }
+
+  const snapshot = await getContentSnapshot()
+  const challengeById = new Map(snapshot.challenges.map((challenge) => [challenge.id, challenge]))
+  const lessonIds = courseCards.flatMap((course) => course.lessons.map((lesson) => lesson.id))
+  const challengeIds = courseCards.flatMap((course) => course.lessons.flatMap((lesson) => lesson.challengeIds))
+  const challengeVersionIds = challengeIds
+    .map((challengeId) => challengeById.get(challengeId)?.versionId ?? null)
+    .filter((versionId): versionId is string => Boolean(versionId))
+
+  const [lessonProgressRows, resumeRow, versionSubmissionRows, legacySubmissionRows] = await Promise.all([
+    lessonIds.length
+      ? supabase.from("lesson_progress").select("lesson_id,status").eq("user_id", user.id).in("lesson_id", lessonIds)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+    supabase.from("resume_state").select("course_slug,lesson_slug").eq("user_id", user.id).maybeSingle(),
+    challengeVersionIds.length
+      ? supabase
+          .from("submissions")
+          .select("challenge_id,challenge_version_id")
+          .eq("user_id", user.id)
+          .eq("passed", true)
+          .in("challenge_version_id", challengeVersionIds)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+    challengeIds.length
+      ? supabase
+          .from("submissions")
+          .select("challenge_id")
+          .eq("user_id", user.id)
+          .eq("passed", true)
+          .is("challenge_version_id", null)
+          .in("challenge_id", challengeIds)
+      : Promise.resolve({ data: [] as Record<string, unknown>[] })
+  ])
+
+  const completedLessonIds = new Set(
+    (lessonProgressRows.data ?? [])
+      .filter((row) => String(row.status ?? "") === "completed")
+      .map((row) => String(row.lesson_id))
+  )
+  const inProgressLessonIds = new Set(
+    (lessonProgressRows.data ?? [])
+      .filter((row) => String(row.status ?? "") === "in_progress")
+      .map((row) => String(row.lesson_id))
+  )
+  const completedChallengeIds = new Set(
+    [...(versionSubmissionRows.data ?? []), ...(legacySubmissionRows.data ?? [])]
+      .map((row) => String(row.challenge_id ?? ""))
+      .filter(Boolean)
+  )
+  const resumeCourseSlug = resumeRow.data?.course_slug ? String(resumeRow.data.course_slug) : null
+  const resumeLessonSlug = resumeRow.data?.lesson_slug ? String(resumeRow.data.lesson_slug) : null
+
+  return new Map(
+    courseCards.map((course) => {
+      const completedLessonCount = course.lessons.filter((lesson) => completedLessonIds.has(lesson.id)).length
+      const completedChallengeCount = course.lessons.reduce(
+        (total, lesson) =>
+          total + lesson.challengeIds.filter((challengeId) => completedChallengeIds.has(challengeId)).length,
+        0
+      )
+      const totalLessonCount = course.totalLessons
+      const totalChallengeCount = course.totalChallenges
+      const courseHasProgress =
+        completedChallengeCount > 0 || course.lessons.some((lesson) => inProgressLessonIds.has(lesson.id))
+      const status =
+        totalChallengeCount > 0 && completedChallengeCount >= totalChallengeCount
+          ? "completed"
+          : courseHasProgress
+            ? "in_progress"
+            : "not_started"
+      const continueLesson =
+        resumeCourseSlug === course.course.slug && resumeLessonSlug
+          ? course.lessons.find((lesson) => lesson.slug === resumeLessonSlug) ?? null
+          : null
+      const fallbackLesson =
+        continueLesson ??
+        course.lessons.find((lesson) => !completedLessonIds.has(lesson.id)) ??
+        course.lessons[0] ??
+        null
+
+      return [
+        course.course.slug,
+        {
+          status,
+          completedLessonCount,
+          totalLessonCount,
+          completedChallengeCount,
+          totalChallengeCount,
+          continueHref: fallbackLesson ? `/learn/${course.course.slug}/${fallbackLesson.slug}` : `/learn/${course.course.slug}`
+        } satisfies CurriculumCourseProgress
+      ]
+    })
+  )
+}
+
 /**
  * Builds the learner-facing curriculum landing page so pages can render
  * paths, shelves, and project groupings without duplicating catalog rules.
@@ -460,14 +611,19 @@ function buildCurriculumSection(
 export const getCurriculumLandingPageData = cache(async (): Promise<CurriculumLandingPageData> => {
   const catalog = await getCatalog()
   const courseCards = catalog.map(buildCurriculumCourseCard)
-  const coursesBySlug = new Map(courseCards.map((course) => [course.course.slug, course]))
+  const progressByCourseSlug = await loadCourseProgressBySlug(courseCards)
+  const hydratedCourseCards = courseCards.map((course) => ({
+    ...course,
+    progress: progressByCourseSlug.get(course.course.slug) ?? course.progress
+  }))
+  const coursesBySlug = new Map(hydratedCourseCards.map((course) => [course.course.slug, course]))
 
   return {
     trackCards: TRACK_DEFINITIONS
       .map((definition) => buildCurriculumTrackCard(definition, coursesBySlug))
       .filter((track): track is CurriculumTrackCard => Boolean(track)),
     sections: SECTION_DEFINITIONS
-      .map((definition) => buildCurriculumSection(definition, courseCards))
+      .map((definition) => buildCurriculumSection(definition, hydratedCourseCards))
       .filter((section): section is CurriculumSection => Boolean(section))
   }
 })

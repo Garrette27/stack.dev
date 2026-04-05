@@ -45,13 +45,15 @@ export function mapLesson(row: Record<string, unknown>, courseSlug: string, chal
 
 export function mapChallenge(row: Record<string, unknown>): Challenge {
   const kindValue = String(row.kind ?? "code")
-  const kind: ChallengeKind = kindValue === "multiple_choice" ? "multiple_choice" : "code"
+  const kind: ChallengeKind =
+    kindValue === "multiple_choice" ? "multiple_choice" : kindValue === "local_lab" ? "local_lab" : "code"
   const languageValue = row.language == null ? null : String(row.language)
-  const language = languageValue && isSupportedChallengeLanguage(languageValue) ? languageValue : kind === "code" ? "python" : null
+  const language =
+    languageValue && isSupportedChallengeLanguage(languageValue) ? languageValue : kind === "code" ? "python" : null
   const judge0LanguageId =
-    typeof row.judge0_language_id === "number"
+    kind === "code" && typeof row.judge0_language_id === "number"
       ? row.judge0_language_id
-      : language
+      : kind === "code" && language
         ? getDefaultJudge0LanguageId(language)
         : null
 
