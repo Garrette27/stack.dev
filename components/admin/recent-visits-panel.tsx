@@ -117,7 +117,7 @@ export function RecentVisitsPanel({
         {visits.map((visit, index) => (
           <div
             key={`${visit.path}-${visit.viewedAt}-${visit.deviceLabel}-${index}`}
-            className="grid gap-2 rounded-[1rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto]"
+            className="grid gap-2 rounded-[1rem] bg-[var(--surface-hover)] px-4 py-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto]"
           >
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-[var(--ink-strong)]">{visit.path}</p>

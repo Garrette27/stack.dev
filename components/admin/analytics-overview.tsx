@@ -71,12 +71,12 @@ function BreakdownList({
       <CardContent className="grid gap-3">
         {items.length ? (
           items.map((item) => (
-            <div key={item.label} className="grid gap-2 rounded-[1rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3">
+            <div key={item.label} className="grid gap-2 rounded-[1rem] bg-[var(--surface-hover)] px-4 py-3">
               <div className="flex items-center justify-between gap-3">
                 <span className="min-w-0 truncate text-sm text-[var(--ink)]">{item.label}</span>
                 <span className="shrink-0 text-sm font-semibold text-[var(--ink-strong)]">{item.count}</span>
               </div>
-              <div className="h-2 rounded-full bg-[color:rgb(25_31_45/0.08)]">
+              <div className="h-2 rounded-full bg-[var(--border-soft)]">
                 <div
                   className="h-2 rounded-full bg-[var(--accent)]"
                   style={{ width: `${Math.max((item.count / maxCount) * 100, 8)}%` }}
@@ -111,7 +111,7 @@ function TrendChart({ points }: { points: AdminAnalyticsSnapshot["trend"] }) {
           <div className="grid grid-cols-[repeat(auto-fit,minmax(56px,1fr))] items-end gap-3">
             {points.map((point) => (
               <div key={point.label} className="grid gap-2">
-                <div className="flex h-40 items-end justify-center rounded-[1rem] bg-[color:rgb(25_31_45/0.04)] px-2 py-3">
+                <div className="flex h-40 items-end justify-center rounded-[1rem] bg-[var(--surface-hover)] px-2 py-3">
                   <div
                     className="w-full rounded-full bg-[linear-gradient(180deg,rgba(219,145,80,0.9),rgba(201,111,54,1))]"
                     style={{ height: `${Math.max((point.count / maxCount) * 100, point.count ? 10 : 4)}%` }}

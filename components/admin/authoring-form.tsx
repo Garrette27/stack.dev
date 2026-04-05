@@ -837,7 +837,7 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="border-b border-black/6 bg-[color:rgb(255_255_255/0.66)]">
+      <CardHeader className="border-b border-[var(--border-soft)] bg-[var(--showcase-surface-soft)]">
         <CardTitle>Create chapter + assignment</CardTitle>
         <p className="text-sm leading-7 text-[var(--ink-muted)]">
           Choose a course, choose a chapter, then attach one assignment to that chapter.
@@ -855,8 +855,8 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
           <input type="hidden" name="choiceCorrectKey" value={correctChoiceKey} readOnly />
           <input type="hidden" name="choiceExplanationMdx" value={choiceExplanationMdx} readOnly />
 
-          <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,247,241,0.9))]">
-            <CardHeader className="border-b border-black/6 bg-white/70">
+          <Card className="overflow-hidden bg-[linear-gradient(180deg,var(--showcase-surface),var(--surface))]">
+            <CardHeader className="border-b border-[var(--border-soft)] bg-[var(--showcase-surface-soft)]">
               <CardTitle>Course</CardTitle>
               <p className="text-sm leading-7 text-[var(--ink-muted)]">Choose the course this chapter belongs to, or rename the current course before adding the next chapter.</p>
             </CardHeader>
@@ -865,7 +865,7 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                 <select
                   value={courseSelection}
                   onChange={(event) => setCourseSelection(event.target.value)}
-                  className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
+                  className="flex h-12 w-full rounded-2xl border border-[var(--field-border)] bg-[var(--field-surface)] px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
                 >
                   {snapshot.courses.map((course, index) => (
                     <option key={course.id} value={course.slug}>
@@ -880,14 +880,14 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                 <Input value={courseTitle} onChange={(event) => setCourseTitle(event.target.value)} placeholder="Learn JavaScript for Beginners" required />
               </Field>
 
-              <p className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+              <p className="rounded-[1.5rem] bg-[var(--surface-hover)] px-4 py-3 text-sm text-[var(--ink-muted)]">
                 Course URL: <span className="font-mono text-[var(--ink-strong)]">/learn/{resolvedCourseSlug || "new-course"}</span>
               </p>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,255,0.92))]">
-            <CardHeader className="border-b border-black/6 bg-white/70">
+          <Card className="overflow-hidden bg-[linear-gradient(180deg,var(--showcase-surface),var(--surface))]">
+            <CardHeader className="border-b border-[var(--border-soft)] bg-[var(--showcase-surface-soft)]">
               <CardTitle>Chapter</CardTitle>
               <p className="text-sm leading-7 text-[var(--ink-muted)]">Pick the chapter this assignment belongs to, or create the next chapter for the selected course.</p>
             </CardHeader>
@@ -896,7 +896,7 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                 <select
                   value={lessonSelection}
                   onChange={(event) => setLessonSelection(event.target.value)}
-                  className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
+                  className="flex h-12 w-full rounded-2xl border border-[var(--field-border)] bg-[var(--field-surface)] px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
                 >
                   {courseLessons.map((lesson, index) => (
                     <option key={lesson.id} value={lesson.slug}>
@@ -911,7 +911,7 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                 <Input value={lessonTitle} onChange={(event) => setLessonTitle(event.target.value)} placeholder="Variables" required />
               </Field>
 
-              <p className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+              <p className="rounded-[1.5rem] bg-[var(--surface-hover)] px-4 py-3 text-sm text-[var(--ink-muted)]">
                 Chapter URL:{" "}
                 <span className="font-mono text-[var(--ink-strong)]">
                   /learn/{resolvedCourseSlug || "new-course"}/{resolvedLessonSlug || "new-chapter"}
@@ -932,8 +932,8 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,247,241,0.94))]">
-            <CardHeader className="border-b border-black/6 bg-white/72">
+          <Card className="overflow-hidden bg-[linear-gradient(180deg,var(--showcase-surface),var(--surface))]">
+            <CardHeader className="border-b border-[var(--border-soft)] bg-[var(--showcase-surface-soft)]">
               <CardTitle>Assignment</CardTitle>
               <p className="text-sm leading-7 text-[var(--ink-muted)]">Add a new assignment to this chapter, or load one of the existing assignments to revise it.</p>
             </CardHeader>
@@ -956,7 +956,7 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                       openExistingAssignment(nextSelectedAssignment)
                     }
                   }}
-                  className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
+                  className="flex h-12 w-full rounded-2xl border border-[var(--field-border)] bg-[var(--field-surface)] px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
                 >
                   <option value={NEW_ASSIGNMENT}>Create new assignment</option>
                   {chapterAssignments.map((challenge, index) => (
@@ -967,11 +967,11 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                 </select>
               </Field>
 
-              <p className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-3 text-sm text-[var(--ink-muted)]">
+              <p className="rounded-[1.5rem] bg-[var(--surface-hover)] px-4 py-3 text-sm text-[var(--ink-muted)]">
                 Existing assignments stay selected after you save, so you can keep refining the same work without accidentally creating duplicates.
               </p>
 
-              <div className="rounded-[1.5rem] border border-black/8 bg-[color:rgb(25_31_45/0.03)] px-4 py-4">
+              <div className="rounded-[1.5rem] border border-[var(--border-subtle)] bg-[var(--surface-hover)] px-4 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-[var(--ink-strong)]">Learner reading preview</p>
@@ -985,7 +985,7 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                       </p>
                     ) : null}
                   </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-muted)] ring-1 ring-black/8">
+                  <span className="rounded-full bg-[var(--surface-strong)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-muted)] ring-1 ring-[var(--border-subtle)]">
                     {learnerReadingLabel}
                   </span>
                 </div>
@@ -993,11 +993,11 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                   rows={10}
                   value={learnerReadingPreview}
                   readOnly
-                  className="mt-4 cursor-default bg-white/80 text-[var(--ink)]"
+                  className="mt-4 cursor-default border-[var(--field-border)] bg-[var(--field-surface)] text-[var(--ink)]"
                 />
               </div>
 
-              <div className="rounded-[1.5rem] border border-black/8 bg-[color:rgb(25_31_45/0.03)] px-4 py-4">
+              <div className="rounded-[1.5rem] border border-[var(--border-subtle)] bg-[var(--surface-hover)] px-4 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-[var(--ink-strong)]">Publishing workflow</p>
@@ -1005,7 +1005,7 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                       Drafts stay visible in admin so you can keep iterating. Publishing promotes the selected draft to the live learner version for this assignment.
                     </p>
                   </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-muted)] ring-1 ring-black/8">
+                  <span className="rounded-full bg-[var(--surface-strong)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-muted)] ring-1 ring-[var(--border-subtle)]">
                     {selectedAssignment ? selectedAssignment.publicationState.replace("_", " ") : "new draft"}
                   </span>
                 </div>
@@ -1015,7 +1015,7 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                 <select
                   value={challengeKind}
                   onChange={(event) => handleChallengeKindChange(event.target.value as ChallengeKind)}
-                  className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
+                  className="flex h-12 w-full rounded-2xl border border-[var(--field-border)] bg-[var(--field-surface)] px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
                 >
                   <option value="code">{getChallengeKindOptionLabel("code")}</option>
                   <option value="multiple_choice">{getChallengeKindOptionLabel("multiple_choice")}</option>
@@ -1061,7 +1061,7 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
                           setSolutionCode(getSolutionTemplate(nextLanguage))
                           setHiddenTestCode(getHiddenTestTemplate(nextLanguage))
                         }}
-                        className="flex h-12 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
+                        className="flex h-12 w-full rounded-2xl border border-[var(--field-border)] bg-[var(--field-surface)] px-4 text-sm text-[var(--ink-strong)] shadow-sm outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:rgb(201_111_54/0.2)]"
                       >
                         {AUTHORING_LANGUAGE_OPTIONS.map((option) => (
                           <option key={option} value={option}>

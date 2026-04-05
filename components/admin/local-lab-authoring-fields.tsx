@@ -33,7 +33,7 @@ export function LocalLabAuthoringFields({
 
   return (
     <div className="grid gap-5">
-      <div className="rounded-[1.25rem] border border-black/8 bg-[color:rgb(25_31_45/0.03)] px-4 py-4">
+      <div className="rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--surface-hover)] px-4 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-[var(--ink-strong)]">Local lab flow</p>
@@ -41,7 +41,7 @@ export function LocalLabAuthoringFields({
               Learners will run this assignment on their own machine through the CLI instead of using the in-browser checker.
             </p>
           </div>
-          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-muted)] ring-1 ring-black/8">
+          <span className="rounded-full bg-[var(--surface-strong)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-muted)] ring-1 ring-[var(--border-subtle)]">
             {localLab.manifest ? `${localLab.manifest.checks.length} checks` : "manifest needed"}
           </span>
         </div>

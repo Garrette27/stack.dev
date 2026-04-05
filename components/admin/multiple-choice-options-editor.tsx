@@ -69,9 +69,9 @@ export function MultipleChoiceOptionsEditor({
             return (
               <div
                 key={option.key}
-                className="grid gap-3 rounded-[1.25rem] border border-black/8 bg-white/75 p-4 lg:grid-cols-[auto_1fr_auto_auto]"
+                className="grid gap-3 rounded-[1.25rem] border border-[var(--border-subtle)] bg-[var(--showcase-surface-soft)] p-4 lg:grid-cols-[auto_1fr_auto_auto]"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[color:rgb(25_31_45/0.06)] text-sm font-semibold text-[var(--ink-strong)]">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--surface-hover)] text-sm font-semibold text-[var(--ink-strong)]">
                   {getChoiceLetter(index)}
                 </div>
                 <Input

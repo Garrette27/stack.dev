@@ -108,7 +108,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   .sort((left, right) => left.orderIndex - right.orderIndex)
 
                 return (
-                  <div key={course.id} className="rounded-[1.5rem] bg-white/80 p-4 ring-1 ring-black/6">
+                  <div key={course.id} className="rounded-[1.5rem] bg-[var(--showcase-surface-soft)] p-4 ring-1 ring-[var(--border-subtle)]">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
                         <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`L${courseIndex + 1}`}</p>
@@ -125,7 +125,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
                     <div className="mt-4 grid gap-3">
                       {lessons.map((lesson, lessonIndex) => (
-                        <div key={lesson.id} className="rounded-[1.25rem] bg-[color:rgb(25_31_45/0.03)] px-4 py-3">
+                        <div key={lesson.id} className="rounded-[1.25rem] bg-[var(--surface-hover)] px-4 py-3">
                           <div className="flex flex-wrap items-start justify-between gap-4">
                             <div>
                               <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`CH${lessonIndex + 1}`}</p>
@@ -163,13 +163,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                                 return (
                                   <div
                                     key={challenge.id}
-                                    className="flex flex-wrap items-center justify-between gap-3 rounded-[1rem] bg-white/75 px-3 py-2 ring-1 ring-black/6"
+                                    className="flex flex-wrap items-center justify-between gap-3 rounded-[1rem] bg-[var(--showcase-surface-soft)] px-3 py-2 ring-1 ring-[var(--border-subtle)]"
                                   >
                                     <div className="min-w-0">
                                       <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`A${challengeIndex + 1}`}</p>
                                       <div className="mt-1 flex flex-wrap items-center gap-2">
                                         <p className="truncate text-sm font-semibold text-[var(--ink-strong)]">{challenge.title}</p>
-                                        <Badge className="bg-white text-[var(--ink-muted)] ring-1 ring-black/8">
+                                        <Badge className="bg-[var(--surface-strong)] text-[var(--ink-muted)] ring-1 ring-[var(--border-subtle)]">
                                           {challenge.publicationState === "draft" ? "Draft" : challenge.publicationState === "archived" ? "Archived" : "Published"}
                                         </Badge>
                                       </div>

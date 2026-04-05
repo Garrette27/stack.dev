@@ -69,6 +69,18 @@ html {
   scroll-behavior: smooth;
 }
 
+select {
+  color-scheme: inherit;
+}
+
+/* Keep native select popups readable in both themes instead of relying on
+   browser defaults, which can mismatch the themed option text colors. */
+select option,
+select optgroup {
+  background-color: var(--field-surface);
+  color: var(--ink-strong);
+}
+
 body {
   position: relative;
   isolation: isolate;
