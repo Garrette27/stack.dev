@@ -4,6 +4,7 @@ import { Suspense, type ReactNode } from "react"
 
 import { PageHitTracker } from "@/components/analytics/page-hit-tracker"
 import { SiteHeader } from "@/components/navigation/site-header"
+import { ThemeScript } from "@/components/theme/theme-script"
 import { cn } from "@/lib/utils"
 
 import "./globals.css"
@@ -25,7 +26,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body className={cn(spaceGrotesk.variable, sourceSerif.variable, "font-sans")}>
         <div className="relative min-h-screen">
           <Suspense fallback={null}>

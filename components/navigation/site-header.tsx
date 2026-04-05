@@ -2,6 +2,7 @@ import Link from "next/link"
 import { ArrowRight, ShieldCheck } from "lucide-react"
 
 import { SiteHeaderNav } from "@/components/navigation/site-header-nav"
+import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser, isCurrentUserAdmin } from "@/lib/data"
 
@@ -10,7 +11,7 @@ export async function SiteHeader() {
   const isAdmin = user ? await isCurrentUserAdmin() : false
 
   return (
-    <header className="sticky top-0 z-30 border-b border-black/6 bg-[color:rgb(247_241_233/0.78)] backdrop-blur-xl">
+    <header className="sticky top-0 z-30 border-b border-[var(--border-soft)] bg-[var(--header-surface)] backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-[1880px] items-center justify-between gap-4 px-4 py-4 sm:px-6 xl:px-10">
         <div className="flex items-center gap-4">
           <Link href="/" className="text-lg font-semibold tracking-tight text-[var(--ink-strong)]">
@@ -20,6 +21,7 @@ export async function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           {user ? (
             <>
               <div className="hidden text-right md:block">
@@ -31,7 +33,7 @@ export async function SiteHeader() {
               {isAdmin ? (
                 <Link
                   href="/admin"
-                  className="hidden rounded-full bg-white px-4 py-2 text-sm font-medium text-[var(--ink-strong)] ring-1 ring-black/8 md:inline-flex"
+                  className="hidden rounded-full bg-[var(--surface-strong)] px-4 py-2 text-sm font-medium text-[var(--ink-strong)] ring-1 ring-[var(--border-subtle)] md:inline-flex"
                 >
                   <ShieldCheck className="mr-2 h-4 w-4" />
                   Author

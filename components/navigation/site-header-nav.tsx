@@ -15,8 +15,8 @@ const linkBaseClassName =
 
 function getLinkStateClassName(active: boolean) {
   return active
-    ? "bg-white text-[var(--ink-strong)] shadow-[0_8px_24px_rgba(25,31,45,0.08)] ring-1 ring-black/8"
-    : "text-[var(--ink-muted)] hover:bg-white/70 hover:text-[var(--ink-strong)]"
+    ? "bg-[var(--surface-strong)] text-[var(--ink-strong)] shadow-[0_8px_24px_var(--card-shadow)] ring-1 ring-[var(--border-subtle)]"
+    : "text-[var(--ink-muted)] hover:bg-[var(--surface)] hover:text-[var(--ink-strong)]"
 }
 
 export function SiteHeaderNav({ showAuthoring, isAdmin }: SiteHeaderNavProps) {
