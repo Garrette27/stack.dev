@@ -18,11 +18,11 @@ export default async function HomePage() {
           <Badge>Text-first coding practice</Badge>
           <div className="space-y-5">
             <h1 className="max-w-4xl font-serif text-5xl tracking-tight text-[var(--ink-strong)] sm:text-6xl">
-              Read a short lesson. Solve practical questions. Save progress. Continue tomorrow.
+              Read a short guide. Run a practical coding session. Save progress. Continue tomorrow.
             </h1>
             <p className="max-w-2xl text-lg leading-8 text-[var(--ink)]">
-              Learn with short lessons, practical exercises, and a study flow built to help career shifters stay
-              consistent and keep moving.
+              Build skill with short readings, practical exercises, and a session flow designed to keep your reps steady
+              and useful.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -42,19 +42,19 @@ export default async function HomePage() {
 
         <Card className="overflow-hidden bg-[linear-gradient(160deg,rgba(255,255,255,0.94),rgba(255,243,232,0.96))]">
           <CardHeader>
-            <CardTitle>Why learners stay with it</CardTitle>
+            <CardTitle>Why practice sticks</CardTitle>
             <CardDescription>
-              A practical study path for career shifters who need steady progress, not noise.
+              A practice-first flow for learners who want steady reps, not another bloated course outline.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm leading-7 text-[var(--ink)]">
             <div className="rounded-[1.5rem] bg-white/80 p-4 ring-1 ring-black/6">
-              <p className="font-semibold text-[var(--ink-strong)]">Short lessons that finish</p>
-              <p>Each lesson is small enough to complete in one sitting, even on a busy schedule.</p>
+              <p className="font-semibold text-[var(--ink-strong)]">Short sessions that finish</p>
+              <p>Each session is small enough to complete in one sitting, even on a busy schedule.</p>
             </div>
             <div className="rounded-[1.5rem] bg-white/80 p-4 ring-1 ring-black/6">
               <p className="font-semibold text-[var(--ink-strong)]">Practice over passive reading</p>
-              <p>Read the concept, solve a challenge, and get feedback without leaving the learning flow.</p>
+              <p>Read the concept, solve a challenge, and get feedback without leaving the practice flow.</p>
             </div>
             <div className="rounded-[1.5rem] bg-white/80 p-4 ring-1 ring-black/6">
               <p className="font-semibold text-[var(--ink-strong)]">Progress that keeps up with you</p>
@@ -73,8 +73,8 @@ export default async function HomePage() {
             <div className="flex gap-3 rounded-[1.5rem] border border-white/10 bg-white/6 p-4">
               <BookOpenText className="mt-1 h-5 w-5 text-[var(--accent-soft)]" />
               <div>
-                <p className="font-semibold text-white">Read a short lesson</p>
-                <p>Keep every lesson small enough to finish in one session.</p>
+                <p className="font-semibold text-white">Read a short guide</p>
+                <p>Keep every practical session small enough to finish in one sitting.</p>
               </div>
             </div>
             <div className="flex gap-3 rounded-[1.5rem] border border-white/10 bg-white/6 p-4">
@@ -88,7 +88,7 @@ export default async function HomePage() {
               <ChartNoAxesColumn className="mt-1 h-5 w-5 text-[var(--accent-soft)]" />
               <div>
                 <p className="font-semibold text-white">Never lose progress</p>
-                <p>Resume state and lesson completion are stored separately so returning feels instant.</p>
+                <p>Resume state and session completion are stored separately so returning feels instant.</p>
               </div>
             </div>
           </CardContent>
@@ -107,12 +107,14 @@ export default async function HomePage() {
               </CardHeader>
               <CardContent className="grid gap-4">
                 <div className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] p-4 text-sm text-[var(--ink)]">
-                  <p className="font-semibold text-[var(--ink-strong)]">{lessons.length} lesson</p>
-                  <p className="mt-1">First step takes about {formatRelativeMinutes(lessons[0]?.estimatedMinutes ?? 10)}.</p>
+                  <p className="font-semibold text-[var(--ink-strong)]">
+                    {lessons.length} practice session{lessons.length === 1 ? "" : "s"}
+                  </p>
+                  <p className="mt-1">First practice session takes about {formatRelativeMinutes(lessons[0]?.estimatedMinutes ?? 10)}.</p>
                 </div>
                 <Link href={`/learn/${course.slug}`}>
                   <Button variant="secondary">
-                    Open course
+                    Open practice path
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>

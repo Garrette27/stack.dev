@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getCatalog } from "@/lib/data"
 
 /**
- * Presents the published learning paths so the top-level Learn nav does not
+ * Presents the published practice paths so the top-level learner nav does not
  * depend on any one hard-coded course slug.
  */
 export default async function LearnIndexPage() {
@@ -16,10 +16,10 @@ export default async function LearnIndexPage() {
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-12 sm:px-6 xl:px-10">
       <section className="grid gap-5">
-        <Badge>Learning paths</Badge>
-        <h1 className="font-serif text-5xl tracking-tight text-[var(--ink-strong)]">Choose where to start.</h1>
+        <Badge>Practice paths</Badge>
+        <h1 className="font-serif text-5xl tracking-tight text-[var(--ink-strong)]">Choose your next practical session.</h1>
         <p className="max-w-3xl text-lg leading-8 text-[var(--ink)]">
-          Browse the published paths, open a chapter, and keep moving through assignments at your own pace.
+          Browse the published practice paths, open a chapter, and keep moving through hands-on assignments at your own pace.
         </p>
       </section>
 
@@ -44,7 +44,7 @@ export default async function LearnIndexPage() {
               </div>
               <Link href={`/learn/${course.slug}`}>
                 <Button>
-                  Open path
+                  Open practice path
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>

@@ -115,7 +115,7 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
         <div className="space-y-6">
           <Link href={`/learn/${data.course.slug}`} className="inline-flex items-center gap-2 text-sm text-white/60">
             <ArrowLeft className="h-4 w-4" />
-            Back to course
+            Back to practice path
           </Link>
 
           <div className="space-y-4">

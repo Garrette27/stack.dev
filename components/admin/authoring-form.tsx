@@ -462,7 +462,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                   rows={10}
                   value={readingMdx}
                   onChange={(event) => setReadingMdx(event.target.value)}
-                  placeholder={"Use this only when one assignment needs its own reading.\n\nLeave it blank to use the assignment prompt as the primary learner reading."}
+                  placeholder={"Use this only when one assignment needs its own reading.\n\nLeave it blank to reuse the chapter reading above."}
                 />
                 <div className="mt-3 flex flex-wrap gap-3">
                   <Button
@@ -471,7 +471,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                     size="sm"
                     onClick={() => setReadingMdx("")}
                   >
-                    Clear assignment reading
+                    Use chapter reading
                   </Button>
                   {AUTHORING_LANGUAGE_OPTIONS.map((option) => (
                     <Button
@@ -486,7 +486,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                   ))}
                 </div>
                 <p className="text-sm leading-7 text-[var(--ink-muted)]">
-                  Chapter reading still exists as the chapter guide for the lesson. Leaving this blank now keeps the selected assignment&apos;s prompt as the main learner reading card.
+                  Leave this blank when the assignment should use the chapter reading. Fill it only when one assignment needs its own study text.
                 </p>
               </Field>
 

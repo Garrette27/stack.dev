@@ -42,7 +42,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
               <div className="min-h-[112px] rounded-[1.5rem] border border-white/10 bg-[rgba(255,255,255,0.07)] p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/55">Courses</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/55">Practice paths</p>
               <p className="mt-2 text-3xl font-semibold text-white">{state.courseCount}</p>
             </div>
               <div className="min-h-[112px] rounded-[1.5rem] border border-white/10 bg-[rgba(255,255,255,0.07)] p-4">
@@ -59,7 +59,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Continue where you left off</CardTitle>
-            <CardDescription>Jump back into your current lesson without searching through the course.</CardDescription>
+            <CardDescription>Jump back into your current session without searching through the whole practice path.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {state.resumeTarget ? (
@@ -72,14 +72,14 @@ export default async function DashboardPage() {
                 </div>
                 <Link href={`/learn/${state.resumeTarget.courseSlug}/${state.resumeTarget.lessonSlug}`}>
                   <Button>
-                    Resume lesson
+                    Resume session
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
               </>
             ) : (
               <p className="text-sm leading-7 text-[var(--ink-muted)]">
-                Start one lesson, then the app will keep your place here automatically.
+                Start one session, then the app will keep your place here automatically.
               </p>
             )}
           </CardContent>
@@ -91,7 +91,7 @@ export default async function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock3 className="h-5 w-5 text-[var(--accent)]" />
-              Total lessons
+              Total sessions
             </CardTitle>
           </CardHeader>
           <CardContent className="text-4xl font-semibold text-[var(--ink-strong)]">
@@ -106,7 +106,7 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm leading-7 text-[var(--ink)]">
-            Short, regular sessions work better than giant bursts. Keep the next lesson obvious and easy to resume.
+            Short, regular sessions work better than giant bursts. Keep the next practical session obvious and easy to resume.
           </CardContent>
         </Card>
         <Card className="h-full overflow-hidden">
@@ -165,8 +165,8 @@ export default async function DashboardPage() {
 
       <section className="grid gap-5">
         <div>
-          <h2 className="font-serif text-3xl tracking-tight text-[var(--ink-strong)]">Recent lessons</h2>
-          <p className="mt-2 text-sm leading-7 text-[var(--ink-muted)]">Open the next lesson directly from here.</p>
+          <h2 className="font-serif text-3xl tracking-tight text-[var(--ink-strong)]">Recent sessions</h2>
+          <p className="mt-2 text-sm leading-7 text-[var(--ink-muted)]">Open the next practical session directly from here.</p>
         </div>
         <div className="grid gap-4">
           {state.recentLessons.map((lesson) => (
@@ -182,7 +182,7 @@ export default async function DashboardPage() {
                 </div>
                 <Link href={`/learn/${lesson.courseSlug}/${lesson.slug}`}>
                   <Button variant="secondary">
-                    Open lesson
+                    Open session
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>

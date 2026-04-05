@@ -14,22 +14,22 @@ export function getPrimaryBillingCta(access: SubscriptionAccessSnapshot): Billin
   if (access.status === "active") {
     return {
       href: "/learn",
-      label: "Open your learning path",
-      helperText: "Your account is active. Continue into the learning path."
+      label: "Open your practice path",
+      helperText: "Your account is active. Continue into your next practical session."
     }
   }
 
   if (access.status === "inactive") {
     return {
       href: "/billing",
-      label: "Start your transition",
-      helperText: "Review the plan and get your subscription setup ready."
+      label: "Start practicing",
+      helperText: "Review the plan and get your practice subscription ready."
     }
   }
 
   return {
     href: "/login",
-    label: "Start your transition",
+    label: "Start practicing",
     helperText: "Sign in first so your plan, progress, and billing all stay on one account."
   }
 }

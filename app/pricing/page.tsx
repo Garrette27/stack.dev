@@ -8,8 +8,8 @@ import { getCurrentSubscriptionAccess, getPrimaryBillingCta, getPrimaryPlan } fr
 
 const reasonsToJoin = [
   {
-    title: "Built for career shifters",
-    description: "The lessons are designed for people balancing work, family, and a serious transition into software.",
+    title: "Built around practical sessions",
+    description: "Each session is shaped to get you reading, coding, and moving again without wasting time on filler.",
     icon: Briefcase
   },
   {
@@ -32,23 +32,22 @@ export default async function PricingPage() {
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-12 px-4 py-12 sm:px-6 xl:px-10">
       <section className="grid gap-6">
-        <Badge>For career shifters</Badge>
+        <Badge>Practice-first access</Badge>
         <h1 className="max-w-6xl font-serif text-5xl leading-[0.95] tracking-tight text-[var(--ink-strong)] sm:text-6xl">
-          A practical path into software from any industry.
+          Practical coding sessions that help you improve faster than passive courses.
         </h1>
         <p className="max-w-4xl text-lg leading-8 text-[var(--ink)]">
-          Learn with short structured lessons, real coding exercises, and a study flow built for working adults who want
-          to move into tech without wasting time.
+          Practice with short readings, real coding exercises, and a steady session flow built to keep your reps useful
+          and your progress clear.
         </p>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <Card className="h-full overflow-hidden bg-[linear-gradient(160deg,rgba(201,111,54,0.96),rgba(219,145,80,0.92))] text-white">
           <CardHeader className="border-b border-white/12">
-            <CardTitle className="font-serif text-4xl leading-[1.05] text-white">Career Shifter Access</CardTitle>
+            <CardTitle className="font-serif text-4xl leading-[1.05] text-white">Practical Coding Access</CardTitle>
             <CardDescription className="text-white/80">
-              A paid subscription focused on helping aspiring developers build skills consistently and transition into
-              tech with confidence.
+              A paid subscription focused on short practical sessions, steady reps, and real coding feedback.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6">
@@ -83,7 +82,7 @@ export default async function PricingPage() {
           <CardHeader>
             <CardTitle>Why people subscribe</CardTitle>
             <CardDescription>
-              The platform is built for learners who want a realistic path into frontend and full-stack development.
+              The platform is built for learners who want hands-on progress, not a pile of unfinished video courses.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
@@ -112,9 +111,9 @@ export default async function PricingPage() {
             <CardTitle>What you get</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 text-sm leading-7 text-[var(--ink)]">
-            <p>Structured lessons that remove guesswork from what to study next.</p>
+            <p>Short practical sessions that remove guesswork from what to work on next.</p>
             <p>Hands-on exercises that force real practice instead of passive reading.</p>
-            <p>A learning experience designed to stay clear even when your schedule is crowded.</p>
+            <p>A practice flow designed to stay clear even when your schedule is crowded.</p>
           </CardContent>
         </Card>
 
@@ -122,14 +121,14 @@ export default async function PricingPage() {
           <CardHeader>
             <CardTitle className="text-white">Who this is for</CardTitle>
             <CardDescription className="text-white/75">
-              For career shifters, working professionals, and self-taught learners aiming for their first developer role.
+              For learners who want practical reps, immediate feedback, and a steady way to improve at coding.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm leading-7 text-white/85">
-            <p>If you want a focused path into tech, this subscription is built to help you stay consistent and keep moving.</p>
+            <p>If you want a focused practice rhythm instead of another theory-heavy course, this subscription is built to help you keep moving.</p>
             <Link href={primaryCta.href}>
               <Button>
-                Start learning
+                Start practicing
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>

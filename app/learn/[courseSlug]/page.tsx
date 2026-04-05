@@ -43,7 +43,7 @@ export default async function CoursePage({ params }: CoursePageProps) {
               </div>
               <Link href={`/learn/${lesson.courseSlug}/${lesson.slug}`}>
                 <Button>
-                  Start lesson
+                  Start session
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>

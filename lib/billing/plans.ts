@@ -11,16 +11,16 @@ export type BillingPlan = {
 const PUBLIC_PLANS: BillingPlan[] = [
   {
     slug: "career-shifter-monthly",
-    name: "Career Shifter Access",
-    tagline: "A focused plan for learners building software skills around a busy life.",
+    name: "Practical Coding Access",
+    tagline: "A focused plan for learners building coding skill through short practical sessions.",
     priceLabel: "Paid plan at launch",
     cadenceLabel: "Monthly subscription",
     featured: true,
     highlights: [
-      "Short daily lessons built for working adults",
+      "Short practical sessions built for busy schedules",
       "Hands-on coding practice with immediate feedback",
       "Resume exactly where you left off",
-      "Structured path for career shifters moving into software"
+      "A practice-first flow that stays useful even when time is limited"
     ]
   }
 ]

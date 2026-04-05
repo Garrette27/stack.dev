@@ -24,7 +24,7 @@ export function SiteHeaderNav({ showAuthoring, isAdmin }: SiteHeaderNavProps) {
 
   const items = [
     { href: "/dashboard", label: "Dashboard", active: pathname === "/dashboard" },
-    { href: "/learn", label: "Learn", active: pathname.startsWith("/learn") },
+    { href: "/learn", label: "Practice", active: pathname.startsWith("/learn") },
     { href: "/pricing", label: "Pricing", active: pathname === "/pricing" }
   ]
 

@@ -70,7 +70,7 @@ export function CourseProgressStrip({
 
         <div className="grid gap-2 xl:grid-cols-[minmax(210px,0.95fr)_minmax(210px,1fr)_minmax(210px,1fr)_auto] xl:items-center">
           <div className="rounded-xl border border-white/10 bg-white/6 px-3 py-2">
-            <p className="text-[9px] uppercase leading-[1.3] tracking-[0.24em] text-white/45">Course</p>
+            <p className="text-[9px] uppercase leading-[1.3] tracking-[0.24em] text-white/45">Practice path</p>
             <p className="mt-1 text-sm font-semibold text-white">{`L${courseIndex}: ${courseTitle}`}</p>
           </div>
 

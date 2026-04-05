@@ -19,10 +19,10 @@ export default async function LoginPage() {
         <div className="space-y-5">
           <Badge>Sign in</Badge>
           <h1 className="max-w-2xl font-serif text-5xl tracking-tight text-[var(--ink-strong)]">
-            Sign in once and keep every lesson exactly where you left it.
+            Sign in once and keep every practical session exactly where you left it.
           </h1>
           <p className="max-w-xl text-lg leading-8 text-[var(--ink)]">
-            Continue with Google to save your progress, return to your active lesson, and keep your learning history in one
+            Continue with Google to save your progress, return to your active session, and keep your practice history in one
             place.
           </p>
           <div className="grid gap-3 text-sm text-[var(--ink)]">
@@ -32,7 +32,7 @@ export default async function LoginPage() {
             </div>
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-4 w-4 text-[var(--accent)]" />
-              <span>Keep lesson progress and resume state synced to your account</span>
+              <span>Keep session progress and resume state synced to your account</span>
             </div>
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-4 w-4 text-[var(--accent)]" />

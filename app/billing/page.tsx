@@ -30,7 +30,7 @@ export default async function BillingPage() {
       <section className="grid gap-5">
         <Badge>Billing</Badge>
         <h1 className="max-w-4xl font-serif text-5xl tracking-tight text-[var(--ink-strong)]">
-          Subscription setup for your learning path.
+          Subscription setup for your practice path.
         </h1>
         <p className="max-w-3xl text-lg leading-8 text-[var(--ink)]">
           The checkout backend is not connected yet, but this page now holds the public subscription UI and account state
@@ -49,7 +49,7 @@ export default async function BillingPage() {
               <p className="text-xs uppercase tracking-[0.18em] text-white/65">{plan.cadenceLabel}</p>
               <p className="mt-2 text-3xl font-semibold text-white">{plan.priceLabel}</p>
               <p className="mt-3 text-sm leading-7 text-white/82">
-                Built for career shifters who want a structured path, real exercises, and a study rhythm that survives a busy week.
+                Built for learners who want practical reps, real exercises, and a session rhythm that survives a busy week.
               </p>
             </div>
 
@@ -118,7 +118,7 @@ export default async function BillingPage() {
               </Link>
               <Link href={access.status === "active" ? "/learn" : "/dashboard"}>
                 <Button variant="ghost">
-                  {access.status === "active" ? "Open your learning path" : "Return to dashboard"}
+                  {access.status === "active" ? "Open your practice path" : "Return to dashboard"}
                 </Button>
               </Link>
             </div>
