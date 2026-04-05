@@ -2,6 +2,8 @@ import { Children, Fragment, isValidElement, type ReactNode } from "react"
 import { compileMDX } from "next-mdx-remote/rsc"
 import remarkGfm from "remark-gfm"
 
+import { renderHighlightedCode } from "@/lib/code-highlighting"
+
 type MdxRendererProps = {
   source: string
   tone?: "light" | "dark"
@@ -80,7 +82,21 @@ function getCodeBlockFileLabel(language: string | null) {
   }
 }
 
-function renderCodePanel(code: string, language: string | null, colors: ToneColors) {
+function getCodeBlockText(children: ReactNode) {
+  const child = Children.toArray(children)[0]
+
+  if (!isValidElement<{ children?: ReactNode }>(child)) {
+    return ""
+  }
+
+  if (typeof child.props.children === "string") {
+    return child.props.children
+  }
+
+  return Children.toArray(child.props.children).join("")
+}
+
+function renderCodePanel(code: string, language: string | null, colors: ToneColors, tone: "light" | "dark") {
   const fileLabel = getCodeBlockFileLabel(language)
 
   return (
@@ -92,7 +108,7 @@ function renderCodePanel(code: string, language: string | null, colors: ToneColo
         <span className="text-xs uppercase tracking-[0.22em]">Read only</span>
       </div>
       <pre className="overflow-x-auto p-5 text-sm">
-        <code className="font-mono text-sm">{code}</code>
+        {renderHighlightedCode(code, language, tone)}
       </pre>
     </div>
   )
@@ -285,7 +301,7 @@ function parseFallbackBlocks(source: string): FallbackBlock[] {
   return blocks
 }
 
-function renderFallbackBlocks(source: string, colors: ToneColors) {
+function renderFallbackBlocks(source: string, colors: ToneColors, tone: "light" | "dark") {
   const blocks = parseFallbackBlocks(source)
 
   return blocks.map((block, index) => {
@@ -331,7 +347,7 @@ function renderFallbackBlocks(source: string, colors: ToneColors) {
     }
 
     if (block.kind === "code") {
-      return <Fragment key={`code-${index}`}>{renderCodePanel(block.text, block.language, colors)}</Fragment>
+      return <Fragment key={`code-${index}`}>{renderCodePanel(block.text, block.language, colors, tone)}</Fragment>
     }
 
     return (
@@ -342,7 +358,7 @@ function renderFallbackBlocks(source: string, colors: ToneColors) {
   })
 }
 
-function getMdxComponents(colors: ToneColors) {
+function getMdxComponents(colors: ToneColors, tone: "light" | "dark") {
   return {
     h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
       <h1 className={`font-serif text-4xl tracking-tight ${colors.heading}`} {...props} />
@@ -377,6 +393,7 @@ function getMdxComponents(colors: ToneColors) {
     },
     pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => {
       const language = getCodeBlockLanguage(children)
+      const code = getCodeBlockText(children)
 
       return (
         <div className={`mt-6 overflow-hidden rounded-[1.5rem] border ${colors.pre}`}>
@@ -387,7 +404,7 @@ function getMdxComponents(colors: ToneColors) {
             <span className="text-xs uppercase tracking-[0.22em]">Read only</span>
           </div>
           <pre className="overflow-x-auto p-5 text-sm" {...props}>
-            {children}
+            {renderHighlightedCode(code, language, tone)}
           </pre>
         </div>
       )
@@ -414,11 +431,11 @@ export async function MdxRenderer({ source, tone = "light" }: MdxRendererProps) 
           remarkPlugins: [remarkGfm]
         }
       },
-      components: getMdxComponents(colors)
+      components: getMdxComponents(colors, tone)
     })
 
     return content
   } catch {
-    return <div>{renderFallbackBlocks(source, colors)}</div>
+    return <div>{renderFallbackBlocks(source, colors, tone)}</div>
   }
 }

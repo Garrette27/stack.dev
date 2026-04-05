@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { upsertAuthoringBundleAction, type AuthoringActionState } from "@/app/admin/actions"
@@ -16,12 +16,16 @@ import {
   getEffectiveAssignmentReadingLabel
 } from "@/lib/content/reading"
 import {
-  buildPersistedAuthoringDraftKey,
-  readPersistedAuthoringDraft,
+  buildPersistedAssignmentDraftKey,
+  buildPersistedLessonDraftKey,
+  readPersistedAssignmentDraft,
+  readPersistedLessonDraft,
   readPersistedAuthoringSelection,
-  writePersistedAuthoringDraft,
+  writePersistedAssignmentDraft,
   writePersistedAuthoringSelection,
-  type PersistedAuthoringDraft,
+  writePersistedLessonDraft,
+  type PersistedAssignmentDraft,
+  type PersistedLessonDraft,
   type PersistedAuthoringSelection
 } from "@/lib/admin/authoring-session"
 import {
@@ -46,6 +50,7 @@ const initialState: AuthoringActionState = {
 
 type AuthoringFormProps = {
   snapshot: ContentSnapshot
+  initialSelection?: PersistedAuthoringSelection | null
 }
 
 function getAssignmentLabel(challenge: Challenge, index: number) {
@@ -81,14 +86,51 @@ function getChallengesForLesson(snapshot: ContentSnapshot, lesson: Lesson | null
     .filter((challenge): challenge is Challenge => Boolean(challenge))
 }
 
-/**
- * Captures the full authoring surface so admins can safely return to unfinished
- * edits without re-pasting chapter or assignment content.
- */
-function buildPersistedDraft({
+type ResolvedAuthoringTarget = {
+  course: ContentSnapshot["courses"][number] | null
+  lesson: Lesson | null
+  assignment: Challenge | null
+}
+
+function resolveAuthoringTarget(
+  snapshot: ContentSnapshot,
+  selection: PersistedAuthoringSelection | null | undefined
+): ResolvedAuthoringTarget {
+  const defaultCourse = snapshot.courses[0] ?? null
+  const course = selection?.courseSlug
+    ? snapshot.courses.find((candidate) => candidate.slug === selection.courseSlug) ?? defaultCourse
+    : defaultCourse
+  const courseLessons = getLessonsForCourse(snapshot, course?.id ?? null)
+  const defaultLesson = courseLessons[0] ?? null
+  const lesson = selection?.lessonSlug
+    ? courseLessons.find((candidate) => candidate.slug === selection.lessonSlug) ?? defaultLesson
+    : defaultLesson
+  const lessonAssignments = getChallengesForLesson(snapshot, lesson)
+  const assignment =
+    selection?.challengeSlug && selection.challengeSlug !== NEW_ASSIGNMENT
+      ? lessonAssignments.find((candidate) => candidate.slug === selection.challengeSlug) ?? null
+      : null
+
+  return {
+    course,
+    lesson,
+    assignment
+  }
+}
+
+function buildPersistedLessonDraft({
   courseTitle,
   lessonTitle,
   bodyMdx,
+}: PersistedLessonDraft): PersistedLessonDraft {
+  return {
+    courseTitle,
+    lessonTitle,
+    bodyMdx
+  }
+}
+
+function buildPersistedAssignmentDraft({
   challengeKind,
   language,
   judge0LanguageId,
@@ -100,11 +142,8 @@ function buildPersistedDraft({
   choiceOptions,
   correctChoiceKey,
   choiceExplanationMdx
-}: PersistedAuthoringDraft): PersistedAuthoringDraft {
+}: PersistedAssignmentDraft): PersistedAssignmentDraft {
   return {
-    courseTitle,
-    lessonTitle,
-    bodyMdx,
     challengeKind,
     language,
     judge0LanguageId,
@@ -119,12 +158,22 @@ function buildPersistedDraft({
   }
 }
 
-function applyPersistedDraft(
-  draft: PersistedAuthoringDraft,
+function applyPersistedLessonDraft(
+  draft: PersistedLessonDraft,
   setters: {
     setCourseTitle: (value: string) => void
     setLessonTitle: (value: string) => void
     setBodyMdx: (value: string) => void
+  }
+) {
+  setters.setCourseTitle(draft.courseTitle)
+  setters.setLessonTitle(draft.lessonTitle)
+  setters.setBodyMdx(draft.bodyMdx)
+}
+
+function applyPersistedAssignmentDraft(
+  draft: PersistedAssignmentDraft,
+  setters: {
     setChallengeKind: (value: ChallengeKind) => void
     setLanguage: (value: NonNullable<Challenge["language"]>) => void
     setJudge0LanguageId: (value: string) => void
@@ -138,9 +187,6 @@ function applyPersistedDraft(
     setChoiceExplanationMdx: (value: string) => void
   }
 ) {
-  setters.setCourseTitle(draft.courseTitle)
-  setters.setLessonTitle(draft.lessonTitle)
-  setters.setBodyMdx(draft.bodyMdx)
   setters.setChallengeKind(draft.challengeKind)
   setters.setLanguage((draft.language as NonNullable<Challenge["language"]>) || "javascript")
   setters.setJudge0LanguageId(draft.judge0LanguageId)
@@ -191,15 +237,16 @@ function loadAssignmentDraft(
  * Presents authoring in product terms: course, chapter, and assignment.
  * The form keeps routing and internal challenge identity hidden behind generated fields.
  */
-export function AuthoringForm({ snapshot }: AuthoringFormProps) {
+export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFormProps) {
+  const pathname = usePathname()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [state, formAction, pending] = useActionState(upsertAuthoringBundleAction, initialState)
 
-  const initialCourse = snapshot.courses[0] ?? null
-  const initialLessons = getLessonsForCourse(snapshot, initialCourse?.id ?? null)
-  const initialLesson = initialLessons[0] ?? null
-  const initialAssignments = getChallengesForLesson(snapshot, initialLesson)
-  const initialAssignment = initialAssignments[0] ?? null
+  const initialTarget = resolveAuthoringTarget(snapshot, initialSelection)
+  const initialCourse = initialTarget.course
+  const initialLesson = initialTarget.lesson
+  const initialAssignment = initialTarget.assignment
   const initialChoiceOptions = initialAssignment
     ? ensureMultipleChoiceOptionShape(initialAssignment.choiceOptions)
     : createDefaultMultipleChoiceOptions()
@@ -208,6 +255,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
   const [lessonSelection, setLessonSelection] = useState(initialLesson?.slug ?? NEW_CHAPTER)
   const [assignmentSelection, setAssignmentSelection] = useState(initialAssignment?.slug ?? NEW_ASSIGNMENT)
   const [lastAppliedSaveSelectionKey, setLastAppliedSaveSelectionKey] = useState("")
+  const [selectionHydrated, setSelectionHydrated] = useState(Boolean(initialSelection))
 
   const [courseTitle, setCourseTitle] = useState(initialCourse?.title ?? "")
   const [lessonTitle, setLessonTitle] = useState(initialLesson?.title ?? "")
@@ -234,7 +282,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     initialAssignment?.correctChoiceKey ?? initialChoiceOptions[0]?.key ?? ""
   )
   const [choiceExplanationMdx, setChoiceExplanationMdx] = useState(initialAssignment?.choiceExplanationMdx ?? "")
-  const restoredSelectionRef = useRef(false)
+  const restoredSelectionRef = useRef(Boolean(initialSelection))
   const previousLessonSlugRef = useRef<string | null>(initialLesson?.slug ?? null)
 
   const selectedCourse = useMemo(
@@ -276,11 +324,16 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     [bodyMdx, promptMdx, readingMdx]
   )
 
-  const applyStoredDraft = useCallback((draft: PersistedAuthoringDraft) => {
-    applyPersistedDraft(draft, {
+  const applyStoredLessonDraft = useCallback((draft: PersistedLessonDraft) => {
+    applyPersistedLessonDraft(draft, {
       setCourseTitle,
       setLessonTitle,
-      setBodyMdx,
+      setBodyMdx
+    })
+  }, [])
+
+  const applyStoredAssignmentDraft = useCallback((draft: PersistedAssignmentDraft) => {
+    applyPersistedAssignmentDraft(draft, {
       setChallengeKind,
       setLanguage,
       setJudge0LanguageId,
@@ -311,9 +364,35 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     })
   }, [])
 
+  const syncSelectionToUrl = useCallback((selection: PersistedAuthoringSelection | null) => {
+    const params = new URLSearchParams(searchParams.toString())
+
+    if (selection?.courseSlug) {
+      params.set("authorCourse", selection.courseSlug)
+    } else {
+      params.delete("authorCourse")
+    }
+
+    if (selection?.lessonSlug) {
+      params.set("authorLesson", selection.lessonSlug)
+    } else {
+      params.delete("authorLesson")
+    }
+
+    if (selection?.challengeSlug) {
+      params.set("authorAssignment", selection.challengeSlug)
+    } else {
+      params.delete("authorAssignment")
+    }
+
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false })
+  }, [pathname, router, searchParams])
+
   const rememberSelection = useCallback((selection: PersistedAuthoringSelection | null) => {
     writePersistedAuthoringSelection(selection)
-  }, [])
+    syncSelectionToUrl(selection)
+  }, [syncSelectionToUrl])
 
   const buildSelection = useCallback(
     (challengeSlug: string, override?: Partial<PersistedAuthoringSelection>) => {
@@ -339,21 +418,43 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     [courseSelection, courseTitle, lessonSelection, lessonTitle, selectedCourse?.slug, selectedLesson?.slug]
   )
 
-  const loadPersistedDraftForSelection = useCallback(
+  const loadPersistedLessonDraftForSelection = useCallback(
     (selection: PersistedAuthoringSelection | null) => {
       if (!selection) {
         return false
       }
 
-      const storedDraft = readPersistedAuthoringDraft(buildPersistedAuthoringDraftKey(selection))
+      const storedDraft = readPersistedLessonDraft(
+        buildPersistedLessonDraftKey({
+          courseSlug: selection.courseSlug,
+          lessonSlug: selection.lessonSlug
+        })
+      )
       if (!storedDraft) {
         return false
       }
 
-      applyStoredDraft(storedDraft)
+      applyStoredLessonDraft(storedDraft)
       return true
     },
-    [applyStoredDraft]
+    [applyStoredLessonDraft]
+  )
+
+  const loadPersistedAssignmentDraftForSelection = useCallback(
+    (selection: PersistedAuthoringSelection | null) => {
+      if (!selection) {
+        return false
+      }
+
+      const storedDraft = readPersistedAssignmentDraft(buildPersistedAssignmentDraftKey(selection))
+      if (!storedDraft) {
+        return false
+      }
+
+      applyStoredAssignmentDraft(storedDraft)
+      return true
+    },
+    [applyStoredAssignmentDraft]
   )
 
   const openExistingAssignment = useCallback((
@@ -368,12 +469,27 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
       rememberSelection(nextSelection)
     }
 
-    if (loadPersistedDraftForSelection(nextSelection)) {
+    if (!loadPersistedLessonDraftForSelection(nextSelection) && selectedLesson) {
+      setCourseTitle(selectedCourse?.title ?? courseTitle)
+      setLessonTitle(selectedLesson.title)
+      setBodyMdx(selectedLesson.bodyMdx)
+    }
+
+    if (loadPersistedAssignmentDraftForSelection(nextSelection)) {
       return
     }
 
     loadExistingAssignmentDraft(challenge)
-  }, [buildSelection, loadExistingAssignmentDraft, loadPersistedDraftForSelection, rememberSelection])
+  }, [
+    buildSelection,
+    courseTitle,
+    loadExistingAssignmentDraft,
+    loadPersistedAssignmentDraftForSelection,
+    loadPersistedLessonDraftForSelection,
+    rememberSelection,
+    selectedCourse?.title,
+    selectedLesson
+  ])
 
   const resetCodeAssignmentDraft = (nextLanguage: NonNullable<Challenge["language"]>) => {
     setChallengeKind("code")
@@ -417,8 +533,17 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     const nextSelection = selectionOverride ?? buildSelection(NEW_ASSIGNMENT)
 
     setAssignmentSelection(NEW_ASSIGNMENT)
+    if (nextSelection) {
+      rememberSelection(nextSelection)
+    }
 
-    if (loadPersistedDraftForSelection(nextSelection)) {
+    if (!loadPersistedLessonDraftForSelection(nextSelection) && selectedLesson) {
+      setCourseTitle(selectedCourse?.title ?? courseTitle)
+      setLessonTitle(selectedLesson.title)
+      setBodyMdx(selectedLesson.bodyMdx)
+    }
+
+    if (loadPersistedAssignmentDraftForSelection(nextSelection)) {
       return
     }
 
@@ -428,9 +553,23 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     }
 
     resetCodeAssignmentDraft(language)
-  }, [buildSelection, challengeKind, language, loadPersistedDraftForSelection])
+  }, [
+    buildSelection,
+    challengeKind,
+    courseTitle,
+    language,
+    loadPersistedAssignmentDraftForSelection,
+    loadPersistedLessonDraftForSelection,
+    rememberSelection,
+    selectedCourse?.title,
+    selectedLesson
+  ])
 
   useEffect(() => {
+    if (!selectionHydrated) {
+      return
+    }
+
     if (!selectedCourse) {
       setCourseTitle("")
       setLessonSelection(NEW_CHAPTER)
@@ -443,9 +582,13 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
       courseLessons[0] ??
       null
     setLessonSelection(nextLesson?.slug ?? NEW_CHAPTER)
-  }, [courseSelection, selectedCourse, courseLessons, lessonSelection])
+  }, [courseSelection, courseLessons, lessonSelection, selectedCourse, selectionHydrated])
 
   useEffect(() => {
+    if (!selectionHydrated) {
+      return
+    }
+
     const currentLessonSlug = selectedLesson?.slug ?? null
     const lessonChanged = previousLessonSlugRef.current !== currentLessonSlug
     previousLessonSlugRef.current = currentLessonSlug
@@ -457,10 +600,18 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
       return
     }
 
-    setLessonTitle(selectedLesson.title)
-    setBodyMdx(selectedLesson.bodyMdx)
-
     if (lessonChanged) {
+      const chapterSelection = buildSelection(assignmentSelection, {
+        courseSlug: selectedCourse?.slug ?? undefined,
+        lessonSlug: selectedLesson.slug
+      })
+
+      if (!loadPersistedLessonDraftForSelection(chapterSelection)) {
+        setCourseTitle(selectedCourse?.title ?? "")
+        setLessonTitle(selectedLesson.title)
+        setBodyMdx(selectedLesson.bodyMdx)
+      }
+
       const firstAssignment = chapterAssignments[0] ?? null
       if (firstAssignment) {
         openExistingAssignment(firstAssignment)
@@ -494,7 +645,18 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     }
 
     openNewAssignmentDraft()
-  }, [assignmentSelection, buildSelection, chapterAssignments, openExistingAssignment, openNewAssignmentDraft, selectedCourse?.slug, selectedLesson])
+  }, [
+    assignmentSelection,
+    buildSelection,
+    chapterAssignments,
+    loadPersistedLessonDraftForSelection,
+    openExistingAssignment,
+    openNewAssignmentDraft,
+    selectedCourse?.slug,
+    selectedCourse?.title,
+    selectedLesson,
+    selectionHydrated
+  ])
 
   useEffect(() => {
     if (restoredSelectionRef.current) {
@@ -505,6 +667,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
 
     const storedSelection = readPersistedAuthoringSelection()
     if (!storedSelection) {
+      setSelectionHydrated(true)
       return
     }
 
@@ -517,13 +680,29 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
 
     if (!storedCourse || !storedLesson || !storedAssignment) {
       rememberSelection(null)
+      const fallbackSelection =
+        initialLesson && initialCourse
+          ? {
+              courseSlug: initialCourse.slug,
+              lessonSlug: initialLesson.slug,
+              challengeSlug: initialAssignment?.slug ?? NEW_ASSIGNMENT
+            }
+          : null
+
+      if (initialAssignment) {
+        openExistingAssignment(initialAssignment, fallbackSelection)
+      } else {
+        openNewAssignmentDraft(fallbackSelection)
+      }
+      setSelectionHydrated(true)
       return
     }
 
     setCourseSelection(storedSelection.courseSlug)
     setLessonSelection(storedSelection.lessonSlug)
     openExistingAssignment(storedAssignment, storedSelection)
-  }, [openExistingAssignment, rememberSelection, snapshot])
+    setSelectionHydrated(true)
+  }, [initialAssignment, initialCourse, initialLesson, openExistingAssignment, openNewAssignmentDraft, rememberSelection, snapshot])
 
   useEffect(() => {
     if (!state.success || !state.savedCourseSlug || !state.savedLessonSlug || !state.savedChallengeSlug) {
@@ -546,6 +725,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
     setCourseSelection(savedSelection.courseSlug)
     setLessonSelection(savedSelection.lessonSlug)
     setAssignmentSelection(savedSelection.challengeSlug)
+    setSelectionHydrated(true)
     rememberSelection(savedSelection)
     router.refresh()
   }, [lastAppliedSaveSelectionKey, rememberSelection, router, state])
@@ -568,16 +748,31 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
   }, [assignmentSelection, resolvedCourseSlug, resolvedLessonSlug, selectedCourse?.slug, selectedLesson?.slug])
 
   useEffect(() => {
-    if (!currentDraftSelection) {
+    if (!currentDraftSelection || !selectionHydrated) {
       return
     }
 
-    writePersistedAuthoringDraft(
-      buildPersistedAuthoringDraftKey(currentDraftSelection),
-      buildPersistedDraft({
+    writePersistedLessonDraft(
+      buildPersistedLessonDraftKey({
+        courseSlug: currentDraftSelection.courseSlug,
+        lessonSlug: currentDraftSelection.lessonSlug
+      }),
+      buildPersistedLessonDraft({
         courseTitle,
         lessonTitle,
-        bodyMdx,
+        bodyMdx
+      })
+    )
+  }, [bodyMdx, courseTitle, currentDraftSelection, lessonTitle, selectionHydrated])
+
+  useEffect(() => {
+    if (!currentDraftSelection || !selectionHydrated) {
+      return
+    }
+
+    writePersistedAssignmentDraft(
+      buildPersistedAssignmentDraftKey(currentDraftSelection),
+      buildPersistedAssignmentDraft({
         challengeKind,
         language,
         judge0LanguageId,
@@ -592,19 +787,17 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
       })
     )
   }, [
-    bodyMdx,
     challengeKind,
     choiceExplanationMdx,
     choiceOptions,
     correctChoiceKey,
-    courseTitle,
     currentDraftSelection,
     hiddenTestCode,
     judge0LanguageId,
     language,
-    lessonTitle,
     promptMdx,
     readingMdx,
+    selectionHydrated,
     solutionCode,
     starterCode
   ])
@@ -692,7 +885,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                 </span>
               </p>
 
-              <Field label="Chapter reading (MDX)">
+              <Field label="Chapter reading (shared across this chapter)">
                 <Textarea
                   name="bodyMdx"
                   rows={16}
@@ -716,7 +909,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                 </div>
                 <p className="text-sm leading-7 text-[var(--ink-muted)]">
                   Code examples render in a read-only code panel on the learner page. These buttons insert the fenced Markdown for you.
-                  Chapter reading stays chapter-scoped; assignment-specific reading is edited below.
+                  Edits here affect every assignment in this chapter; use the assignment reading field below only when one assignment needs its own study text.
                 </p>
               </Field>
             </CardContent>
@@ -812,7 +1005,7 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                 </select>
               </Field>
 
-              <Field label="Assignment reading (optional)">
+              <Field label="Assignment reading (optional, only for the selected assignment)">
                 <Textarea
                   name="readingMdx"
                   rows={10}

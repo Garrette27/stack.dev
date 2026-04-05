@@ -8,10 +8,13 @@ export type PersistedAuthoringSelection = {
   challengeSlug: string
 }
 
-export type PersistedAuthoringDraft = {
+export type PersistedLessonDraft = {
   courseTitle: string
   lessonTitle: string
   bodyMdx: string
+}
+
+export type PersistedAssignmentDraft = {
   challengeKind: ChallengeKind
   language: string
   judge0LanguageId: string
@@ -27,13 +30,15 @@ export type PersistedAuthoringDraft = {
 
 type PersistedAuthoringSession = {
   selection: PersistedAuthoringSelection | null
-  draftsByKey: Record<string, PersistedAuthoringDraft>
+  lessonDraftsByKey: Record<string, PersistedLessonDraft>
+  assignmentDraftsByKey: Record<string, PersistedAssignmentDraft>
 }
 
 function getEmptySession(): PersistedAuthoringSession {
   return {
     selection: null,
-    draftsByKey: {}
+    lessonDraftsByKey: {},
+    assignmentDraftsByKey: {}
   }
 }
 
@@ -42,8 +47,8 @@ function canUseStorage() {
 }
 
 /**
- * Keeps all authoring continuity in one browser session payload so the admin
- * form can restore the author's place without scattering storage details.
+ * Keeps author continuity behind one small storage contract so the admin form
+ * can restore the last editing context without leaking persistence details.
  */
 function readPersistedAuthoringSession(): PersistedAuthoringSession {
   if (!canUseStorage()) {
@@ -57,6 +62,7 @@ function readPersistedAuthoringSession(): PersistedAuthoringSession {
     }
 
     const parsed = JSON.parse(rawValue) as Partial<PersistedAuthoringSession>
+
     return {
       selection:
         parsed.selection &&
@@ -69,9 +75,13 @@ function readPersistedAuthoringSession(): PersistedAuthoringSession {
               challengeSlug: parsed.selection.challengeSlug
             }
           : null,
-      draftsByKey:
-        parsed.draftsByKey && typeof parsed.draftsByKey === "object"
-          ? (parsed.draftsByKey as Record<string, PersistedAuthoringDraft>)
+      lessonDraftsByKey:
+        parsed.lessonDraftsByKey && typeof parsed.lessonDraftsByKey === "object"
+          ? (parsed.lessonDraftsByKey as Record<string, PersistedLessonDraft>)
+          : {},
+      assignmentDraftsByKey:
+        parsed.assignmentDraftsByKey && typeof parsed.assignmentDraftsByKey === "object"
+          ? (parsed.assignmentDraftsByKey as Record<string, PersistedAssignmentDraft>)
           : {}
     }
   } catch {
@@ -88,10 +98,17 @@ function writePersistedAuthoringSession(session: PersistedAuthoringSession) {
 }
 
 /**
- * Encodes the authoring target into a single opaque key so the form can keep
- * draft state per course/chapter/assignment without leaking that storage shape.
+ * Gives chapter-level drafts their own key so shared reading and titles stop
+ * leaking across assignment-specific draft restoration.
  */
-export function buildPersistedAuthoringDraftKey(selection: PersistedAuthoringSelection) {
+export function buildPersistedLessonDraftKey(selection: Pick<PersistedAuthoringSelection, "courseSlug" | "lessonSlug">) {
+  return `${selection.courseSlug}::${selection.lessonSlug}`
+}
+
+/**
+ * Gives assignment-level drafts a stable key inside the selected chapter.
+ */
+export function buildPersistedAssignmentDraftKey(selection: PersistedAuthoringSelection) {
   return `${selection.courseSlug}::${selection.lessonSlug}::${selection.challengeSlug}`
 }
 
@@ -105,13 +122,24 @@ export function writePersistedAuthoringSelection(selection: PersistedAuthoringSe
   writePersistedAuthoringSession(session)
 }
 
-export function readPersistedAuthoringDraft(draftKey: string) {
+export function readPersistedLessonDraft(draftKey: string) {
   const session = readPersistedAuthoringSession()
-  return session.draftsByKey[draftKey] ?? null
+  return session.lessonDraftsByKey[draftKey] ?? null
 }
 
-export function writePersistedAuthoringDraft(draftKey: string, draft: PersistedAuthoringDraft) {
+export function writePersistedLessonDraft(draftKey: string, draft: PersistedLessonDraft) {
   const session = readPersistedAuthoringSession()
-  session.draftsByKey[draftKey] = draft
+  session.lessonDraftsByKey[draftKey] = draft
+  writePersistedAuthoringSession(session)
+}
+
+export function readPersistedAssignmentDraft(draftKey: string) {
+  const session = readPersistedAuthoringSession()
+  return session.assignmentDraftsByKey[draftKey] ?? null
+}
+
+export function writePersistedAssignmentDraft(draftKey: string, draft: PersistedAssignmentDraft) {
+  const session = readPersistedAuthoringSession()
+  session.assignmentDraftsByKey[draftKey] = draft
   writePersistedAuthoringSession(session)
 }

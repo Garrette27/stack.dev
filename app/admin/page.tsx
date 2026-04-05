@@ -14,6 +14,9 @@ type AdminPageProps = {
   searchParams?: Promise<{
     analyticsRange?: string | string[]
     analyticsAudience?: string | string[]
+    authorCourse?: string | string[]
+    authorLesson?: string | string[]
+    authorAssignment?: string | string[]
   }>
 }
 
@@ -25,6 +28,16 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const resolvedSearchParams = (await searchParams) ?? {}
   const analyticsRange = normalizeAnalyticsRange(firstQueryValue(resolvedSearchParams.analyticsRange))
   const analyticsAudience = normalizeAnalyticsAudience(firstQueryValue(resolvedSearchParams.analyticsAudience))
+  const initialSelection =
+    firstQueryValue(resolvedSearchParams.authorCourse) &&
+    firstQueryValue(resolvedSearchParams.authorLesson) &&
+    firstQueryValue(resolvedSearchParams.authorAssignment)
+      ? {
+          courseSlug: firstQueryValue(resolvedSearchParams.authorCourse) as string,
+          lessonSlug: firstQueryValue(resolvedSearchParams.authorLesson) as string,
+          challengeSlug: firstQueryValue(resolvedSearchParams.authorAssignment) as string
+        }
+      : null
 
   const [{ user, isAdmin, snapshot }, analytics] = await Promise.all([
     getAdminPageState(),
@@ -79,7 +92,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
       <AnalyticsOverview snapshot={analytics} />
 
-      <AuthoringForm snapshot={snapshot} />
+      <AuthoringForm snapshot={snapshot} initialSelection={initialSelection} />
 
       <section className="grid gap-5">
         <Card>
