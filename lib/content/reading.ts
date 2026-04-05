@@ -69,7 +69,7 @@ export function getEffectiveAssignmentReadingLabel({
   }
 
   if (normalizedLessonBody) {
-    return "Chapter reading"
+    return "Shared chapter reading"
   }
 
   if (normalizedPrompt) {

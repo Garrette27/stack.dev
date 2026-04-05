@@ -10,6 +10,8 @@ import { formatRelativeMinutes } from "@/lib/utils"
 export default async function HomePage() {
   const catalog = await getCatalog()
   const user = await getCurrentUser()
+  const primaryPracticeHref =
+    catalog[0]?.lessons[0] ? `/learn/${catalog[0].course.slug}/${catalog[0].lessons[0].slug}` : "/learn"
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-12 px-4 py-14 sm:px-6 xl:px-10">
@@ -26,7 +28,7 @@ export default async function HomePage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link href="/learn/backend-foundations">
+            <Link href={primaryPracticeHref}>
               <Button size="lg">
                 Enter the learner UI
                 <ArrowRight className="ml-2 h-4 w-4" />

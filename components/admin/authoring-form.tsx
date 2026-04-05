@@ -418,6 +418,12 @@ export function AuthoringForm({ snapshot }: AuthoringFormProps) {
                     <p className="mt-1 text-sm leading-7 text-[var(--ink-muted)]">
                       Switching assignments changes this preview immediately. Chapter reading stays in the chapter editor above; this preview shows what the learner will actually read for the selected assignment.
                     </p>
+                    {learnerReadingLabel === "Shared chapter reading" ? (
+                      <p className="mt-2 text-sm leading-7 text-[var(--ink-muted)]">
+                        This assignment is using the shared chapter guide right now. Add assignment reading below only if
+                        this one question needs its own study text.
+                      </p>
+                    ) : null}
                   </div>
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-muted)] ring-1 ring-black/8">
                     {learnerReadingLabel}

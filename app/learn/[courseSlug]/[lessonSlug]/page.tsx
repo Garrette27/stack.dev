@@ -132,6 +132,12 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
           <LessonPanelSection title="Reading">
             <div className="mb-4">
               <Badge className="bg-white/10 text-white">{readingSourceLabel}</Badge>
+              {readingSourceLabel === "Shared chapter reading" ? (
+                <p className="mt-3 text-sm leading-7 text-white/60">
+                  This assignment is currently using the shared chapter guide, so this reading card stays the same until
+                  the assignment gets its own reading override.
+                </p>
+              ) : null}
             </div>
             <MdxRenderer source={readingSource} tone="dark" />
           </LessonPanelSection>
