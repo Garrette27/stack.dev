@@ -17,6 +17,9 @@
   --header-surface: rgba(247, 241, 233, 0.78);
   --card-surface: rgba(255, 255, 255, 0.9);
   --card-shadow: rgba(25, 31, 45, 0.08);
+  --showcase-surface: rgba(255, 255, 255, 0.96);
+  --showcase-surface-soft: rgba(255, 255, 255, 0.8);
+  --inverse-surface: #191f2d;
   --field-surface: #ffffff;
   --field-border: rgba(25, 31, 45, 0.1);
   --border-subtle: rgba(25, 31, 45, 0.1);
@@ -47,6 +50,9 @@ html[data-theme="dark"] {
   --header-surface: rgba(15, 20, 29, 0.82);
   --card-surface: rgba(22, 29, 40, 0.9);
   --card-shadow: rgba(0, 0, 0, 0.32);
+  --showcase-surface: rgba(22, 29, 40, 0.96);
+  --showcase-surface-soft: rgba(36, 45, 61, 0.92);
+  --inverse-surface: #1b2230;
   --field-surface: rgba(23, 30, 42, 0.96);
   --field-border: rgba(255, 255, 255, 0.12);
   --border-subtle: rgba(255, 255, 255, 0.12);

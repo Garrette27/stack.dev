@@ -42,7 +42,7 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <Card className="overflow-hidden bg-[linear-gradient(160deg,rgba(255,255,255,0.94),rgba(255,243,232,0.96))]">
+        <Card className="overflow-hidden bg-[linear-gradient(160deg,var(--showcase-surface),var(--surface))]">
           <CardHeader>
             <CardTitle>Why practice sticks</CardTitle>
             <CardDescription>
@@ -50,15 +50,15 @@ export default async function HomePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm leading-7 text-[var(--ink)]">
-            <div className="rounded-[1.5rem] bg-white/80 p-4 ring-1 ring-black/6">
+            <div className="rounded-[1.5rem] bg-[var(--showcase-surface-soft)] p-4 ring-1 ring-[var(--border-soft)]">
               <p className="font-semibold text-[var(--ink-strong)]">Short sessions that finish</p>
               <p>Each session is small enough to complete in one sitting, even on a busy schedule.</p>
             </div>
-            <div className="rounded-[1.5rem] bg-white/80 p-4 ring-1 ring-black/6">
+            <div className="rounded-[1.5rem] bg-[var(--showcase-surface-soft)] p-4 ring-1 ring-[var(--border-soft)]">
               <p className="font-semibold text-[var(--ink-strong)]">Practice over passive reading</p>
               <p>Read the concept, solve a challenge, and get feedback without leaving the practice flow.</p>
             </div>
-            <div className="rounded-[1.5rem] bg-white/80 p-4 ring-1 ring-black/6">
+            <div className="rounded-[1.5rem] bg-[var(--showcase-surface-soft)] p-4 ring-1 ring-[var(--border-soft)]">
               <p className="font-semibold text-[var(--ink-strong)]">Progress that keeps up with you</p>
               <p>Resume exactly where you stopped so your study habit does not break every time life gets busy.</p>
             </div>
@@ -67,7 +67,7 @@ export default async function HomePage() {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[0.7fr_1.3fr]">
-        <Card className="bg-[var(--ink-strong)] text-white">
+        <Card className="bg-[var(--inverse-surface)] text-white">
           <CardHeader>
             <CardTitle className="text-white">How the platform helps you keep going</CardTitle>
           </CardHeader>

@@ -78,7 +78,7 @@ export default async function PricingPage() {
           </CardContent>
         </Card>
 
-        <Card className="h-full overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,247,241,0.94))]">
+        <Card className="h-full overflow-hidden bg-[linear-gradient(180deg,var(--showcase-surface),var(--surface))]">
           <CardHeader>
             <CardTitle>Why people subscribe</CardTitle>
             <CardDescription>
@@ -90,7 +90,7 @@ export default async function PricingPage() {
               const Icon = item.icon
 
               return (
-                <div key={item.title} className="rounded-[1.5rem] bg-white/80 p-5 ring-1 ring-black/6">
+                <div key={item.title} className="rounded-[1.5rem] bg-[var(--showcase-surface-soft)] p-5 ring-1 ring-[var(--border-soft)]">
                   <div className="flex items-start gap-3">
                     <Icon className="mt-1 h-5 w-5 shrink-0 text-[var(--accent)]" />
                     <div className="min-w-0">
@@ -117,7 +117,7 @@ export default async function PricingPage() {
           </CardContent>
         </Card>
 
-        <Card className="h-full overflow-hidden bg-[var(--ink-strong)] text-white">
+        <Card className="h-full overflow-hidden bg-[var(--inverse-surface)] text-white">
           <CardHeader>
             <CardTitle className="text-white">Who this is for</CardTitle>
             <CardDescription className="text-white/75">
