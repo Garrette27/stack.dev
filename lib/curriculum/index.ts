@@ -73,7 +73,8 @@ export type CurriculumCourseProgress = {
   totalLessonCount: number
   completedChallengeCount: number
   totalChallengeCount: number
-  continueHref: string | null
+  courseHref: string
+  resumeHref: string | null
 }
 
 export type CurriculumTrackProgress = {
@@ -415,7 +416,8 @@ function buildDefaultCourseProgress(entry: CourseWithLessons): CurriculumCourseP
     totalLessonCount,
     completedChallengeCount: 0,
     totalChallengeCount,
-    continueHref: entry.lessons[0] ? `/learn/${entry.course.slug}/${entry.lessons[0].slug}` : `/learn/${entry.course.slug}`
+    courseHref: `/learn/${entry.course.slug}`,
+    resumeHref: entry.lessons[0] ? `/learn/${entry.course.slug}/${entry.lessons[0].slug}` : null
   }
 }
 
@@ -597,7 +599,8 @@ async function loadCourseProgressBySlug(courseCards: CurriculumCourseCard[]) {
           totalLessonCount,
           completedChallengeCount,
           totalChallengeCount,
-          continueHref: fallbackLesson ? `/learn/${course.course.slug}/${fallbackLesson.slug}` : `/learn/${course.course.slug}`
+          courseHref: `/learn/${course.course.slug}`,
+          resumeHref: fallbackLesson ? `/learn/${course.course.slug}/${fallbackLesson.slug}` : null
         } satisfies CurriculumCourseProgress
       ]
     })

@@ -107,7 +107,7 @@ export default async function LearnIndexPage() {
                     </p>
                     <p>First chapter takes about {formatRelativeMinutes(lessons[0]?.estimatedMinutes ?? 10)}.</p>
                   </div>
-                  <Link href={progress.continueHref ?? `/learn/${course.slug}`}>
+                  <Link href={progress.courseHref}>
                     <Button variant="secondary">
                       {progress.status === "not_started" ? `Start ${kindLabel.toLowerCase()}` : `Continue ${kindLabel.toLowerCase()}`}
                       <ArrowRight className="ml-2 h-4 w-4" />
