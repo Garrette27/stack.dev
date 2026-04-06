@@ -6,7 +6,12 @@ import { normalizeMultipleChoiceOptions } from "@/lib/challenges/multiple-choice
 import { getCurrentUser, isCurrentUserAdmin } from "@/lib/auth"
 import { hasSupabaseAdminEnv } from "@/lib/env"
 import { isSupportedChallengeLanguage } from "@/lib/judge0/languages"
-import { buildDefaultLocalLabCommandTemplate, buildDefaultLocalLabManifestSource, parseLocalLabManifestSource } from "@/lib/local-labs"
+import {
+  buildDefaultLocalLabCommandTemplate,
+  buildDefaultLocalLabManifestSource,
+  getLocalLabChallengeStorageFields,
+  parseLocalLabManifestSource
+} from "@/lib/local-labs"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { CodeChallengeLanguage, MultipleChoiceOption } from "@/lib/types"
 import { slugify } from "@/lib/utils"
@@ -94,9 +99,9 @@ type LocalLabAuthoringBundleInput = {
   judge0LanguageId: null
   readingMdx?: string
   promptMdx: string
-  starterCode: string
-  solutionCode: string
-  hiddenTestCode: string
+  submitCommandTemplate: string
+  solutionNotes: string
+  manifestSource: string
 }
 
 type AuthoringBundleInput = CodeAuthoringBundleInput | MultipleChoiceAuthoringBundleInput | LocalLabAuthoringBundleInput
@@ -148,6 +153,22 @@ function isMissingChallengeKindColumn(error: { code?: string; message?: string }
     error.code === "PGRST204" ||
     error.message?.includes("kind") === true
   )
+}
+
+function getChallengeStorageFields(payload: AuthoringBundleInput) {
+  if (payload.kind === "local_lab") {
+    return getLocalLabChallengeStorageFields({
+      submitCommandTemplate: payload.submitCommandTemplate,
+      solutionNotes: payload.solutionNotes,
+      manifestSource: payload.manifestSource
+    })
+  }
+
+  return {
+    starterCode: payload.starterCode,
+    solutionCode: payload.solutionCode,
+    hiddenTestCode: payload.hiddenTestCode
+  }
 }
 
 /**
@@ -241,12 +262,12 @@ export function parseAuthoringBundleFormData(formData: FormData): ParsedAuthorin
   }
 
   if (parsed.data.kind === "local_lab") {
-    const starterCode = parsed.data.starterCode?.trim() || buildDefaultLocalLabCommandTemplate()
-    const solutionCode = parsed.data.solutionCode?.trim() ?? ""
-    const hiddenTestCode = parsed.data.hiddenTestCode?.trim() || buildDefaultLocalLabManifestSource()
-    const manifestResult = parseLocalLabManifestSource(hiddenTestCode)
+    const submitCommandTemplate = parsed.data.starterCode?.trim() || buildDefaultLocalLabCommandTemplate()
+    const solutionNotes = parsed.data.solutionCode?.trim() ?? ""
+    const manifestSource = parsed.data.hiddenTestCode?.trim() || buildDefaultLocalLabManifestSource()
+    const manifestResult = parseLocalLabManifestSource(manifestSource)
 
-    if (starterCode.length < 3) {
+    if (submitCommandTemplate.length < 3) {
       return {
         success: false,
         message: "Local labs need a CLI submit command template."
@@ -275,9 +296,9 @@ export function parseAuthoringBundleFormData(formData: FormData): ParsedAuthorin
         judge0LanguageId: null,
         readingMdx: parsed.data.readingMdx,
         promptMdx: parsed.data.promptMdx,
-        starterCode,
-        solutionCode,
-        hiddenTestCode
+        submitCommandTemplate,
+        solutionNotes,
+        manifestSource
       }
     }
   }
@@ -490,6 +511,8 @@ function buildChallengeMirrorRow(
   readingMdx: string | null,
   published: boolean
 ) {
+  const storageFields = getChallengeStorageFields(payload)
+
   return {
     slug: challengeSlug,
     title: challengeTitle,
@@ -498,9 +521,9 @@ function buildChallengeMirrorRow(
     judge0_language_id: payload.judge0LanguageId,
     reading_mdx: readingMdx,
     prompt_mdx: payload.promptMdx,
-    starter_code: payload.starterCode,
-    solution_code: payload.solutionCode,
-    hidden_test_code: payload.hiddenTestCode,
+    starter_code: storageFields.starterCode,
+    solution_code: storageFields.solutionCode,
+    hidden_test_code: storageFields.hiddenTestCode,
     choice_options: payload.kind === "multiple_choice" ? payload.choiceOptions : [],
     choice_correct_key: payload.kind === "multiple_choice" ? payload.correctChoiceKey : null,
     choice_explanation_mdx: payload.kind === "multiple_choice" ? payload.choiceExplanationMdx : "",
@@ -550,6 +573,7 @@ async function upsertLegacyChallengeRecord(
   readingMdx: string | null,
   published: boolean
 ) {
+  const storageFields = getChallengeStorageFields(payload)
   const fullResult = await admin
     .from("challenges")
     .upsert(
@@ -598,9 +622,9 @@ async function upsertLegacyChallengeRecord(
         language: payload.kind === "code" ? payload.language : null,
         judge0_language_id: payload.kind === "code" ? payload.judge0LanguageId : null,
         prompt_mdx: payload.promptMdx,
-        starter_code: payload.starterCode,
-        solution_code: payload.solutionCode,
-        hidden_test_code: payload.hiddenTestCode,
+        starter_code: storageFields.starterCode,
+        solution_code: storageFields.solutionCode,
+        hidden_test_code: storageFields.hiddenTestCode,
         published
       },
       {
@@ -737,6 +761,7 @@ async function upsertVersionedChallengeRecord(
   } satisfies StableChallengeRow
 
   const now = new Date().toISOString()
+  const storageFields = getChallengeStorageFields(payload)
   const versionPayload = {
     challenge_id: challengeRow.id,
     title: challengeTitle,
@@ -745,9 +770,9 @@ async function upsertVersionedChallengeRecord(
     judge0_language_id: payload.judge0LanguageId,
     reading_mdx: readingMdx,
     prompt_mdx: payload.promptMdx,
-    starter_code: payload.starterCode,
-    solution_code: payload.solutionCode,
-    hidden_test_code: payload.hiddenTestCode,
+    starter_code: storageFields.starterCode,
+    solution_code: storageFields.solutionCode,
+    hidden_test_code: storageFields.hiddenTestCode,
     choice_options: payload.kind === "multiple_choice" ? payload.choiceOptions : [],
     choice_correct_key: payload.kind === "multiple_choice" ? payload.correctChoiceKey : null,
     choice_explanation_mdx: payload.kind === "multiple_choice" ? payload.choiceExplanationMdx : "",

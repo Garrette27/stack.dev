@@ -1,6 +1,9 @@
-import { normalizeMultipleChoiceOptions } from "@/lib/challenges/multiple-choice"
+import {
+  buildChallengeRecord,
+  normalizeChallengeKind,
+  normalizeChallengePublicationState
+} from "@/lib/challenges/model"
 import { mockContent } from "@/lib/mock-data"
-import { getDefaultJudge0LanguageId, isSupportedChallengeLanguage } from "@/lib/judge0/languages"
 import type { Challenge, ChallengeKind, ContentSnapshot, Course, Lesson } from "@/lib/types"
 
 export function createMockSnapshot(reason: string): ContentSnapshot {
@@ -44,20 +47,9 @@ export function mapLesson(row: Record<string, unknown>, courseSlug: string, chal
 }
 
 export function mapChallenge(row: Record<string, unknown>): Challenge {
-  const kindValue = String(row.kind ?? "code")
-  const kind: ChallengeKind =
-    kindValue === "multiple_choice" ? "multiple_choice" : kindValue === "local_lab" ? "local_lab" : "code"
-  const languageValue = row.language == null ? null : String(row.language)
-  const language =
-    languageValue && isSupportedChallengeLanguage(languageValue) ? languageValue : kind === "code" ? "python" : null
-  const judge0LanguageId =
-    kind === "code" && typeof row.judge0_language_id === "number"
-      ? row.judge0_language_id
-      : kind === "code" && language
-        ? getDefaultJudge0LanguageId(language)
-        : null
+  const kind = normalizeChallengeKind(row.kind)
 
-  return {
+  return buildChallengeRecord({
     id: String(row.id),
     slug: String(row.slug),
     title: String(row.title),
@@ -65,23 +57,18 @@ export function mapChallenge(row: Record<string, unknown>): Challenge {
     versionNumber: typeof row.version_number === "number" ? row.version_number : row.version_number ? Number(row.version_number) : null,
     publishedVersionId: row.current_published_version_id ? String(row.current_published_version_id) : null,
     draftVersionId: row.current_draft_version_id ? String(row.current_draft_version_id) : null,
-    publicationState:
-      String(row.status ?? (row.published ?? true ? "published" : "draft")) === "draft"
-        ? "draft"
-        : String(row.status ?? "") === "archived"
-          ? "archived"
-          : "published",
+    publicationState: normalizeChallengePublicationState(row.status, Boolean(row.published ?? true)),
     kind,
-    language,
-    judge0LanguageId,
+    language: row.language == null ? null : String(row.language),
+    judge0LanguageId: typeof row.judge0_language_id === "number" ? row.judge0_language_id : null,
     readingMdx: String(row.reading_mdx ?? ""),
     promptMdx: String(row.prompt_mdx ?? ""),
     starterCode: String(row.starter_code ?? ""),
     solutionCode: String(row.solution_code ?? ""),
     hiddenTestCode: String(row.hidden_test_code ?? ""),
-    choiceOptions: normalizeMultipleChoiceOptions(row.choice_options),
+    choiceOptions: row.choice_options,
     correctChoiceKey: row.choice_correct_key ? String(row.choice_correct_key) : null,
     choiceExplanationMdx: String(row.choice_explanation_mdx ?? ""),
     published: Boolean(row.published ?? true)
-  }
+  })
 }

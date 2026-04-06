@@ -1,5 +1,11 @@
 import type { Challenge } from "@/lib/types"
 
+export type LocalLabContentFields = {
+  submitCommandTemplate: string
+  solutionNotes: string
+  manifestSource: string
+}
+
 export type LocalLabCheck = {
   id: string
   title: string
@@ -67,6 +73,34 @@ const DEFAULT_LOCAL_LAB_MANIFEST: LocalLabManifest = {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+/**
+ * Translates the current challenge storage fields into the explicit local-lab
+ * terms the rest of the app should use.
+ */
+export function getLocalLabContentFields(
+  challenge: Pick<Challenge, "starterCode" | "solutionCode" | "hiddenTestCode">
+): LocalLabContentFields {
+  return {
+    submitCommandTemplate: challenge.starterCode.trim() || buildDefaultLocalLabCommandTemplate(),
+    solutionNotes: challenge.solutionCode.trim(),
+    manifestSource: challenge.hiddenTestCode.trim() || buildDefaultLocalLabManifestSource()
+  }
+}
+
+/**
+ * Converts explicit local-lab fields back into the current challenge storage
+ * shape so the schema can evolve later without changing every caller today.
+ */
+export function getLocalLabChallengeStorageFields(
+  fields: LocalLabContentFields
+): Pick<Challenge, "starterCode" | "solutionCode" | "hiddenTestCode"> {
+  return {
+    starterCode: fields.submitCommandTemplate.trim() || buildDefaultLocalLabCommandTemplate(),
+    solutionCode: fields.solutionNotes.trim(),
+    hiddenTestCode: fields.manifestSource.trim() || buildDefaultLocalLabManifestSource()
+  }
 }
 
 function normalizeStringArray(value: unknown, fieldLabel: string) {
@@ -260,11 +294,12 @@ export function parseLocalLabManifestSource(source: string): LocalLabManifestPar
  * future schema changes can stay inside this module.
  */
 export function getLocalLabDefinition(
-  challenge: Pick<Challenge, "starterCode" | "solutionCode" | "hiddenTestCode">
+  fields: LocalLabContentFields
 ): LocalLabDefinition {
-  const commandTemplate = challenge.starterCode.trim() || buildDefaultLocalLabCommandTemplate()
-  const solutionNotes = challenge.solutionCode.trim()
-  const manifestSource = challenge.hiddenTestCode.trim() || buildDefaultLocalLabManifestSource()
+  const normalizedFields = getLocalLabChallengeStorageFields(fields)
+  const commandTemplate = normalizedFields.starterCode
+  const solutionNotes = normalizedFields.solutionCode
+  const manifestSource = normalizedFields.hiddenTestCode
   const parsedManifest = parseLocalLabManifestSource(manifestSource)
 
   return {

@@ -32,7 +32,7 @@ export type Lesson = {
   published: boolean
 }
 
-export type Challenge = {
+export type ChallengeBase = {
   id: string
   slug: string
   title: string
@@ -41,19 +41,48 @@ export type Challenge = {
   publishedVersionId: string | null
   draftVersionId: string | null
   publicationState: ChallengePublicationState
-  kind: ChallengeKind
-  language: CodeChallengeLanguage | null
-  judge0LanguageId: number | null
   readingMdx: string
   promptMdx: string
+  published: boolean
+}
+
+export type CodeChallenge = ChallengeBase & {
+  kind: "code"
+  language: CodeChallengeLanguage
+  judge0LanguageId: number
   starterCode: string
   solutionCode: string
   hiddenTestCode: string
-  choiceOptions: MultipleChoiceOption[]
-  correctChoiceKey: string | null
-  choiceExplanationMdx: string
-  published: boolean
+  choiceOptions: []
+  correctChoiceKey: null
+  choiceExplanationMdx: ""
 }
+
+export type MultipleChoiceChallenge = ChallengeBase & {
+  kind: "multiple_choice"
+  language: null
+  judge0LanguageId: null
+  starterCode: ""
+  solutionCode: ""
+  hiddenTestCode: ""
+  choiceOptions: MultipleChoiceOption[]
+  correctChoiceKey: string
+  choiceExplanationMdx: string
+}
+
+export type LocalLabChallenge = ChallengeBase & {
+  kind: "local_lab"
+  language: null
+  judge0LanguageId: null
+  starterCode: string
+  solutionCode: string
+  hiddenTestCode: string
+  choiceOptions: []
+  correctChoiceKey: null
+  choiceExplanationMdx: ""
+}
+
+export type Challenge = CodeChallenge | MultipleChoiceChallenge | LocalLabChallenge
 
 export type ProgressStatus = "not_started" | "in_progress" | "completed"
 

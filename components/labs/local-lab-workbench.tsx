@@ -2,11 +2,11 @@ import Link from "next/link"
 
 import { Badge } from "@/components/ui/badge"
 import { ReadOnlyCodePanel } from "@/components/code/read-only-code-panel"
-import { getLocalLabDefinition } from "@/lib/local-labs"
-import type { Challenge } from "@/lib/types"
+import { getLocalLabContentFields, getLocalLabDefinition } from "@/lib/local-labs"
+import type { LocalLabChallenge } from "@/lib/types"
 
 type LocalLabWorkbenchProps = {
-  challenge: Challenge
+  challenge: LocalLabChallenge
   isAuthenticated: boolean
   isCompleted: boolean
 }
@@ -20,7 +20,7 @@ export function LocalLabWorkbench({
   isAuthenticated,
   isCompleted
 }: LocalLabWorkbenchProps) {
-  const localLab = getLocalLabDefinition(challenge)
+  const localLab = getLocalLabDefinition(getLocalLabContentFields(challenge))
 
   return (
     <section className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,#141923,#121722)] text-white shadow-[0_24px_70px_rgba(11,15,24,0.36)]">

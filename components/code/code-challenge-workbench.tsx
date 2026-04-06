@@ -9,13 +9,13 @@ import { useRouter } from "next/navigation"
 import { getEditorLanguage, getSolutionFileLabel, getSourceFileLabel, getTestFileLabel } from "@/lib/judge0/languages"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { Challenge, SubmissionOutcome } from "@/lib/types"
+import type { CodeChallenge, SubmissionOutcome } from "@/lib/types"
 import { ResizablePaneSplit } from "@/components/code/resizable-pane-split"
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false })
 
 type CodeChallengeWorkbenchProps = {
-  challenge: Challenge
+  challenge: CodeChallenge
   courseSlug: string
   lessonSlug: string
   isAuthenticated: boolean
@@ -192,10 +192,10 @@ export function CodeChallengeWorkbench({
     })
   }
 
-  const editorLanguage = getEditorLanguage(challenge.language ?? "javascript")
-  const sourceFileLabel = getSourceFileLabel(challenge.language ?? "javascript")
-  const testFileLabel = getTestFileLabel(challenge.language ?? "javascript")
-  const solutionFileLabel = getSolutionFileLabel(challenge.language ?? "javascript")
+  const editorLanguage = getEditorLanguage(challenge.language)
+  const sourceFileLabel = getSourceFileLabel(challenge.language)
+  const testFileLabel = getTestFileLabel(challenge.language)
+  const solutionFileLabel = getSolutionFileLabel(challenge.language)
   const isShowingTests = activeFile === "tests"
   const editorHeight = showSolutionPane ? "58vh" : "62vh"
   const visibleEditorPath = isShowingTests ? testFileLabel : sourceFileLabel

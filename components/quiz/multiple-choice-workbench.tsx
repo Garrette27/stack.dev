@@ -8,10 +8,10 @@ import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { Challenge, SubmissionOutcome } from "@/lib/types"
+import type { MultipleChoiceChallenge, SubmissionOutcome } from "@/lib/types"
 
 type MultipleChoiceWorkbenchProps = {
-  challenge: Challenge
+  challenge: MultipleChoiceChallenge
   courseSlug: string
   lessonSlug: string
   isAuthenticated: boolean

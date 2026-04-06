@@ -17,13 +17,15 @@ type ChallengeWorkbenchProps = {
  * interaction model while keeping the lesson page unaware of those details.
  */
 export function ChallengeWorkbench(props: ChallengeWorkbenchProps) {
-  if (props.challenge.kind === "multiple_choice") {
-    return <MultipleChoiceWorkbench {...props} />
+  const { challenge, ...sharedProps } = props
+
+  if (challenge.kind === "multiple_choice") {
+    return <MultipleChoiceWorkbench {...sharedProps} challenge={challenge} />
   }
 
-  if (props.challenge.kind === "local_lab") {
-    return <LocalLabWorkbench {...props} />
+  if (challenge.kind === "local_lab") {
+    return <LocalLabWorkbench {...sharedProps} challenge={challenge} />
   }
 
-  return <CodeChallengeWorkbench {...props} />
+  return <CodeChallengeWorkbench {...sharedProps} challenge={challenge} />
 }

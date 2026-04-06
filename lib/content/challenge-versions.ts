@@ -1,41 +1,13 @@
-import { normalizeMultipleChoiceOptions } from "@/lib/challenges/multiple-choice"
-import { getDefaultJudge0LanguageId, isSupportedChallengeLanguage } from "@/lib/judge0/languages"
-import type { Challenge, ChallengeKind, ChallengePublicationState } from "@/lib/types"
+import {
+  buildChallengeRecord,
+  normalizeChallengeKind,
+  normalizeChallengePublicationState
+} from "@/lib/challenges/model"
+import type { Challenge } from "@/lib/types"
 
 export type ChallengeVersionLoadMode = "published" | "draft_or_published"
 
 type ChallengeContentRow = Record<string, unknown>
-
-function mapChallengeKind(value: unknown): ChallengeKind {
-  const normalizedValue = String(value ?? "code")
-  if (normalizedValue === "multiple_choice" || normalizedValue === "local_lab") {
-    return normalizedValue
-  }
-
-  return "code"
-}
-
-function mapChallengeLanguage(value: unknown, kind: ChallengeKind) {
-  const languageValue = value == null ? null : String(value)
-  if (!languageValue) {
-    return kind === "code" ? "python" : null
-  }
-
-  return isSupportedChallengeLanguage(languageValue)
-    ? languageValue
-    : kind === "code"
-      ? "python"
-      : null
-}
-
-function mapChallengePublicationState(value: unknown, published: boolean): ChallengePublicationState {
-  const normalizedValue = String(value ?? "")
-  if (normalizedValue === "draft" || normalizedValue === "published" || normalizedValue === "archived") {
-    return normalizedValue
-  }
-
-  return published ? "published" : "draft"
-}
 
 function getVersionLookup(versionRows: Record<string, unknown>[] | null | undefined) {
   return new Map((versionRows ?? []).map((row) => [String(row.id), row]))
@@ -70,19 +42,9 @@ function getActiveChallengeVersionRow(
 
 function mapChallengeFromContentRows(challengeRow: Record<string, unknown>, contentRow: ChallengeContentRow | null): Challenge {
   const published = Boolean(challengeRow.published ?? true)
-  const publicationState = mapChallengePublicationState(contentRow?.status, published)
-  const kind = mapChallengeKind(contentRow?.kind ?? challengeRow.kind)
-  const language = mapChallengeLanguage(contentRow?.language ?? challengeRow.language, kind)
-  const judge0LanguageId =
-    kind === "code" && typeof contentRow?.judge0_language_id === "number"
-      ? contentRow.judge0_language_id
-      : kind === "code" && typeof challengeRow.judge0_language_id === "number"
-        ? challengeRow.judge0_language_id
-        : kind === "code" && language
-          ? getDefaultJudge0LanguageId(language)
-          : null
+  const kind = normalizeChallengeKind(contentRow?.kind ?? challengeRow.kind)
 
-  return {
+  return buildChallengeRecord({
     id: String(challengeRow.id),
     slug: String(challengeRow.slug),
     title: String(contentRow?.title ?? challengeRow.title),
@@ -95,16 +57,24 @@ function mapChallengeFromContentRows(challengeRow: Record<string, unknown>, cont
           : null,
     publishedVersionId: challengeRow.current_published_version_id ? String(challengeRow.current_published_version_id) : null,
     draftVersionId: challengeRow.current_draft_version_id ? String(challengeRow.current_draft_version_id) : null,
-    publicationState,
+    publicationState: normalizeChallengePublicationState(contentRow?.status, published),
     kind,
-    language,
-    judge0LanguageId,
+    language:
+      contentRow?.language == null && challengeRow.language == null
+        ? null
+        : String(contentRow?.language ?? challengeRow.language),
+    judge0LanguageId:
+      typeof contentRow?.judge0_language_id === "number"
+        ? contentRow.judge0_language_id
+        : typeof challengeRow.judge0_language_id === "number"
+          ? challengeRow.judge0_language_id
+          : null,
     readingMdx: String(contentRow?.reading_mdx ?? challengeRow.reading_mdx ?? ""),
     promptMdx: String(contentRow?.prompt_mdx ?? challengeRow.prompt_mdx ?? ""),
     starterCode: String(contentRow?.starter_code ?? challengeRow.starter_code ?? ""),
     solutionCode: String(contentRow?.solution_code ?? challengeRow.solution_code ?? ""),
     hiddenTestCode: String(contentRow?.hidden_test_code ?? challengeRow.hidden_test_code ?? ""),
-    choiceOptions: normalizeMultipleChoiceOptions(contentRow?.choice_options ?? challengeRow.choice_options),
+    choiceOptions: contentRow?.choice_options ?? challengeRow.choice_options,
     correctChoiceKey: contentRow?.choice_correct_key
       ? String(contentRow.choice_correct_key)
       : challengeRow.choice_correct_key
@@ -112,7 +82,7 @@ function mapChallengeFromContentRows(challengeRow: Record<string, unknown>, cont
         : null,
     choiceExplanationMdx: String(contentRow?.choice_explanation_mdx ?? challengeRow.choice_explanation_mdx ?? ""),
     published
-  }
+  })
 }
 
 /**

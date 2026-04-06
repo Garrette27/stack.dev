@@ -26,9 +26,9 @@ export function LocalLabAuthoringFields({
   onManifestSourceChange
 }: LocalLabAuthoringFieldsProps) {
   const localLab = getLocalLabDefinition({
-    starterCode: submitCommandTemplate,
-    solutionCode: solutionNotes,
-    hiddenTestCode: manifestSource
+    submitCommandTemplate,
+    solutionNotes,
+    manifestSource
   })
 
   return (

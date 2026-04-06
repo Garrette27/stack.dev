@@ -7,7 +7,7 @@ import { hasJudge0Env, hasSupabaseEnv } from "@/lib/env"
 import { saveResumeStateForUser } from "@/lib/progress"
 import { saveChallengeReviewResult } from "@/lib/review"
 import { createClient } from "@/lib/supabase/server"
-import type { Challenge, SubmissionOutcome } from "@/lib/types"
+import type { Challenge, CodeChallengeLanguage, MultipleChoiceChallenge, SubmissionOutcome } from "@/lib/types"
 
 const PASS_MARKER = "__STACK_DEV_PH_PASS__"
 const PROCESSING_STATUS_IDS = new Set([1, 2])
@@ -46,7 +46,7 @@ function createOutcome(
 }
 
 function buildMultipleChoiceOutcome(
-  challenge: Challenge,
+  challenge: MultipleChoiceChallenge,
   selectedChoiceKey: string | undefined
 ): SubmissionOutcome {
   if (!selectedChoiceKey) {
@@ -94,7 +94,7 @@ function indentCode(source: string, prefix: string) {
     .join("\n")
 }
 
-function buildRunnerSource(language: NonNullable<Challenge["language"]>, sourceCode: string, hiddenTestCode: string) {
+function buildRunnerSource(language: CodeChallengeLanguage, sourceCode: string, hiddenTestCode: string) {
   if (language === "javascript" || language === "typescript") {
     return `const __stackDevOutput = []
 const __stackDevConsoleLog = console.log.bind(console)
@@ -232,7 +232,7 @@ function buildOutcomeFromJudge0Payload(payload: Record<string, unknown>): Submis
 }
 
 async function runJudge0Submission(
-  language: NonNullable<Challenge["language"]>,
+  language: CodeChallengeLanguage,
   judge0LanguageId: number,
   sourceCode: string,
   hiddenTestCode: string
@@ -400,8 +400,8 @@ export async function submitChallenge(payload: SubmissionPayload): Promise<Submi
       : !payload.sourceCode
         ? createOutcome("bad_request", "Write an answer before running the checker.")
         : await runJudge0Submission(
-            challenge.language ?? "javascript",
-            challenge.judge0LanguageId ?? 102,
+            challenge.language,
+            challenge.judge0LanguageId,
             payload.sourceCode,
             challenge.hiddenTestCode
           )
