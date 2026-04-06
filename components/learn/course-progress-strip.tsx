@@ -24,7 +24,6 @@ type PracticeSessionStripState = {
 
 type CourseProgressStripProps = {
   courseTitle: string
-  courseIndex: number
   lessonOptions: LessonOption[]
   currentLessonValue: string
   challengeOptions: ChallengeOption[]
@@ -41,7 +40,6 @@ type CourseProgressStripProps = {
  */
 export function CourseProgressStrip({
   courseTitle,
-  courseIndex,
   lessonOptions,
   currentLessonValue,
   challengeOptions,
@@ -59,7 +57,7 @@ export function CourseProgressStrip({
         <div className="min-w-0">
           {practiceSession ? (
             <>
-              <p className="text-[9px] uppercase leading-[1.3] tracking-[0.24em] text-white/45">Practice queue</p>
+              <p className="text-[9px] uppercase leading-[1.3] tracking-[0.24em] text-white/45">Session queue</p>
               <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-white/78">
                 <span className="rounded-full border border-white/10 bg-white/6 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent-soft)]">
                   {practiceSession.modeLabel}
@@ -68,38 +66,35 @@ export function CourseProgressStrip({
               </div>
             </>
           ) : (
-            <>
-              <p className="text-[9px] uppercase leading-[1.3] tracking-[0.24em] text-white/45">Assignment progress</p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                {challengeOptions.map((challenge, index) => {
-                  const isCurrent = challenge.slug === activeChallengeSlug
-                  const isCompleted = completedChallengeSlugs.includes(challenge.slug)
-                  const className = isCurrent
-                    ? isCompleted
-                      ? "h-2.5 w-2.5 border-[var(--accent-soft)] bg-[var(--accent)] shadow-[0_0_0_2px_rgba(201,111,54,0.22)]"
-                      : "h-2.5 w-2.5 border-white/45 bg-transparent shadow-[0_0_0_2px_rgba(255,255,255,0.08)]"
-                    : isCompleted
-                      ? "h-2 w-2 border-[var(--accent-soft)] bg-[var(--accent)]/82 hover:bg-[var(--accent)]"
-                      : "h-2 w-2 border-white/25 bg-white/8 hover:bg-white/24"
+            <div className="flex flex-wrap items-center gap-1.5" aria-label="Assignment navigation">
+              {challengeOptions.map((challenge, index) => {
+                const isCurrent = challenge.slug === activeChallengeSlug
+                const isCompleted = completedChallengeSlugs.includes(challenge.slug)
+                const className = isCurrent
+                  ? isCompleted
+                    ? "h-2.5 w-2.5 border-[var(--accent-soft)] bg-[var(--accent)] shadow-[0_0_0_2px_rgba(201,111,54,0.22)]"
+                    : "h-2.5 w-2.5 border-white/45 bg-transparent shadow-[0_0_0_2px_rgba(255,255,255,0.08)]"
+                  : isCompleted
+                    ? "h-2 w-2 border-[var(--accent-soft)] bg-[var(--accent)]/82 hover:bg-[var(--accent)]"
+                    : "h-2 w-2 border-white/25 bg-white/8 hover:bg-white/24"
 
-                  return (
-                    <Link
-                      key={challenge.slug}
-                      href={challenge.href}
-                      aria-label={`Open assignment ${index + 1}: ${challenge.title}`}
-                      className={`inline-flex rounded-full border transition ${className}`}
-                    />
-                  )
-                })}
-              </div>
-            </>
+                return (
+                  <Link
+                    key={challenge.slug}
+                    href={challenge.href}
+                    aria-label={`Open assignment ${index + 1}: ${challenge.title}`}
+                    className={`inline-flex rounded-full border transition ${className}`}
+                  />
+                )
+              })}
+            </div>
           )}
         </div>
 
         <div className="grid gap-2 xl:grid-cols-[minmax(210px,0.95fr)_minmax(210px,1fr)_minmax(210px,1fr)_auto] xl:items-center">
           <div className="rounded-xl border border-white/10 bg-white/6 px-3 py-2">
-            <p className="text-[9px] uppercase leading-[1.3] tracking-[0.24em] text-white/45">Practice path</p>
-            <p className="mt-1 text-sm font-semibold text-white">{`L${courseIndex}: ${courseTitle}`}</p>
+            <p className="text-[9px] uppercase leading-[1.3] tracking-[0.24em] text-white/45">Course</p>
+            <p className="mt-1 text-sm font-semibold text-white">{courseTitle}</p>
           </div>
 
           <select

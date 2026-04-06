@@ -149,7 +149,6 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
       <LessonInteractiveShell
         courseSlug={data.course.slug}
         courseTitle={data.course.title}
-        courseIndex={data.courseIndex}
         lessonOptions={lessonOptions}
         currentLessonValue={data.lesson.slug}
         lessonSlug={data.lesson.slug}
@@ -176,13 +175,13 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
             className="inline-flex items-center gap-2 text-sm text-white/60"
           >
             <ArrowLeft className="h-4 w-4" />
-            {practiceSession ? "Back to practice hub" : "Back to practice path"}
+            {practiceSession ? "Back to practice hub" : "Back to course"}
           </Link>
 
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
               <Badge>{`CH${data.currentLessonIndex + 1}`}</Badge>
-              <Badge className="bg-white/8 text-white ring-1 ring-white/10">{`L${data.courseIndex}: ${data.course.title}`}</Badge>
+              <Badge className="bg-white/8 text-white ring-1 ring-white/10">{data.course.title}</Badge>
               {practiceSession ? (
                 <Badge className="bg-[color:rgb(201_111_54/0.16)] text-white ring-1 ring-[var(--accent-soft)]/30">
                   {practiceSession.modeLabel}

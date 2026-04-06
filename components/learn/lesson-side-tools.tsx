@@ -100,7 +100,7 @@ export function LessonSideTools({ currentHref, entries, initialQuery = "", refer
         <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
           <Search className="h-4 w-4 text-[var(--accent)]" />
           <div>
-            <h3 className="font-serif text-2xl text-white">Search this path</h3>
+            <h3 className="font-serif text-2xl text-white">Search this course</h3>
             <p className="text-sm text-white/55">Find related reading across the current course.</p>
           </div>
         </div>
@@ -147,7 +147,7 @@ export function LessonSideTools({ currentHref, entries, initialQuery = "", refer
               </div>
             ) : (
               <div className="rounded-[1rem] border border-dashed border-white/10 bg-black/10 px-4 py-3 text-sm text-white/55">
-                No matching reading was found in this path yet.
+                No matching reading was found in this course yet.
               </div>
             )
           ) : (

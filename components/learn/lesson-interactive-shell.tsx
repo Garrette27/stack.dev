@@ -27,7 +27,6 @@ type PracticeSessionStripState = {
 type LessonInteractiveShellProps = {
   courseSlug: string
   courseTitle: string
-  courseIndex: number
   lessonOptions: LessonNavigationOption[]
   currentLessonValue: string
   lessonSlug: string
@@ -55,7 +54,6 @@ type CompletionOverrides = Record<string, boolean>
 export function LessonInteractiveShell({
   courseSlug,
   courseTitle,
-  courseIndex,
   lessonOptions,
   currentLessonValue,
   lessonSlug,
@@ -124,7 +122,6 @@ export function LessonInteractiveShell({
     <>
       <CourseProgressStrip
         courseTitle={courseTitle}
-        courseIndex={courseIndex}
         lessonOptions={lessonOptions}
         currentLessonValue={currentLessonValue}
         challengeOptions={challengeOptions}

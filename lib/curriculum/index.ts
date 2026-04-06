@@ -18,13 +18,6 @@ type CurriculumCourseMetadata = {
   sortOrder?: number
 }
 
-type CurriculumTrackDefinition = {
-  slug: CurriculumTrackSlug
-  title: string
-  description: string
-  courseSlugs: string[]
-}
-
 type CurriculumSectionDefinition = {
   slug: string
   shelf: CurriculumShelfSlug
@@ -38,21 +31,7 @@ export type CurriculumCourseCard = CourseWithLessons & {
   kindLabel: string
   totalLessons: number
   totalChallenges: number
-  trackSlugs: CurriculumTrackSlug[]
   progress: CurriculumCourseProgress
-}
-
-export type CurriculumTrackCard = {
-  slug: CurriculumTrackSlug
-  title: string
-  description: string
-  availableCourseCount: number
-  configuredCourseCount: number
-  totalLessons: number
-  totalChallenges: number
-  primaryHref: string | null
-  primaryCourseTitle: string | null
-  progress: CurriculumTrackProgress
 }
 
 export type CurriculumSection = {
@@ -63,7 +42,6 @@ export type CurriculumSection = {
 }
 
 export type CurriculumLandingPageData = {
-  trackCards: CurriculumTrackCard[]
   sections: CurriculumSection[]
 }
 
@@ -77,86 +55,13 @@ export type CurriculumCourseProgress = {
   resumeHref: string | null
 }
 
-export type CurriculumTrackProgress = {
-  completedCourseCount: number
-  availableCourseCount: number
-  completedChallengeCount: number
-  totalChallengeCount: number
-}
-
-const TRACK_DEFINITIONS: CurriculumTrackDefinition[] = [
-  {
-    slug: "backend_python_go",
-    title: "Back-end Developer Path (Python & Go)",
-    description: "Core programming, systems, databases, networking, and applied back-end projects.",
-    courseSlugs: [
-      "learn-javascript",
-      "learn-to-code-in-python",
-      "learn-linux",
-      "build-a-bookbot",
-      "learn-git",
-      "learn-object-oriented-programming",
-      "build-asteroids",
-      "learn-functional-programming",
-      "build-an-ai-agent",
-      "learn-data-structures-and-algorithms",
-      "build-a-static-site-generator",
-      "learn-memory-management",
-      "personal-project-1",
-      "learn-go",
-      "learn-http-clients",
-      "build-a-pokedex",
-      "learn-sql",
-      "build-a-blog-aggregator",
-      "learn-http-servers",
-      "learn-file-servers-and-cdns",
-      "learn-docker",
-      "learn-pub-sub-architecture",
-      "capstone-project",
-      "learn-how-to-find-a-programming-job"
-    ]
-  },
-  {
-    slug: "backend_python_typescript",
-    title: "Back-end Developer Path (Python & TypeScript)",
-    description: "A TypeScript-flavored back-end path that keeps the same practical project rhythm.",
-    courseSlugs: [
-      "learn-javascript",
-      "learn-to-code-in-python",
-      "learn-linux",
-      "learn-git",
-      "learn-object-oriented-programming",
-      "learn-functional-programming",
-      "learn-data-structures-and-algorithms",
-      "learn-sql",
-      "learn-the-http-protocol",
-      "learn-ci-cd",
-      "learn-docker"
-    ]
-  },
-  {
-    slug: "devops_python_go",
-    title: "DevOps Path (Python & Go)",
-    description: "Infrastructure-heavy learning for Linux, Docker, Kubernetes, automation, and delivery.",
-    courseSlugs: [
-      "learn-linux",
-      "learn-git",
-      "learn-docker",
-      "learn-the-http-protocol",
-      "learn-kubernetes",
-      "learn-ci-cd",
-      "learn-cryptography"
-    ]
-  }
-]
-
 const SECTION_DEFINITIONS: CurriculumSectionDefinition[] = [
   {
     slug: "core-courses",
     shelf: "core_library",
     kind: "course",
     title: "Courses",
-    description: "Sequential practice paths for concepts, systems, and real programming tools."
+    description: "Concepts, systems, and real programming tools organized as individual courses."
   },
   {
     slug: "guided-projects",
@@ -430,42 +335,7 @@ function buildCurriculumCourseCard(entry: CourseWithLessons): CurriculumCourseCa
     kindLabel: getCourseKindLabel(metadata.kind),
     totalLessons: entry.lessons.length,
     totalChallenges: entry.lessons.reduce((total, lesson) => total + lesson.challengeIds.length, 0),
-    trackSlugs: metadata.trackSlugs ?? [],
     progress: buildDefaultCourseProgress(entry)
-  }
-}
-
-function buildCurriculumTrackCard(
-  definition: CurriculumTrackDefinition,
-  coursesBySlug: Map<string, CurriculumCourseCard>
-): CurriculumTrackCard | null {
-  const availableCourses = definition.courseSlugs
-    .map((courseSlug) => coursesBySlug.get(courseSlug) ?? null)
-    .filter((course): course is CurriculumCourseCard => Boolean(course))
-
-  if (!availableCourses.length) {
-    return null
-  }
-
-  return {
-    slug: definition.slug,
-    title: definition.title,
-    description: definition.description,
-    availableCourseCount: availableCourses.length,
-    configuredCourseCount: definition.courseSlugs.length,
-    totalLessons: availableCourses.reduce((total, course) => total + course.totalLessons, 0),
-    totalChallenges: availableCourses.reduce((total, course) => total + course.totalChallenges, 0),
-    primaryHref: availableCourses[0] ? `/learn/${availableCourses[0].course.slug}` : null,
-    primaryCourseTitle: availableCourses[0]?.course.title ?? null,
-    progress: {
-      completedCourseCount: availableCourses.filter((course) => course.progress.status === "completed").length,
-      availableCourseCount: availableCourses.length,
-      completedChallengeCount: availableCourses.reduce(
-        (total, course) => total + course.progress.completedChallengeCount,
-        0
-      ),
-      totalChallengeCount: availableCourses.reduce((total, course) => total + course.progress.totalChallengeCount, 0)
-    }
   }
 }
 
@@ -609,7 +479,7 @@ async function loadCourseProgressBySlug(courseCards: CurriculumCourseCard[]) {
 
 /**
  * Builds the learner-facing curriculum landing page so pages can render
- * paths, shelves, and project groupings without duplicating catalog rules.
+ * shelves and course groupings without duplicating catalog rules.
  */
 export const getCurriculumLandingPageData = cache(async (): Promise<CurriculumLandingPageData> => {
   const catalog = await getCatalog()
@@ -619,12 +489,8 @@ export const getCurriculumLandingPageData = cache(async (): Promise<CurriculumLa
     ...course,
     progress: progressByCourseSlug.get(course.course.slug) ?? course.progress
   }))
-  const coursesBySlug = new Map(hydratedCourseCards.map((course) => [course.course.slug, course]))
 
   return {
-    trackCards: TRACK_DEFINITIONS
-      .map((definition) => buildCurriculumTrackCard(definition, coursesBySlug))
-      .filter((track): track is CurriculumTrackCard => Boolean(track)),
     sections: SECTION_DEFINITIONS
       .map((definition) => buildCurriculumSection(definition, hydratedCourseCards))
       .filter((section): section is CurriculumSection => Boolean(section))

@@ -34,7 +34,7 @@ export default async function CoursePage({ params }: CoursePageProps) {
           <CardHeader className="grid gap-5 border-b border-white/10 md:grid-cols-[1.2fr_0.8fr] md:items-end">
             <div className="space-y-3">
               <Badge className="w-fit bg-white/10 text-[var(--accent-soft)]">Practice hub</Badge>
-              <CardTitle className="font-serif text-4xl text-white">Practice this path with an intelligent shuffle.</CardTitle>
+              <CardTitle className="font-serif text-4xl text-white">Practice this course with an intelligent shuffle.</CardTitle>
               <CardDescription className="max-w-2xl text-base leading-7 text-white/72">
                 Keep misses, unseen work, and due reviews near the front without losing the freshness of a shuffled session.
               </CardDescription>
@@ -65,7 +65,7 @@ export default async function CoursePage({ params }: CoursePageProps) {
             <div className="space-y-2 text-sm leading-7 text-white/75">
               <p>
                 The practice hub builds one course-wide queue behind the scenes, so you can review across chapters without
-                manually hopping around the path.
+                manually hopping between chapters.
               </p>
               <p>Use it when you want repetition and freshness, not a fixed chapter-by-chapter pass.</p>
             </div>

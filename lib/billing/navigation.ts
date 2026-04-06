@@ -14,7 +14,7 @@ export function getPrimaryBillingCta(access: SubscriptionAccessSnapshot): Billin
   if (access.status === "active") {
     return {
       href: "/learn",
-      label: "Open your practice path",
+      label: "Open your course catalog",
       helperText: "Your account is active. Continue into your next practical session."
     }
   }

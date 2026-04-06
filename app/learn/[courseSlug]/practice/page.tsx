@@ -44,11 +44,11 @@ export default async function CoursePracticeHubPage({ params }: PracticePageProp
           <CardHeader className="gap-4">
             <div className="flex flex-wrap items-center gap-3">
               <Badge className="bg-white/10 text-[var(--accent-soft)]">Practice hub</Badge>
-              <Badge className="bg-white/8 text-white ring-1 ring-white/10">{`L${data.courseIndex}: ${data.course.title}`}</Badge>
+              <Badge className="bg-white/8 text-white ring-1 ring-white/10">{data.course.title}</Badge>
             </div>
-            <CardTitle className="font-serif text-5xl text-white">Smart shuffle for this practice path.</CardTitle>
+            <CardTitle className="font-serif text-5xl text-white">Smart shuffle for this course.</CardTitle>
             <CardDescription className="max-w-3xl text-base leading-7 text-white/74">
-              Practice pulls from the whole path, then keeps misses, unseen questions, and due reviews near the front so
+              Practice pulls from the whole course, then keeps misses, unseen questions, and due reviews near the front so
               each session feels fresh without losing repetition.
             </CardDescription>
           </CardHeader>
@@ -56,7 +56,7 @@ export default async function CoursePracticeHubPage({ params }: PracticePageProp
             <Link href={`/learn/${data.course.slug}`}>
               <Button variant="secondary" className="border-white/12 bg-white/8 text-white hover:bg-white/12">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to practice path
+                Back to course
               </Button>
             </Link>
             {data.startHref ? (
@@ -115,7 +115,7 @@ export default async function CoursePracticeHubPage({ params }: PracticePageProp
           <CardHeader>
             <CardTitle>Today&apos;s queue preview</CardTitle>
             <CardDescription>
-              The queue is rebuilt from one deep review module using the current path, your review history, and today&apos;s
+              The queue is rebuilt from one deep review module using the current course, your review history, and today&apos;s
               seed.
             </CardDescription>
           </CardHeader>
@@ -141,7 +141,7 @@ export default async function CoursePracticeHubPage({ params }: PracticePageProp
               ))
             ) : (
               <div className="rounded-[1.25rem] border border-dashed border-black/10 px-4 py-5 text-sm leading-7 text-[var(--ink-muted)]">
-                This path does not have any assignments ready for practice yet.
+                This course does not have any assignments ready for practice yet.
               </div>
             )}
           </CardContent>
@@ -159,7 +159,7 @@ export default async function CoursePracticeHubPage({ params }: PracticePageProp
             </div>
             <div className="rounded-[1.25rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-4">
               <p className="font-semibold text-[var(--ink-strong)]">2. Unseen work next</p>
-              <p className="mt-1">New assignments still enter the queue quickly so practice keeps expanding across the path.</p>
+              <p className="mt-1">New assignments still enter the queue quickly so practice keeps expanding across the course.</p>
             </div>
             <div className="rounded-[1.25rem] bg-[color:rgb(25_31_45/0.04)] px-4 py-4">
               <p className="font-semibold text-[var(--ink-strong)]">3. Due reviews after that</p>

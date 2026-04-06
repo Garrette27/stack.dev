@@ -30,7 +30,7 @@ export default async function BillingPage() {
       <section className="grid gap-5">
         <Badge>Billing</Badge>
         <h1 className="max-w-4xl font-serif text-5xl tracking-tight text-[var(--ink-strong)]">
-          Subscription setup for your practice path.
+          Subscription setup for your course catalog.
         </h1>
         <p className="max-w-3xl text-lg leading-8 text-[var(--ink)]">
           The checkout backend is not connected yet, but this page now holds the public subscription UI and account state
@@ -118,7 +118,7 @@ export default async function BillingPage() {
               </Link>
               <Link href={access.status === "active" ? "/learn" : "/dashboard"}>
                 <Button variant="ghost">
-                  {access.status === "active" ? "Open your practice path" : "Return to dashboard"}
+                  {access.status === "active" ? "Open your course catalog" : "Return to dashboard"}
                 </Button>
               </Link>
             </div>

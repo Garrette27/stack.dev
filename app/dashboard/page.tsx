@@ -42,7 +42,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
               <div className="min-h-[112px] rounded-[1.5rem] border border-white/10 bg-[rgba(255,255,255,0.07)] p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/55">Practice paths</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/55">Courses</p>
               <p className="mt-2 text-3xl font-semibold text-white">{state.courseCount}</p>
             </div>
               <div className="min-h-[112px] rounded-[1.5rem] border border-white/10 bg-[rgba(255,255,255,0.07)] p-4">
@@ -59,7 +59,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Continue where you left off</CardTitle>
-            <CardDescription>Jump back into your current session without searching through the whole practice path.</CardDescription>
+            <CardDescription>Jump back into your current session without searching through the whole catalog.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {state.resumeTarget ? (

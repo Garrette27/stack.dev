@@ -10,8 +10,7 @@ import { formatRelativeMinutes } from "@/lib/utils"
 export default async function HomePage() {
   const catalog = await getCatalog()
   const user = await getCurrentUser()
-  const primaryPracticeHref =
-    catalog[0]?.lessons[0] ? `/learn/${catalog[0].course.slug}/${catalog[0].lessons[0].slug}` : "/learn"
+  const primaryPracticeHref = "/learn"
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-12 px-4 py-14 sm:px-6 xl:px-10">
@@ -30,7 +29,7 @@ export default async function HomePage() {
           <div className="flex flex-wrap gap-3">
             <Link href={primaryPracticeHref}>
               <Button size="lg">
-                Enter the learner UI
+                Browse course catalog
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -116,7 +115,7 @@ export default async function HomePage() {
                 </div>
                 <Link href={`/learn/${course.slug}`}>
                   <Button variant="secondary">
-                    Open practice path
+                    Open course
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
