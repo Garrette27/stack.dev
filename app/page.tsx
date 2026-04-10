@@ -96,32 +96,43 @@ export default async function HomePage() {
         </Card>
 
         <div className="grid gap-5 md:grid-cols-2">
-          {catalog.map(({ course, lessons }) => (
-            <Card key={course.id} className="overflow-hidden">
-              <div className="h-2" style={{ backgroundColor: course.accent }} />
+          {catalog.length ? (
+            catalog.map(({ course, lessons }) => (
+              <Card key={course.id} className="overflow-hidden">
+                <div className="h-2" style={{ backgroundColor: course.accent }} />
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-3">
+                    <CardTitle>{course.title}</CardTitle>
+                    <Badge>{course.difficulty}</Badge>
+                  </div>
+                  <CardDescription>{course.summary}</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4">
+                  <div className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] p-4 text-sm text-[var(--ink)]">
+                    <p className="font-semibold text-[var(--ink-strong)]">
+                      {lessons.length} practice session{lessons.length === 1 ? "" : "s"}
+                    </p>
+                    <p className="mt-1">First practice session takes about {formatRelativeMinutes(lessons[0]?.estimatedMinutes ?? 10)}.</p>
+                  </div>
+                  <Link href={`/learn/${course.slug}`}>
+                    <Button variant="secondary">
+                      Open course
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Card className="overflow-hidden md:col-span-2">
               <CardHeader>
-                <div className="flex items-center justify-between gap-3">
-                  <CardTitle>{course.title}</CardTitle>
-                  <Badge>{course.difficulty}</Badge>
-                </div>
-                <CardDescription>{course.summary}</CardDescription>
+                <CardTitle>No live courses yet</CardTitle>
+                <CardDescription>
+                  The learner catalog is empty right now because nothing has been published yet. Authored content stays in admin until you make it live.
+                </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4">
-                <div className="rounded-[1.5rem] bg-[color:rgb(25_31_45/0.04)] p-4 text-sm text-[var(--ink)]">
-                  <p className="font-semibold text-[var(--ink-strong)]">
-                    {lessons.length} practice session{lessons.length === 1 ? "" : "s"}
-                  </p>
-                  <p className="mt-1">First practice session takes about {formatRelativeMinutes(lessons[0]?.estimatedMinutes ?? 10)}.</p>
-                </div>
-                <Link href={`/learn/${course.slug}`}>
-                  <Button variant="secondary">
-                    Open course
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </CardContent>
             </Card>
-          ))}
+          )}
         </div>
       </section>
     </div>

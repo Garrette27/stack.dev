@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAdminPageState } from "@/lib/admin"
 import { getAdminAnalyticsSnapshot, normalizeAnalyticsAudience, normalizeAnalyticsRange } from "@/lib/analytics"
-import { deleteChallengeAction, deleteCourseAction, deleteLessonAction } from "./actions"
+import { setChallengeVisibilityAction, setCourseVisibilityAction, setLessonVisibilityAction } from "./actions"
 
 type AdminPageProps = {
   searchParams?: Promise<{
@@ -22,6 +22,22 @@ type AdminPageProps = {
 
 function firstQueryValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
+}
+
+function getVisibilityLabel(published: boolean) {
+  return published ? "Live" : "Hidden"
+}
+
+function getChallengeStatusLabel(challenge: { published: boolean; publicationState: string }) {
+  if (!challenge.published || challenge.publicationState === "archived") {
+    return "Hidden"
+  }
+
+  if (challenge.publicationState === "draft") {
+    return "Draft"
+  }
+
+  return "Published"
 }
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
@@ -98,7 +114,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         <Card>
           <CardHeader>
             <CardTitle>Current content</CardTitle>
-            <CardDescription>Use this to edit or remove existing courses, chapters, and assignments.</CardDescription>
+            <CardDescription>
+              Review, open, hide, or restore existing catalog content. Authored courses, chapters, and assignments stay in admin instead of being hard-deleted.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             {snapshot.courses.length ? (
@@ -112,13 +130,19 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
                         <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`L${courseIndex + 1}`}</p>
-                        <p className="mt-2 text-lg font-semibold text-[var(--ink-strong)]">{course.title}</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <p className="text-lg font-semibold text-[var(--ink-strong)]">{course.title}</p>
+                          <Badge className="bg-[var(--surface-strong)] text-[var(--ink-muted)] ring-1 ring-[var(--border-subtle)]">
+                            {getVisibilityLabel(course.published)}
+                          </Badge>
+                        </div>
                         <p className="mt-1 text-sm leading-6 text-[var(--ink)]">{course.summary}</p>
                       </div>
-                      <form action={deleteCourseAction}>
+                      <form action={setCourseVisibilityAction}>
                         <input type="hidden" name="courseSlug" value={course.slug} />
-                        <Button type="submit" variant="destructive" size="sm">
-                          Delete course
+                        <input type="hidden" name="visibility" value={course.published ? "hidden" : "visible"} />
+                        <Button type="submit" variant="secondary" size="sm">
+                          {course.published ? "Hide course" : "Restore course"}
                         </Button>
                       </form>
                     </div>
@@ -129,24 +153,34 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           <div className="flex flex-wrap items-start justify-between gap-4">
                             <div>
                               <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`CH${lessonIndex + 1}`}</p>
-                              <p className="mt-1 text-base font-semibold text-[var(--ink-strong)]">{lesson.title}</p>
+                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <p className="text-base font-semibold text-[var(--ink-strong)]">{lesson.title}</p>
+                                <Badge className="bg-[var(--surface-strong)] text-[var(--ink-muted)] ring-1 ring-[var(--border-subtle)]">
+                                  {getVisibilityLabel(lesson.published)}
+                                </Badge>
+                              </div>
                               <p className="mt-1 text-sm leading-6 text-[var(--ink)]">{lesson.summary}</p>
                             </div>
                             <div className="flex flex-col items-end gap-2 text-right">
                               <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">
                                 {lesson.challengeIds.length} assignment{lesson.challengeIds.length === 1 ? "" : "s"}
                               </p>
-                              <Link
-                                href={`/learn/${lesson.courseSlug}/${lesson.slug}`}
-                                className="inline-flex text-sm font-medium text-[var(--ink-strong)] underline decoration-[var(--accent)]"
-                              >
-                                Open learner view
-                              </Link>
-                              <form action={deleteLessonAction}>
+                              {course.published && lesson.published ? (
+                                <Link
+                                  href={`/learn/${lesson.courseSlug}/${lesson.slug}`}
+                                  className="inline-flex text-sm font-medium text-[var(--ink-strong)] underline decoration-[var(--accent)]"
+                                >
+                                  Open learner view
+                                </Link>
+                              ) : (
+                                <p className="text-sm text-[var(--ink-muted)]">Hidden from learners</p>
+                              )}
+                              <form action={setLessonVisibilityAction}>
                                 <input type="hidden" name="courseSlug" value={lesson.courseSlug} />
                                 <input type="hidden" name="lessonSlug" value={lesson.slug} />
-                                <Button type="submit" variant="destructive" size="sm">
-                                  Delete chapter
+                                <input type="hidden" name="visibility" value={lesson.published ? "hidden" : "visible"} />
+                                <Button type="submit" variant="secondary" size="sm">
+                                  {lesson.published ? "Hide chapter" : "Restore chapter"}
                                 </Button>
                               </form>
                             </div>
@@ -170,16 +204,17 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                                       <div className="mt-1 flex flex-wrap items-center gap-2">
                                         <p className="truncate text-sm font-semibold text-[var(--ink-strong)]">{challenge.title}</p>
                                         <Badge className="bg-[var(--surface-strong)] text-[var(--ink-muted)] ring-1 ring-[var(--border-subtle)]">
-                                          {challenge.publicationState === "draft" ? "Draft" : challenge.publicationState === "archived" ? "Archived" : "Published"}
+                                          {getChallengeStatusLabel(challenge)}
                                         </Badge>
                                       </div>
                                     </div>
-                                    <form action={deleteChallengeAction}>
+                                    <form action={setChallengeVisibilityAction}>
                                       <input type="hidden" name="courseSlug" value={lesson.courseSlug} />
                                       <input type="hidden" name="lessonSlug" value={lesson.slug} />
                                       <input type="hidden" name="challengeSlug" value={challenge.slug} />
-                                      <Button type="submit" variant="destructive" size="sm">
-                                        Delete assignment
+                                      <input type="hidden" name="visibility" value={challenge.published ? "hidden" : "visible"} />
+                                      <Button type="submit" variant="secondary" size="sm">
+                                        {challenge.published ? "Hide assignment" : "Restore assignment"}
                                       </Button>
                                     </form>
                                   </div>

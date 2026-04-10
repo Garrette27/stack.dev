@@ -9,8 +9,8 @@ import { sortLessons } from "./shared"
 
 async function getSupabaseContent() {
   return loadSnapshotFromRows({
-    emptyMode: "mock",
-    emptyContentReason: "No published course and lesson rows were found, so the app is showing preview content.",
+    emptyMode: "database",
+    emptyContentReason: "No live course catalog content has been published yet.",
     contentSourceReason: "Loaded published course, lesson, and challenge content from Supabase.",
     loadRows: async () => {
       if (!hasSupabaseEnv()) {

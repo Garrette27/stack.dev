@@ -565,6 +565,14 @@ async function loadStableChallengeRow(
   }
 }
 
+/**
+ * Draft saves should preserve an assignment's existing learner visibility
+ * instead of silently republishing previously hidden content.
+ */
+function getDraftChallengeVisibility(challengeRow: StableChallengeRow) {
+  return challengeRow.published && Boolean(challengeRow.currentPublishedVersionId)
+}
+
 async function upsertLegacyChallengeRecord(
   admin: NonNullable<ReturnType<typeof createAdminClient>>,
   payload: AuthoringBundleInput,
@@ -819,7 +827,7 @@ async function upsertVersionedChallengeRecord(
       .from("challenges")
       .update({
         current_draft_version_id: draftVersionId,
-        published: Boolean(challengeRow.currentPublishedVersionId),
+        published: getDraftChallengeVisibility(challengeRow),
         updated_at: now
       })
       .eq("id", challengeRow.id)
@@ -968,6 +976,20 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   // adds one. Blank input means the assignment should fall back to its own
   // prompt, with the chapter guide remaining optional.
   const normalizedReadingMdx = payload.readingMdx?.trim() ? payload.readingMdx.trim() : null
+  const { data: existingCourse, error: existingCourseError } = await admin!
+    .from("courses")
+    .select("id,published")
+    .eq("slug", payload.courseSlug)
+    .maybeSingle()
+
+  if (existingCourseError) {
+    return {
+      success: false,
+      message: existingCourseError.message
+    }
+  }
+
+  const shouldPublishCourse = payload.saveMode === "publish" ? true : Boolean(existingCourse?.published ?? false)
   const { data: courseRow, error: courseError } = await admin!
     .from("courses")
     .upsert(
@@ -977,7 +999,7 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
         summary: `A practical path into software with ${payload.courseTitle.toLowerCase()}.`,
         difficulty: "Beginner",
         accent: "#c96f36",
-        published: true
+        published: shouldPublishCourse
       },
       {
         onConflict: "slug"
@@ -1013,12 +1035,14 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   const [{ data: existingLesson }, { count: lessonCount }] = await Promise.all([
     admin!
       .from("lessons")
-      .select("id, order_index, challenge_slug, estimated_minutes")
+      .select("id, order_index, challenge_slug, estimated_minutes, published")
       .eq("course_id", courseRow.id)
       .eq("slug", payload.lessonSlug)
       .maybeSingle(),
     admin!.from("lessons").select("id", { count: "exact", head: true }).eq("course_id", courseRow.id)
   ])
+
+  const shouldPublishLesson = payload.saveMode === "publish" ? true : Boolean(existingLesson?.published ?? false)
 
   const { data: lessonRow, error: lessonError } = await admin!.from("lessons").upsert(
     {
@@ -1030,7 +1054,7 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
       body_mdx: payload.bodyMdx,
       challenge_slug: existingLesson?.challenge_slug ?? challengeSlug,
       order_index: existingLesson?.order_index ?? (lessonCount ?? 0) + 1,
-      published: true
+      published: shouldPublishLesson
     },
     {
       onConflict: "course_id,slug"

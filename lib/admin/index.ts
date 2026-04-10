@@ -5,10 +5,13 @@ export { parseAuthoringBundleFormData, saveAuthoringBundleForCurrentUser } from 
 export type { AuthoringSaveResult } from "./authoring"
 
 export {
-  deleteChallengeForCurrentUser,
-  deleteCourseForCurrentUser,
-  deleteLessonForCurrentUser
-} from "./destructive"
-export type { AdminDeleteResult } from "./destructive"
+  archiveChallengeForCurrentUser,
+  hideCourseForCurrentUser,
+  hideLessonForCurrentUser,
+  restoreChallengeForCurrentUser,
+  restoreCourseForCurrentUser,
+  restoreLessonForCurrentUser
+} from "./content-lifecycle"
+export type { AdminContentLifecycleResult } from "./content-lifecycle"
 
 export { getAdminSnapshot, getRunnerChallengeBySlug } from "./snapshot"

@@ -3,11 +3,14 @@
 import { revalidatePath } from "next/cache"
 
 import {
+  archiveChallengeForCurrentUser,
   claimAdminAccessForCurrentUser,
-  deleteChallengeForCurrentUser,
-  deleteCourseForCurrentUser,
-  deleteLessonForCurrentUser,
+  hideCourseForCurrentUser,
+  hideLessonForCurrentUser,
   parseAuthoringBundleFormData,
+  restoreChallengeForCurrentUser,
+  restoreCourseForCurrentUser,
+  restoreLessonForCurrentUser,
   saveAuthoringBundleForCurrentUser
 } from "@/lib/admin"
 
@@ -72,30 +75,42 @@ export async function upsertAuthoringBundleAction(
   return result
 }
 
-export async function deleteCourseAction(formData: FormData) {
+export async function setCourseVisibilityAction(formData: FormData) {
   const courseSlug = String(formData.get("courseSlug") ?? "")
-  const result = await deleteCourseForCurrentUser(courseSlug)
+  const nextVisibility = String(formData.get("visibility") ?? "")
+  const result =
+    nextVisibility === "hidden"
+      ? await hideCourseForCurrentUser(courseSlug)
+      : await restoreCourseForCurrentUser(courseSlug)
 
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug)
   }
 }
 
-export async function deleteLessonAction(formData: FormData) {
+export async function setLessonVisibilityAction(formData: FormData) {
   const courseSlug = String(formData.get("courseSlug") ?? "")
   const lessonSlug = String(formData.get("lessonSlug") ?? "")
-  const result = await deleteLessonForCurrentUser(courseSlug, lessonSlug)
+  const nextVisibility = String(formData.get("visibility") ?? "")
+  const result =
+    nextVisibility === "hidden"
+      ? await hideLessonForCurrentUser(courseSlug, lessonSlug)
+      : await restoreLessonForCurrentUser(courseSlug, lessonSlug)
 
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug, lessonSlug)
   }
 }
 
-export async function deleteChallengeAction(formData: FormData) {
+export async function setChallengeVisibilityAction(formData: FormData) {
   const courseSlug = String(formData.get("courseSlug") ?? "")
   const lessonSlug = String(formData.get("lessonSlug") ?? "")
   const challengeSlug = String(formData.get("challengeSlug") ?? "")
-  const result = await deleteChallengeForCurrentUser(challengeSlug)
+  const nextVisibility = String(formData.get("visibility") ?? "")
+  const result =
+    nextVisibility === "hidden"
+      ? await archiveChallengeForCurrentUser(challengeSlug)
+      : await restoreChallengeForCurrentUser(challengeSlug)
 
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug, lessonSlug)
