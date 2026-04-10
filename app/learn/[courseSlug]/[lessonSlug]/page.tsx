@@ -4,7 +4,7 @@ import { ArrowLeft, ChevronDown } from "lucide-react"
 import { notFound } from "next/navigation"
 
 import { LessonInteractiveShell } from "@/components/learn/lesson-interactive-shell"
-import { LessonSideTools } from "@/components/learn/lesson-side-tools"
+import { LessonAiHelpPanel, LessonReadingSearch } from "@/components/learn/lesson-side-tools"
 import { Badge } from "@/components/ui/badge"
 import { getChallengeTypeLabel } from "@/lib/challenges/presentation"
 import { resolveAssignmentReading } from "@/lib/content/reading"
@@ -230,6 +230,13 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
             </LessonPanelSection>
           ) : null}
 
+          <LessonReadingSearch
+            currentHref={currentHref}
+            entries={data.courseReadingEntries}
+            initialQuery={search ?? ""}
+            referenceEntryId={selectedReferenceEntry?.id ?? null}
+          />
+
           {selectedReferenceEntry ? (
             <LessonPanelSection title={selectedReferenceEntry.title} defaultOpen>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -248,12 +255,7 @@ export default async function LessonPage({ params, searchParams }: LessonPagePro
             </LessonPanelSection>
           ) : null}
 
-          <LessonSideTools
-            currentHref={currentHref}
-            entries={data.courseReadingEntries}
-            initialQuery={search ?? ""}
-            referenceEntryId={selectedReferenceEntry?.id ?? null}
-          />
+          <LessonAiHelpPanel />
         </div>
       </LessonInteractiveShell>
     </div>

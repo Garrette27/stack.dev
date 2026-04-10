@@ -32,8 +32,37 @@ type EditorPaneProps = {
   value: string
   height: string
   readOnly: boolean
+  readOnlyMessage?: string
   className?: string
   onChange?: (value: string) => void
+}
+
+/**
+ * Explains why a learner can't type into the visible file so Monaco shows a
+ * course-specific message instead of a generic read-only warning.
+ */
+function getEditorLockMessage({
+  isAuthenticated,
+  isShowingTests,
+  isSolutionPane
+}: {
+  isAuthenticated: boolean
+  isShowingTests?: boolean
+  isSolutionPane?: boolean
+}) {
+  if (isShowingTests) {
+    return "Hidden tests are read-only in the learner workspace."
+  }
+
+  if (isSolutionPane) {
+    return "Reference solution is read-only."
+  }
+
+  if (!isAuthenticated) {
+    return "Sign in with Google to edit code, run the checker, and save progress."
+  }
+
+  return "This file is read-only."
 }
 
 function EditorPane({
@@ -43,6 +72,7 @@ function EditorPane({
   value,
   height,
   readOnly,
+  readOnlyMessage,
   className,
   onChange
 }: EditorPaneProps) {
@@ -71,6 +101,7 @@ function EditorPane({
           minimap: { enabled: false },
           padding: { top: 16 },
           readOnly,
+          readOnlyMessage: readOnlyMessage ? { value: readOnlyMessage } : undefined,
           scrollBeyondLastLine: false,
           smoothScrolling: true
         }}
@@ -201,6 +232,14 @@ export function CodeChallengeWorkbench({
   const visibleEditorPath = isShowingTests ? testFileLabel : sourceFileLabel
   const visibleEditorValue = isShowingTests ? challenge.hiddenTestCode : sourceCode
   const isSourceReadOnly = isShowingTests || !isAuthenticated
+  const sourceEditorLockMessage = getEditorLockMessage({
+    isAuthenticated,
+    isShowingTests
+  })
+  const solutionEditorLockMessage = getEditorLockMessage({
+    isAuthenticated,
+    isSolutionPane: true
+  })
 
   return (
     <section className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,#141923,#121722)] text-white shadow-[0_24px_70px_rgba(11,15,24,0.36)]">
@@ -242,6 +281,7 @@ export function CodeChallengeWorkbench({
                 value={visibleEditorValue}
                 height={editorHeight}
                 readOnly={isSourceReadOnly}
+                readOnlyMessage={sourceEditorLockMessage}
                 onChange={setSourceCode}
               />
             }
@@ -253,6 +293,7 @@ export function CodeChallengeWorkbench({
                 value={challenge.solutionCode}
                 height={editorHeight}
                 readOnly
+                readOnlyMessage={solutionEditorLockMessage}
               />
             }
           />
@@ -264,6 +305,7 @@ export function CodeChallengeWorkbench({
             value={visibleEditorValue}
             height={editorHeight}
             readOnly={isSourceReadOnly}
+            readOnlyMessage={sourceEditorLockMessage}
             onChange={setSourceCode}
           />
         )}
