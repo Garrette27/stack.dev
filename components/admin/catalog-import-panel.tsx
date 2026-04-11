@@ -122,7 +122,7 @@ export function CatalogImportPanel({
 
   function getDestinationSummary() {
     if (destinationScope === "existing_lesson" && selectedCourse && selectedLesson) {
-      return `Assignments will be appended into ${selectedCourse.title} / ${selectedLesson.title}. This is the safest mode for adding “assignment 8” style content into an existing chapter.`
+      return `Assignments will be appended into ${selectedCourse.title} / ${selectedLesson.title}. This is the safest mode for adding "assignment 8" style content into an existing chapter.`
     }
 
     if (destinationScope === "existing_course" && selectedCourse) {
@@ -240,8 +240,8 @@ export function CatalogImportPanel({
           <p className="font-semibold text-[var(--ink-strong)]">Import notes</p>
           <p>The importer creates stable catalog rows and append-only versions, so the new content is restorable from the first import onward.</p>
           <p>Use draft mode when you are loading a large course and want to review it before learners see it.</p>
-          <p>Structured outline mode supports fenced MDX code blocks directly, so you do not need to use the insert-code buttons for bulk imports.</p>
-          <p>If you want another AI to convert messy pasted source into this format first, use the AI formatting prompt below and then paste the result here.</p>
+          <p>Structured outline mode supports fenced MDX code blocks directly, and the importer now repairs common rich-copy problems like plain-text code blocks, stray line numbers, and collapsed spacing.</p>
+          <p>If you want another AI to convert messy pasted source into this format first, use the AI formatting prompt below. It is tuned for your workflow of pasting lesson reading, assignment text, starter code, solution, and then asking the outside AI to generate hidden tests or multiple-choice answers when needed.</p>
           <p>If you choose an existing chapter as the destination, imported chapter BODY text is folded into each imported assignment reading so Boot.dev-style lesson material maps into your current course structure more naturally.</p>
         </div>
 

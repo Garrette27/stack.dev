@@ -322,23 +322,9 @@ export async function importCatalogManifestAction(
   const result = await importCatalogManifestForCurrentUser(manifestSource, saveMode, destinationResult.destination)
 
   if (result.success) {
-    if (destinationResult.destination.scope === "existing_lesson") {
-      await revalidateContentPaths(destinationResult.destination.courseSlug, destinationResult.destination.lessonSlug)
-      redirect(
-        buildAdminSelectionHref({
-          courseSlug: destinationResult.destination.courseSlug,
-          lessonSlug: destinationResult.destination.lessonSlug
-        })
-      )
-    }
-
-    if (destinationResult.destination.scope === "existing_course") {
-      await revalidateContentPaths(destinationResult.destination.courseSlug)
-      redirect(
-        buildAdminSelectionHref({
-          courseSlug: destinationResult.destination.courseSlug
-        })
-      )
+    if (result.selection?.courseSlug) {
+      await revalidateContentPaths(result.selection.courseSlug, result.selection.lessonSlug)
+      redirect(buildAdminSelectionHref(result.selection))
     }
 
     revalidatePath("/")

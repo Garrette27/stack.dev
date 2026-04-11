@@ -143,12 +143,19 @@ Rules:
 - Use this structure: COURSE, SUMMARY, DIFFICULTY, ACCENT, CHAPTER, MINUTES, BODY, ASSIGNMENT, KIND, LANGUAGE, READING, PROMPT, STARTER CODE, SOLUTION, HIDDEN TESTS, CHOICES, EXPLANATION.
 - End every multiline field with <<<END.
 - Preserve Markdown and fenced code blocks when the source includes reading content or code examples.
+- When a code example appears in BODY, READING, PROMPT, or EXPLANATION, return literal triple-backtick fences in the text output instead of a rendered rich-text code block.
+- Add blank lines between paragraphs and fenced code blocks so the learner reading renders cleanly.
+- Wrap code examples in fenced code blocks whenever they appear inside BODY, READING, PROMPT, or EXPLANATION.
 - Use KIND: code for coding assignments.
 - Use KIND: multiple_choice for quiz assignments.
+- If a code assignment includes starter code and solution but no checker, generate HIDDEN TESTS from the expected learner-visible behavior or output.
+- Keep generated hidden tests deterministic and avoid brittle implementation checks when an output check is enough.
 - For multiple choice, list one correct answer as [correct] inside CHOICES.
+- If the source asks for a multiple-choice version, generate CHOICES and mark one [correct].
 - If the source does not include a field, omit it instead of inventing content.
 - Keep code exactly as provided unless the source clearly includes a corrected solution or checker.
 - If a language is clear, include LANGUAGE.
+- Remove copied UI noise like editor line numbers, buttons, or stray OCR fragments when they are clearly not part of the lesson.
 - If the source contains one chapter only, still include COURSE and CHAPTER blocks.
 
 Use this output style:
@@ -177,6 +184,8 @@ export function buildBulkImportAiPrompt(options: {
           `Keep CHAPTER: ${options.targetLessonTitle}.`,
           "Put reusable lesson explanation in BODY.",
           "Put assignment-specific instructions in READING and PROMPT.",
+          "If starter code and solution are present but tests are missing, generate HIDDEN TESTS from the expected learner-visible behavior.",
+          "If the source is being converted into a quiz, generate CHOICES and mark one [correct].",
           "Do not invent a new course or a new chapter for this import."
         ]
       : options.destinationScope === "existing_course" && options.targetCourseTitle
@@ -199,12 +208,19 @@ Rules:
 - Use this structure: COURSE, SUMMARY, DIFFICULTY, ACCENT, CHAPTER, MINUTES, BODY, ASSIGNMENT, KIND, LANGUAGE, READING, PROMPT, STARTER CODE, SOLUTION, HIDDEN TESTS, CHOICES, EXPLANATION.
 - End every multiline field with <<<END.
 - Preserve Markdown and fenced code blocks when the source includes reading content or code examples.
+- When a code example appears in BODY, READING, PROMPT, or EXPLANATION, return literal triple-backtick fences in the text output instead of a rendered rich-text code block.
+- Add blank lines between paragraphs and fenced code blocks so the learner reading renders cleanly.
+- Wrap code examples in fenced code blocks whenever they appear inside BODY, READING, PROMPT, or EXPLANATION.
 - Use KIND: code for coding assignments.
 - Use KIND: multiple_choice for quiz assignments.
+- If a code assignment includes starter code and solution but no checker, generate HIDDEN TESTS from the expected learner-visible behavior or output.
+- Keep generated hidden tests deterministic and avoid brittle implementation checks when an output check is enough.
 - For multiple choice, list one correct answer as [correct] inside CHOICES.
+- If the source asks for a multiple-choice version, generate CHOICES and mark one [correct].
 - If the source does not include a field, omit it instead of inventing content.
 - Keep code exactly as provided unless the source clearly includes a corrected solution or checker.
 - If a language is clear, include LANGUAGE.
+- Remove copied UI noise like editor line numbers, buttons, or stray OCR fragments when they are clearly not part of the lesson.
 - If the source contains one chapter only, still include COURSE and CHAPTER blocks.
 
 Destination guidance:
@@ -433,6 +449,7 @@ function getFieldTarget(label: string, state: ParserState): PlainTextFieldTarget
       return "challengeSolutionCode"
     case "TESTS":
     case "HIDDEN TESTS":
+    case "TEST CASES":
     case "CHECKER":
       return "challengeHiddenTests"
     case "CHOICES":
@@ -617,6 +634,384 @@ function normalizeImportedCoursesFromOutline(source: string) {
   return z.array(importedCourseSchema).min(1).parse(parseStructuredCatalogOutline(source))
 }
 
+function normalizeTextLineEndings(value: string) {
+  return value.replace(/\r\n?/g, "\n")
+}
+
+function trimTrailingWhitespace(value: string) {
+  return value
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+$/g, ""))
+    .join("\n")
+}
+
+function stripStandaloneEditorLineNumbers(value: string) {
+  const lines = value.split("\n")
+  const nextLines: string[] = []
+  let lineNumberRun: string[] = []
+
+  function flushLineNumberRun() {
+    if (lineNumberRun.length && lineNumberRun.length < 3) {
+      nextLines.push(...lineNumberRun)
+    }
+    lineNumberRun = []
+  }
+
+  for (const line of lines) {
+    if (/^\s*\d+\s*$/.test(line)) {
+      lineNumberRun.push(line)
+      continue
+    }
+
+    flushLineNumberRun()
+    nextLines.push(line)
+  }
+
+  flushLineNumberRun()
+  return nextLines.join("\n")
+}
+
+const CODE_FENCE_LANGUAGE_ALIASES: Record<string, string> = {
+  bash: "bash",
+  c: "c",
+  cpp: "cpp",
+  "c++": "cpp",
+  css: "css",
+  go: "go",
+  golang: "go",
+  html: "html",
+  java: "java",
+  javascript: "javascript",
+  js: "javascript",
+  json: "json",
+  markdown: "markdown",
+  md: "markdown",
+  mdx: "mdx",
+  php: "php",
+  py: "python",
+  python: "python",
+  ruby: "ruby",
+  rs: "rust",
+  rust: "rust",
+  sh: "bash",
+  shell: "bash",
+  sql: "sql",
+  ts: "typescript",
+  tsx: "tsx",
+  typescript: "typescript",
+  yaml: "yaml",
+  yml: "yaml"
+}
+
+function normalizeFenceLanguageLabel(value: string) {
+  const normalizedValue = value.trim().toLowerCase().replace(/\s+/g, "")
+  return CODE_FENCE_LANGUAGE_ALIASES[normalizedValue] ?? null
+}
+
+function findNextNonEmptyLineIndex(lines: string[], startIndex: number) {
+  for (let index = startIndex; index < lines.length; index += 1) {
+    if (lines[index]?.trim()) {
+      return index
+    }
+  }
+
+  return -1
+}
+
+function looksLikeJavaScriptLine(line: string) {
+  const trimmedLine = line.trim()
+  if (!trimmedLine) {
+    return false
+  }
+
+  return (
+    /^(const|let|var)\s+/.test(trimmedLine) ||
+    trimmedLine.startsWith("console.log(") ||
+    trimmedLine.startsWith("//") ||
+    trimmedLine === "{" ||
+    trimmedLine === "}" ||
+    /^if\s*\(/.test(trimmedLine) ||
+    /^for\s*\(/.test(trimmedLine) ||
+    /^while\s*\(/.test(trimmedLine) ||
+    /^function\s+/.test(trimmedLine) ||
+    /^return\b/.test(trimmedLine) ||
+    /^import\s+/.test(trimmedLine) ||
+    /^export\s+/.test(trimmedLine) ||
+    trimmedLine.includes("=>")
+  )
+}
+
+function looksLikeCodeLine(line: string) {
+  const trimmedLine = line.trim()
+  if (!trimmedLine) {
+    return false
+  }
+
+  if (trimmedLine.startsWith("```")) {
+    return false
+  }
+
+  return (
+    looksLikeJavaScriptLine(trimmedLine) ||
+    trimmedLine.startsWith("//") ||
+    trimmedLine.startsWith("/*") ||
+    trimmedLine.endsWith(";") ||
+    /[{}]/.test(trimmedLine) ||
+    trimmedLine.includes("console.log(") ||
+    trimmedLine.includes("++") ||
+    trimmedLine.includes("--") ||
+    trimmedLine.includes("?.") ||
+    trimmedLine.includes(" = ") ||
+    trimmedLine.includes("==") ||
+    trimmedLine.includes("=>")
+  )
+}
+
+function pickCodeFenceLanguage(lines: string[], languageHint?: string | null) {
+  if (languageHint?.trim()) {
+    return normalizeFenceLanguageLabel(languageHint) ?? languageHint.trim().toLowerCase()
+  }
+
+  return lines.some(looksLikeJavaScriptLine) ? "javascript" : ""
+}
+
+/**
+ * Rich-text copies from external AI tools sometimes collapse a code block into
+ * one prose line. This reconstructs likely statement boundaries before the
+ * generic fence pass decides whether the line should render as code.
+ */
+function splitLikelyInlineCodeParagraph(line: string) {
+  const trimmedLine = line.trim()
+  if (!trimmedLine || trimmedLine.startsWith("```")) {
+    return null
+  }
+
+  const statementCueCount = (trimmedLine.match(/;/g) ?? []).length
+  const hasCodeSignals =
+    /(^|\s)(const|let|var|if|for|while|function|return)\b/.test(trimmedLine) ||
+    trimmedLine.includes("console.log(") ||
+    trimmedLine.includes("++") ||
+    trimmedLine.includes("--")
+
+  if (!hasCodeSignals || statementCueCount < 2) {
+    return null
+  }
+
+  const normalizedLine = trimmedLine
+    .replace(/;\s+(?=(?:const|let|var|if|for|while|function|return|console\.log|[A-Za-z_$][\w$]*(?:\+\+|--)))/g, ";\n")
+    .replace(/(\+\+|--)\s+(?=(?:const|let|var|if|for|while|function|return|console\.log))/g, "$1\n")
+    .replace(/(\/\/[^\n]*)\s+(?=(?:const|let|var|if|for|while|function|return|console\.log|[A-Za-z_$][\w$]*(?:\+\+|--)))/g, "$1\n")
+
+  const splitLines = normalizedLine
+    .split("\n")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+
+  if (splitLines.length < 2 || !splitLines.every(looksLikeCodeLine)) {
+    return null
+  }
+
+  return splitLines
+}
+
+function extractLikelyCodeLines(line: string) {
+  const inlineCodeLines = splitLikelyInlineCodeParagraph(line)
+  if (inlineCodeLines) {
+    return inlineCodeLines
+  }
+
+  return looksLikeCodeLine(line) ? [line] : null
+}
+
+function fenceLikelyCodeBlocks(value: string, languageHint?: string | null) {
+  const lines = value.split("\n")
+  const nextLines: string[] = []
+  let index = 0
+  let insideFence = false
+
+  while (index < lines.length) {
+    const line = lines[index]
+    const trimmedLine = line.trim()
+
+    if (trimmedLine.startsWith("```")) {
+      insideFence = !insideFence
+      nextLines.push(line)
+      index += 1
+      continue
+    }
+
+    const explicitLanguage = normalizeFenceLanguageLabel(trimmedLine)
+    if (!insideFence && explicitLanguage) {
+      const nextNonEmptyIndex = findNextNonEmptyLineIndex(lines, index + 1)
+      if (nextNonEmptyIndex !== -1 && extractLikelyCodeLines(lines[nextNonEmptyIndex] ?? "")) {
+        const codeLines: string[] = []
+        let lookahead = nextNonEmptyIndex
+
+        while (lookahead < lines.length) {
+          const candidate = lines[lookahead]
+          const trimmedCandidate = candidate.trim()
+
+          if (!trimmedCandidate) {
+            const nextCandidateIndex = findNextNonEmptyLineIndex(lines, lookahead + 1)
+            if (nextCandidateIndex === -1 || !extractLikelyCodeLines(lines[nextCandidateIndex] ?? "")) {
+              break
+            }
+
+            codeLines.push(candidate)
+            lookahead += 1
+            continue
+          }
+
+          if (trimmedCandidate.startsWith("```")) {
+            break
+          }
+
+          const candidateCodeLines = extractLikelyCodeLines(candidate)
+          if (!candidateCodeLines) {
+            break
+          }
+
+          codeLines.push(...candidateCodeLines)
+          lookahead += 1
+        }
+
+        if (nextLines.length && nextLines[nextLines.length - 1]?.trim()) {
+          nextLines.push("")
+        }
+
+        nextLines.push(`\`\`\`${explicitLanguage}`)
+        nextLines.push(...codeLines)
+        nextLines.push("```")
+
+        if (lookahead < lines.length && lines[lookahead]?.trim()) {
+          nextLines.push("")
+        }
+
+        index = lookahead
+        continue
+      }
+    }
+
+    const initialCodeLines = extractLikelyCodeLines(line)
+    if (insideFence || !initialCodeLines) {
+      nextLines.push(line)
+      index += 1
+      continue
+    }
+
+    const codeLines: string[] = [...initialCodeLines]
+    let lookahead = index + 1
+
+    while (lookahead < lines.length) {
+      const candidate = lines[lookahead]
+      const trimmedCandidate = candidate.trim()
+
+      if (!trimmedCandidate) {
+        const nextNonEmptyIndex = findNextNonEmptyLineIndex(lines, lookahead + 1)
+        if (nextNonEmptyIndex === -1 || !extractLikelyCodeLines(lines[nextNonEmptyIndex] ?? "")) {
+          break
+        }
+
+        codeLines.push(candidate)
+        lookahead += 1
+        continue
+      }
+
+      const candidateCodeLines = extractLikelyCodeLines(candidate)
+      if (trimmedCandidate.startsWith("```") || !candidateCodeLines) {
+        break
+      }
+
+      codeLines.push(...candidateCodeLines)
+      lookahead += 1
+    }
+
+    const fenceLanguage = pickCodeFenceLanguage(codeLines, languageHint)
+    if (nextLines.length && nextLines[nextLines.length - 1]?.trim()) {
+      nextLines.push("")
+    }
+
+    nextLines.push(`\`\`\`${fenceLanguage}`)
+    nextLines.push(...codeLines)
+    nextLines.push("```")
+
+    if (lookahead < lines.length && lines[lookahead]?.trim()) {
+      nextLines.push("")
+    }
+
+    index = lookahead
+  }
+
+  return nextLines.join("\n")
+}
+
+function collapseExtraBlankLines(value: string) {
+  return value.replace(/\n{3,}/g, "\n\n")
+}
+
+function normalizeImportedRichText(value: string, options?: { languageHint?: string | null }) {
+  const normalizedValue = collapseExtraBlankLines(
+    fenceLikelyCodeBlocks(
+      stripStandaloneEditorLineNumbers(trimTrailingWhitespace(normalizeTextLineEndings(value))).trim(),
+      options?.languageHint
+    )
+  )
+
+  return normalizedValue
+}
+
+function normalizeImportedCode(value: string) {
+  const normalizedCode = trimTrailingWhitespace(normalizeTextLineEndings(value))
+  const strippedCode = stripStandaloneEditorLineNumbers(normalizedCode).trim()
+  const inlineCodeLines = splitLikelyInlineCodeParagraph(strippedCode)
+
+  return (inlineCodeLines ? inlineCodeLines.join("\n") : strippedCode).trim()
+}
+
+function normalizeImportedChallenge(manifest: ImportedChallengeManifest): ImportedChallengeManifest {
+  const languageHint = manifest.kind === "code" ? manifest.language ?? null : null
+
+  return {
+    ...manifest,
+    title: manifest.title?.trim() || undefined,
+    slug: manifest.slug?.trim() || undefined,
+    readingMdx: manifest.readingMdx ? normalizeImportedRichText(manifest.readingMdx, { languageHint }) : undefined,
+    promptMdx: normalizeImportedRichText(manifest.promptMdx, { languageHint }),
+    starterCode: manifest.starterCode ? normalizeImportedCode(manifest.starterCode) : undefined,
+    solutionCode: manifest.solutionCode ? normalizeImportedCode(manifest.solutionCode) : undefined,
+    hiddenTestCode: manifest.hiddenTestCode ? normalizeImportedCode(manifest.hiddenTestCode) : undefined,
+    choiceExplanationMdx: manifest.choiceExplanationMdx
+      ? normalizeImportedRichText(manifest.choiceExplanationMdx, { languageHint })
+      : undefined
+  }
+}
+
+function normalizeImportedLesson(manifest: ImportedLessonManifest): ImportedLessonManifest {
+  const languageHint =
+    manifest.challenges.find((challenge) => challenge.kind === "code" && challenge.language)?.language ?? null
+
+  return {
+    ...manifest,
+    title: manifest.title.trim(),
+    slug: manifest.slug?.trim() || undefined,
+    summary: manifest.summary?.trim() || undefined,
+    bodyMdx: manifest.bodyMdx ? normalizeImportedRichText(manifest.bodyMdx, { languageHint }) : undefined,
+    challenges: manifest.challenges.map(normalizeImportedChallenge)
+  }
+}
+
+function normalizeImportedCourse(manifest: ImportedCourseManifest): ImportedCourseManifest {
+  return {
+    ...manifest,
+    title: manifest.title.trim(),
+    slug: manifest.slug?.trim() || undefined,
+    summary: manifest.summary?.trim() || undefined,
+    difficulty: manifest.difficulty?.trim() || undefined,
+    accent: manifest.accent?.trim() || undefined,
+    lessons: manifest.lessons.map(normalizeImportedLesson)
+  }
+}
+
 /**
  * Accepts either the structured JSON manifest or a faster bulk-authoring
  * outline so authors can paste large course batches without hand-building UI
@@ -630,10 +1025,10 @@ export function parseCatalogImportSource(source: string) {
   }
 
   try {
-    return normalizeImportedCoursesFromJson(trimmedSource)
+    return normalizeImportedCoursesFromJson(trimmedSource).map(normalizeImportedCourse)
   } catch (jsonError) {
     try {
-      return normalizeImportedCoursesFromOutline(trimmedSource)
+      return normalizeImportedCoursesFromOutline(trimmedSource).map(normalizeImportedCourse)
     } catch (outlineError) {
       if (outlineError instanceof z.ZodError) {
         throw new Error(outlineError.issues[0]?.message ?? "Import content could not be parsed.")

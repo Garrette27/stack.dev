@@ -51,6 +51,16 @@ export type CatalogImportDestination =
       lessonSlug: string
     }
 
+type CatalogImportSelection = {
+  courseSlug: string
+  lessonSlug?: string
+  challengeSlug?: string
+}
+
+type CatalogImportOperationResult = AdminCatalogOperationResult & {
+  selection?: CatalogImportSelection
+}
+
 function buildSuccess(message: string): AdminCatalogOperationResult {
   return { success: true, message }
 }
@@ -1101,7 +1111,8 @@ async function importLessonIntoCourse(
 
   return {
     lessonId: lessonResult.stableRow.id,
-    lessonSlug: nextLessonSlug
+    lessonSlug: nextLessonSlug,
+    firstChallengeSlug
   }
 }
 
@@ -1133,13 +1144,14 @@ async function importChallengesIntoExistingLesson(
 ) {
   let nextOrderIndex = await resolveChallengeNextOrderIndex(admin, lessonId)
   let importedChallengeCount = 0
+  let lastChallengeSlug: string | null = null
 
   for (const courseManifest of manifests) {
     for (const lessonManifest of courseManifest.lessons) {
       const mergedChallenges = mergeLessonBodyIntoChallengeReadings(lessonManifest)
 
       for (const challengeManifest of mergedChallenges) {
-        await importChallengeIntoLesson(
+        const importedChallenge = await importChallengeIntoLesson(
           admin,
           actor,
           lessonId,
@@ -1150,11 +1162,15 @@ async function importChallengesIntoExistingLesson(
         )
         nextOrderIndex += 1
         importedChallengeCount += 1
+        lastChallengeSlug = importedChallenge.challengeSlug
       }
     }
   }
 
-  return importedChallengeCount
+  return {
+    importedChallengeCount,
+    lastChallengeSlug
+  }
 }
 
 async function importLessonsIntoExistingCourse(
@@ -1167,10 +1183,12 @@ async function importLessonsIntoExistingCourse(
 ) {
   let nextLessonOrderIndex = await resolveLessonNextOrderIndex(admin, courseId)
   let importedLessonCount = 0
+  let lastImportedLessonSlug: string | null = null
+  let lastImportedChallengeSlug: string | null = null
 
   for (const courseManifest of manifests) {
     for (const lessonManifest of courseManifest.lessons) {
-      await importLessonIntoCourse(
+      const importedLesson = await importLessonIntoCourse(
         admin,
         actor,
         courseId,
@@ -1181,10 +1199,16 @@ async function importLessonsIntoExistingCourse(
       )
       nextLessonOrderIndex += 1
       importedLessonCount += 1
+      lastImportedLessonSlug = importedLesson.lessonSlug
+      lastImportedChallengeSlug = importedLesson.firstChallengeSlug ?? lastImportedChallengeSlug
     }
   }
 
-  return importedLessonCount
+  return {
+    importedLessonCount,
+    lastImportedLessonSlug,
+    lastImportedChallengeSlug
+  }
 }
 
 async function importCourses(
@@ -1194,6 +1218,7 @@ async function importCourses(
   saveMode: "draft" | "publish"
 ) {
   const importedCourseSlugs: string[] = []
+  let lastSelection: CatalogImportSelection | null = null
 
   for (const manifest of manifests) {
     const nextCourseSlug = await resolveUniqueSlug(admin, "courses", manifest.slug ?? manifest.title)
@@ -1208,7 +1233,12 @@ async function importCourses(
 
     const nextCourseId = courseResult.stableRow.id
     for (const [lessonIndex, lesson] of manifest.lessons.entries()) {
-      await importLessonIntoCourse(admin, actor, nextCourseId, nextCourseSlug, lesson, lessonIndex + 1, saveMode)
+      const importedLesson = await importLessonIntoCourse(admin, actor, nextCourseId, nextCourseSlug, lesson, lessonIndex + 1, saveMode)
+      lastSelection = {
+        courseSlug: nextCourseSlug,
+        lessonSlug: importedLesson.lessonSlug,
+        challengeSlug: importedLesson.firstChallengeSlug ?? undefined
+      }
     }
 
     await recordContentEvent(admin, {
@@ -1224,7 +1254,10 @@ async function importCourses(
     importedCourseSlugs.push(nextCourseSlug)
   }
 
-  return importedCourseSlugs
+  return {
+    importedCourseSlugs,
+    lastSelection
+  }
 }
 
 async function importCatalogIntoDestination(
@@ -1235,9 +1268,10 @@ async function importCatalogIntoDestination(
   destination: CatalogImportDestination
 ) {
   if (destination.scope === "new_course") {
-    const importedCourseSlugs = await importCourses(admin, actor, manifests, saveMode)
+    const { importedCourseSlugs, lastSelection } = await importCourses(admin, actor, manifests, saveMode)
     return {
       importedCourseSlugs,
+      selection: lastSelection,
       message:
         saveMode === "publish"
           ? `Imported and published ${importedCourseSlugs.length} course${importedCourseSlugs.length === 1 ? "" : "s"}.`
@@ -1251,7 +1285,7 @@ async function importCatalogIntoDestination(
   }
 
   if (destination.scope === "existing_course") {
-    const importedLessonCount = await importLessonsIntoExistingCourse(
+    const { importedLessonCount, lastImportedLessonSlug, lastImportedChallengeSlug } = await importLessonsIntoExistingCourse(
       admin,
       actor,
       String(targetCourse.id),
@@ -1277,6 +1311,11 @@ async function importCatalogIntoDestination(
 
     return {
       importedCourseSlugs: [targetCourse.slug],
+      selection: {
+        courseSlug: targetCourse.slug,
+        lessonSlug: lastImportedLessonSlug ?? undefined,
+        challengeSlug: lastImportedChallengeSlug ?? undefined
+      },
       message:
         saveMode === "publish"
           ? `Imported and published ${importedLessonCount} chapter${importedLessonCount === 1 ? "" : "s"} into ${targetCourse.title}.`
@@ -1289,7 +1328,7 @@ async function importCatalogIntoDestination(
     throw new Error("Target chapter not found.")
   }
 
-  const importedChallengeCount = await importChallengesIntoExistingLesson(
+  const { importedChallengeCount, lastChallengeSlug } = await importChallengesIntoExistingLesson(
     admin,
     actor,
     String(targetLesson.id),
@@ -1316,6 +1355,11 @@ async function importCatalogIntoDestination(
 
   return {
     importedCourseSlugs: [targetCourse.slug],
+    selection: {
+      courseSlug: targetCourse.slug,
+      lessonSlug: targetLesson.slug,
+      challengeSlug: lastChallengeSlug ?? undefined
+    },
     message:
       saveMode === "publish"
         ? `Imported and published ${importedChallengeCount} assignment${importedChallengeCount === 1 ? "" : "s"} into ${targetLesson.title}.`
@@ -1327,7 +1371,7 @@ export async function importCatalogManifestForCurrentUser(
   manifestSource: string,
   saveMode: "draft" | "publish",
   destination: CatalogImportDestination = { scope: "new_course" }
-): Promise<AdminCatalogOperationResult> {
+): Promise<CatalogImportOperationResult> {
   const authorized = await getAuthorizedCatalogContext()
   if (!authorized.success) {
     return authorized.result
@@ -1345,7 +1389,11 @@ export async function importCatalogManifestForCurrentUser(
       saveMode,
       destination
     )
-    return buildSuccess(result.message)
+    return {
+      success: true,
+      message: result.message,
+      selection: result.selection ?? undefined
+    }
   } catch (error) {
     return buildFailure(error instanceof Error ? error.message : "Manifest import failed.")
   }
