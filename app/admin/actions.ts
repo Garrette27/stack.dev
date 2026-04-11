@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
 
 import {
   claimAdminAccessForCurrentUser,
@@ -8,6 +9,7 @@ import {
   saveAuthoringBundleForCurrentUser
 } from "@/lib/admin"
 import {
+  type CatalogImportDestination,
   cloneCourseForCurrentUser,
   duplicateChallengeForCurrentUser,
   duplicateLessonForCurrentUser,
@@ -54,6 +56,79 @@ async function revalidateContentPaths(courseSlug: string, lessonSlug?: string) {
   revalidatePath("/admin")
 }
 
+function resolveCatalogImportDestination(formData: FormData):
+  | { success: true; destination: CatalogImportDestination }
+  | { success: false; message: string } {
+  const requestedScope = String(formData.get("destinationScope") ?? "new_course")
+  const targetCourseSlug = String(formData.get("targetCourseSlug") ?? "").trim()
+  const targetLessonSlug = String(formData.get("targetLessonSlug") ?? "").trim()
+
+  if (requestedScope === "existing_lesson") {
+    if (!targetCourseSlug || !targetLessonSlug) {
+      return {
+        success: false,
+        message: "Pick the chapter that should receive these imported assignments first."
+      }
+    }
+
+    return {
+      success: true,
+      destination: {
+        scope: "existing_lesson",
+        courseSlug: targetCourseSlug,
+        lessonSlug: targetLessonSlug
+      }
+    }
+  }
+
+  if (requestedScope === "existing_course") {
+    if (!targetCourseSlug) {
+      return {
+        success: false,
+        message: "Pick the course that should receive these imported chapters first."
+      }
+    }
+
+    return {
+      success: true,
+      destination: {
+        scope: "existing_course",
+        courseSlug: targetCourseSlug
+      }
+    }
+  }
+
+  return {
+    success: true,
+    destination: {
+      scope: "new_course"
+    }
+  }
+}
+
+function buildAdminSelectionHref(selection: {
+  courseSlug?: string
+  lessonSlug?: string
+  challengeSlug?: string
+}) {
+  const params = new URLSearchParams()
+
+  if (selection.courseSlug) {
+    params.set("authorCourse", selection.courseSlug)
+  }
+
+  if (selection.lessonSlug) {
+    params.set("authorLesson", selection.lessonSlug)
+  }
+
+  if (selection.challengeSlug) {
+    params.set("authorAssignment", selection.challengeSlug)
+  }
+
+  const query = params.toString()
+  return query ? `/admin?${query}` : "/admin"
+}
+
 export async function claimAdminAccessAction(
   _prevState: AdminAccessActionState,
   _formData: FormData
@@ -98,6 +173,7 @@ export async function setCourseVisibilityAction(formData: FormData) {
 
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug)
+    redirect(buildAdminSelectionHref({ courseSlug }))
   }
 }
 
@@ -109,6 +185,7 @@ export async function setLessonVisibilityAction(formData: FormData) {
 
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug, lessonSlug)
+    redirect(buildAdminSelectionHref({ courseSlug, lessonSlug }))
   }
 }
 
@@ -121,6 +198,7 @@ export async function setChallengeVisibilityAction(formData: FormData) {
 
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug, lessonSlug)
+    redirect(buildAdminSelectionHref({ courseSlug, lessonSlug, challengeSlug }))
   }
 }
 
@@ -131,6 +209,7 @@ export async function setCourseTreeVisibilityAction(formData: FormData) {
 
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug)
+    redirect(buildAdminSelectionHref({ courseSlug }))
   }
 }
 
@@ -142,6 +221,7 @@ export async function setLessonTreeVisibilityAction(formData: FormData) {
 
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug, lessonSlug)
+    redirect(buildAdminSelectionHref({ courseSlug, lessonSlug }))
   }
 }
 
@@ -161,6 +241,7 @@ export async function restoreVersionAction(formData: FormData) {
 
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug, lessonSlug || undefined)
+    redirect(buildAdminSelectionHref({ courseSlug, lessonSlug, challengeSlug }))
   }
 }
 
@@ -172,6 +253,7 @@ export async function duplicateAssignmentAction(formData: FormData) {
 
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug, lessonSlug)
+    redirect(buildAdminSelectionHref({ courseSlug, lessonSlug, challengeSlug }))
   }
 }
 
@@ -182,6 +264,7 @@ export async function duplicateChapterAction(formData: FormData) {
 
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug, lessonSlug)
+    redirect(buildAdminSelectionHref({ courseSlug, lessonSlug }))
   }
 }
 
@@ -192,6 +275,7 @@ export async function cloneCourseAction(formData: FormData) {
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug)
     revalidatePath("/learn")
+    redirect(buildAdminSelectionHref({ courseSlug }))
   }
 }
 
@@ -203,6 +287,7 @@ export async function reorderLessonAction(formData: FormData) {
 
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug, lessonSlug)
+    redirect(buildAdminSelectionHref({ courseSlug, lessonSlug }))
   }
 }
 
@@ -215,6 +300,7 @@ export async function reorderAssignmentAction(formData: FormData) {
 
   if (result.success && courseSlug) {
     await revalidateContentPaths(courseSlug, lessonSlug)
+    redirect(buildAdminSelectionHref({ courseSlug, lessonSlug, challengeSlug }))
   }
 }
 
@@ -224,12 +310,42 @@ export async function importCatalogManifestAction(
 ): Promise<AdminImportActionState> {
   const manifestSource = String(formData.get("manifestSource") ?? "")
   const saveMode = String(formData.get("saveMode") ?? "draft") as "draft" | "publish"
-  const result = await importCatalogManifestForCurrentUser(manifestSource, saveMode)
+  const destinationResult = resolveCatalogImportDestination(formData)
+
+  if (!destinationResult.success) {
+    return {
+      success: false,
+      message: destinationResult.message
+    }
+  }
+
+  const result = await importCatalogManifestForCurrentUser(manifestSource, saveMode, destinationResult.destination)
 
   if (result.success) {
+    if (destinationResult.destination.scope === "existing_lesson") {
+      await revalidateContentPaths(destinationResult.destination.courseSlug, destinationResult.destination.lessonSlug)
+      redirect(
+        buildAdminSelectionHref({
+          courseSlug: destinationResult.destination.courseSlug,
+          lessonSlug: destinationResult.destination.lessonSlug
+        })
+      )
+    }
+
+    if (destinationResult.destination.scope === "existing_course") {
+      await revalidateContentPaths(destinationResult.destination.courseSlug)
+      redirect(
+        buildAdminSelectionHref({
+          courseSlug: destinationResult.destination.courseSlug
+        })
+      )
+    }
+
     revalidatePath("/")
+    revalidatePath("/dashboard")
     revalidatePath("/learn")
     revalidatePath("/admin")
+    redirect("/admin")
   }
 
   return result

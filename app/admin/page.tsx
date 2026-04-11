@@ -38,6 +38,17 @@ function getChallengesForLesson(snapshot: ContentSnapshot, lesson: Lesson) {
   return getLessonChallenges(lesson, snapshot.challenges, { includeHidden: true }) as Challenge[]
 }
 
+function buildCatalogImportTargets(snapshot: ContentSnapshot) {
+  return snapshot.courses.map((course) => ({
+    slug: course.slug,
+    title: course.title,
+    lessons: getLessonsForCourse(snapshot, course.id).map((lesson) => ({
+      slug: lesson.slug,
+      title: lesson.title
+    }))
+  }))
+}
+
 function resolveInitialAuthoringSelection(
   snapshot: ContentSnapshot,
   selection: {
@@ -106,6 +117,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   }
 
   const initialSelection = resolveInitialAuthoringSelection(snapshot, historySelection)
+  const importSelection = {
+    courseSlug: historySelection.courseSlug ?? initialSelection?.courseSlug ?? null,
+    lessonSlug: historySelection.lessonSlug ?? initialSelection?.lessonSlug ?? null
+  }
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-12 sm:px-6 xl:px-10">
@@ -152,7 +167,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         <CatalogContentTree snapshot={snapshot} selection={historySelection} />
         <div className="grid gap-6">
           <CatalogHistoryPanel history={history} selection={historySelection} />
-          <CatalogImportPanel />
+          <CatalogImportPanel
+            targets={buildCatalogImportTargets(snapshot)}
+            defaultCourseSlug={importSelection.courseSlug}
+            defaultLessonSlug={importSelection.lessonSlug}
+          />
         </div>
       </section>
 

@@ -157,6 +157,66 @@ ${BULK_IMPORT_OUTLINE_EXAMPLE}
 Source material:
 [PASTE SOURCE HERE]`
 
+export type BulkImportPromptDestination = "new_course" | "existing_course" | "existing_lesson"
+
+/**
+ * Builds a copy-paste prompt for external formatting tools so authors can
+ * normalize messy curriculum source into the import outline without learning
+ * the whole manifest shape by hand.
+ */
+export function buildBulkImportAiPrompt(options: {
+  destinationScope: BulkImportPromptDestination
+  targetCourseTitle?: string | null
+  targetLessonTitle?: string | null
+}) {
+  const destinationGuidance =
+    options.destinationScope === "existing_lesson" && options.targetCourseTitle && options.targetLessonTitle
+      ? [
+          `This import will append assignments into the existing Stack.dev course "${options.targetCourseTitle}" and chapter "${options.targetLessonTitle}".`,
+          `Keep COURSE: ${options.targetCourseTitle}.`,
+          `Keep CHAPTER: ${options.targetLessonTitle}.`,
+          "Put reusable lesson explanation in BODY.",
+          "Put assignment-specific instructions in READING and PROMPT.",
+          "Do not invent a new course or a new chapter for this import."
+        ]
+      : options.destinationScope === "existing_course" && options.targetCourseTitle
+        ? [
+            `This import will append new chapters into the existing Stack.dev course "${options.targetCourseTitle}".`,
+            `Keep COURSE: ${options.targetCourseTitle}.`,
+            "Use CHAPTER blocks for each imported chapter.",
+            "Do not invent a different course title for this import."
+          ]
+        : [
+            "This import will create new course content, so include COURSE and CHAPTER blocks in the outline."
+          ]
+
+  return `Format the source material below into the Stack.dev bulk import outline.
+
+Return only the formatted outline.
+Do not explain anything before or after it.
+
+Rules:
+- Use this structure: COURSE, SUMMARY, DIFFICULTY, ACCENT, CHAPTER, MINUTES, BODY, ASSIGNMENT, KIND, LANGUAGE, READING, PROMPT, STARTER CODE, SOLUTION, HIDDEN TESTS, CHOICES, EXPLANATION.
+- End every multiline field with <<<END.
+- Preserve Markdown and fenced code blocks when the source includes reading content or code examples.
+- Use KIND: code for coding assignments.
+- Use KIND: multiple_choice for quiz assignments.
+- For multiple choice, list one correct answer as [correct] inside CHOICES.
+- If the source does not include a field, omit it instead of inventing content.
+- Keep code exactly as provided unless the source clearly includes a corrected solution or checker.
+- If a language is clear, include LANGUAGE.
+- If the source contains one chapter only, still include COURSE and CHAPTER blocks.
+
+Destination guidance:
+${destinationGuidance.map((line) => `- ${line}`).join("\n")}
+
+Use this output style:
+${BULK_IMPORT_OUTLINE_EXAMPLE}
+
+Source material:
+[PASTE SOURCE HERE]`
+}
+
 type PlainTextFieldTarget =
   | "courseSummary"
   | "lessonSummary"
