@@ -17,8 +17,13 @@ import {
   type PersistedAuthoringSelection,
   type PersistedLessonDraft
 } from "@/lib/admin/authoring-session"
+import { extractAuthoringImportCandidate } from "@/lib/admin/catalog-import"
 import { normalizeCodeChallengeLanguage } from "@/lib/challenges/model"
-import { createDefaultMultipleChoiceOptions, ensureMultipleChoiceOptionShape } from "@/lib/challenges/multiple-choice"
+import {
+  createDefaultMultipleChoiceOptions,
+  ensureMultipleChoiceOptionShape,
+  normalizeMultipleChoiceOptions
+} from "@/lib/challenges/multiple-choice"
 import {
   getEffectiveAssignmentReading,
   getEffectiveAssignmentReadingLabel,
@@ -165,6 +170,12 @@ export type AuthoringFormController = {
       onCorrectChoiceKeyChange: (key: string) => void
       onExplanationChange: (value: string) => void
     }
+  }
+  authoringImport: {
+    courseTitle: string
+    lessonTitle: string
+    assignmentLabel: string
+    onApplyImport: (source: string) => { success: boolean; message: string }
   }
 }
 
@@ -687,6 +698,107 @@ export function useAuthoringFormController({
     }
   }, [chapterAssignments, openExistingAssignment, openNewAssignmentDraft])
 
+  const applyImportedAssignmentToEditor = useCallback(
+    (source: string) => {
+      try {
+        const candidate = extractAuthoringImportCandidate(source)
+        const nextChallenge = candidate.challenge
+
+        if (courseSelection === NEW_COURSE && candidate.course.title.trim()) {
+          setCourseTitle(candidate.course.title.trim())
+        }
+
+        if (lessonSelection === NEW_CHAPTER && candidate.lesson.title.trim()) {
+          setLessonTitle(candidate.lesson.title.trim())
+        }
+
+        if (candidate.lesson.bodyMdx) {
+          setBodyMdx(candidate.lesson.bodyMdx)
+        }
+
+        setReadingMdx(nextChallenge.readingMdx ?? "")
+        setPromptMdx(nextChallenge.promptMdx)
+
+        if (nextChallenge.kind === "code") {
+          const nextLanguage = normalizeCodeChallengeLanguage(nextChallenge.language ?? language)
+          const defaultChoiceOptions = createDefaultMultipleChoiceOptions()
+
+          setChallengeKind("code")
+          setLanguage(nextLanguage)
+          setJudge0LanguageId(String(nextChallenge.judge0LanguageId ?? getDefaultJudge0LanguageId(nextLanguage)))
+          setStarterCode(nextChallenge.starterCode ?? getStarterTemplate(nextLanguage))
+          setSolutionCode(nextChallenge.solutionCode ?? getSolutionTemplate(nextLanguage))
+          setHiddenTestCode(nextChallenge.hiddenTestCode ?? getHiddenTestTemplate(nextLanguage))
+          setChoiceOptions(defaultChoiceOptions)
+          setCorrectChoiceKey(defaultChoiceOptions[0]?.key ?? "")
+          setChoiceExplanationMdx("")
+        } else if (nextChallenge.kind === "multiple_choice") {
+          const nextChoiceOptions = normalizeMultipleChoiceOptions(nextChallenge.choiceOptions ?? [])
+            .map((option) => ({
+              ...option,
+              label: option.label.trim()
+            }))
+            .filter((option) => option.label.length > 0)
+          const safeChoiceOptions =
+            nextChoiceOptions.length >= 2 ? nextChoiceOptions : createDefaultMultipleChoiceOptions()
+          const safeCorrectChoiceKey = safeChoiceOptions.some((option) => option.key === nextChallenge.correctChoiceKey)
+            ? nextChallenge.correctChoiceKey ?? safeChoiceOptions[0]?.key ?? ""
+            : safeChoiceOptions[0]?.key ?? ""
+
+          setChallengeKind("multiple_choice")
+          setLanguage("javascript")
+          setJudge0LanguageId(String(getDefaultJudge0LanguageId("javascript")))
+          setStarterCode("")
+          setSolutionCode("")
+          setHiddenTestCode("")
+          setChoiceOptions(safeChoiceOptions)
+          setCorrectChoiceKey(safeCorrectChoiceKey)
+          setChoiceExplanationMdx(nextChallenge.choiceExplanationMdx ?? "")
+        } else {
+          setChallengeKind("local_lab")
+          setLanguage("javascript")
+          setJudge0LanguageId(String(getDefaultJudge0LanguageId("javascript")))
+          setStarterCode(nextChallenge.starterCode ?? buildDefaultLocalLabCommandTemplate())
+          setSolutionCode(nextChallenge.solutionCode ?? "")
+          setHiddenTestCode(nextChallenge.hiddenTestCode ?? buildDefaultLocalLabManifestSource())
+          const defaultChoiceOptions = createDefaultMultipleChoiceOptions()
+          setChoiceOptions(defaultChoiceOptions)
+          setCorrectChoiceKey(defaultChoiceOptions[0]?.key ?? "")
+          setChoiceExplanationMdx("")
+        }
+
+        const ignoredParts: string[] = []
+        if (candidate.ignoredLessonCount > 0) {
+          ignoredParts.push(
+            candidate.ignoredLessonCount === 1
+              ? "1 extra chapter was ignored"
+              : `${candidate.ignoredLessonCount} extra chapters were ignored`
+          )
+        }
+        if (candidate.ignoredChallengeCount > 0) {
+          ignoredParts.push(
+            candidate.ignoredChallengeCount === 1
+              ? "1 extra assignment was ignored"
+              : `${candidate.ignoredChallengeCount} extra assignments were ignored`
+          )
+        }
+
+        return {
+          success: true,
+          message: ignoredParts.length
+            ? `Imported into the editor. ${ignoredParts.join(", ")} because quick import only loads the first chapter and first assignment.`
+            : "Imported into the editor. Review the fields below, then save or publish."
+        }
+      } catch (error) {
+        return {
+          success: false,
+          message: error instanceof Error ? error.message : "Unable to parse this import content."
+        }
+      }
+    },
+    [courseSelection, language, lessonSelection]
+  )
+
   useEffect(() => {
     if (!selectionHydrated) {
       return
@@ -1017,6 +1129,20 @@ export function useAuthoringFormController({
         onCorrectChoiceKeyChange: setCorrectChoiceKey,
         onExplanationChange: setChoiceExplanationMdx
       }
+    },
+    authoringImport: {
+      courseTitle: courseTitle || selectedCourse?.title || "Current course",
+      lessonTitle: lessonTitle || selectedLesson?.title || "Current chapter",
+      assignmentLabel:
+        assignmentSelection === NEW_ASSIGNMENT
+          ? "the new assignment draft"
+          : selectedAssignment
+            ? getAssignmentLabel(
+                selectedAssignment,
+                Math.max(0, chapterAssignments.findIndex((challenge) => challenge.id === selectedAssignment.id))
+              )
+            : "the selected assignment",
+      onApplyImport: applyImportedAssignmentToEditor
     }
   }
 }

@@ -3,6 +3,7 @@
 import { AuthoringAssignmentSection } from "@/components/admin/authoring-assignment-section"
 import { AuthoringChapterSection } from "@/components/admin/authoring-chapter-section"
 import { AuthoringCourseSection } from "@/components/admin/authoring-course-section"
+import { AuthoringImportCard } from "@/components/admin/authoring-import-card"
 import { useAuthoringFormController } from "@/components/admin/use-authoring-form-controller"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -42,6 +43,7 @@ export function AuthoringForm({ snapshot, initialSelection = null }: AuthoringFo
           <AuthoringCourseSection {...controller.courseSection} />
           <AuthoringChapterSection {...controller.chapterSection} />
           <AuthoringAssignmentSection {...controller.assignmentSection} />
+          <AuthoringImportCard {...controller.authoringImport} />
 
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" name="saveMode" value="publish" disabled={controller.pending}>

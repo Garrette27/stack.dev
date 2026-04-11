@@ -148,9 +148,14 @@ Rules:
 - Wrap code examples in fenced code blocks whenever they appear inside BODY, READING, PROMPT, or EXPLANATION.
 - Use KIND: code for coding assignments.
 - Use KIND: multiple_choice for quiz assignments.
+- If the source shows answer choices or numbered options and does not include starter/solution code, prefer KIND: multiple_choice.
+- If the source includes starter code, solution code, checker behavior, or an editable code block, prefer KIND: code.
+- Keep assignment instructions in PROMPT and assignment-specific supporting text in READING.
+- Keep editable learner code only in STARTER CODE, corrected code only in SOLUTION, and checker logic only in HIDDEN TESTS unless the source is explicitly teaching those snippets in BODY.
 - If a code assignment includes starter code and solution but no checker, generate HIDDEN TESTS from the expected learner-visible behavior or output.
 - Keep generated hidden tests deterministic and avoid brittle implementation checks when an output check is enough.
 - For multiple choice, list one correct answer as [correct] inside CHOICES.
+- If author notes specify the correct multiple-choice answer, use that note to mark the [correct] choice.
 - If the source asks for a multiple-choice version, generate CHOICES and mark one [correct].
 - If the source does not include a field, omit it instead of inventing content.
 - Keep code exactly as provided unless the source clearly includes a corrected solution or checker.
@@ -166,6 +171,14 @@ Source material:
 
 export type BulkImportPromptDestination = "new_course" | "existing_course" | "existing_lesson"
 
+export type AuthoringImportCandidate = {
+  course: ImportedCourseManifest
+  lesson: ImportedLessonManifest
+  challenge: ImportedChallengeManifest
+  ignoredLessonCount: number
+  ignoredChallengeCount: number
+}
+
 /**
  * Builds a copy-paste prompt for external formatting tools so authors can
  * normalize messy curriculum source into the import outline without learning
@@ -175,6 +188,7 @@ export function buildBulkImportAiPrompt(options: {
   destinationScope: BulkImportPromptDestination
   targetCourseTitle?: string | null
   targetLessonTitle?: string | null
+  authorNotes?: string | null
 }) {
   const destinationGuidance =
     options.destinationScope === "existing_lesson" && options.targetCourseTitle && options.targetLessonTitle
@@ -213,9 +227,14 @@ Rules:
 - Wrap code examples in fenced code blocks whenever they appear inside BODY, READING, PROMPT, or EXPLANATION.
 - Use KIND: code for coding assignments.
 - Use KIND: multiple_choice for quiz assignments.
+- If the source shows answer choices or numbered options and does not include starter/solution code, prefer KIND: multiple_choice.
+- If the source includes starter code, solution code, checker behavior, or an editable code block, prefer KIND: code.
+- Keep assignment instructions in PROMPT and assignment-specific supporting text in READING.
+- Keep editable learner code only in STARTER CODE, corrected code only in SOLUTION, and checker logic only in HIDDEN TESTS unless the source is explicitly teaching those snippets in BODY.
 - If a code assignment includes starter code and solution but no checker, generate HIDDEN TESTS from the expected learner-visible behavior or output.
 - Keep generated hidden tests deterministic and avoid brittle implementation checks when an output check is enough.
 - For multiple choice, list one correct answer as [correct] inside CHOICES.
+- If author notes specify the correct multiple-choice answer, use that note to mark the [correct] choice.
 - If the source asks for a multiple-choice version, generate CHOICES and mark one [correct].
 - If the source does not include a field, omit it instead of inventing content.
 - Keep code exactly as provided unless the source clearly includes a corrected solution or checker.
@@ -226,7 +245,16 @@ Rules:
 Destination guidance:
 ${destinationGuidance.map((line) => `- ${line}`).join("\n")}
 
-Use this output style:
+${options.authorNotes?.trim()
+  ? `Author notes:
+${options.authorNotes
+  .trim()
+  .split(/\r?\n/)
+  .map((line) => `- ${line.trim()}`)
+  .join("\n")}
+
+`
+  : ""}Use this output style:
 ${BULK_IMPORT_OUTLINE_EXAMPLE}
 
 Source material:
@@ -741,6 +769,19 @@ function looksLikeJavaScriptLine(line: string) {
   )
 }
 
+function looksLikeAssignmentStatement(line: string) {
+  const trimmedLine = line.trim()
+  return /^[A-Za-z_$][\w$.[\]]*\s*[-+*/%]?=\s*.+/.test(trimmedLine)
+}
+
+function looksLikeIncrementStatement(line: string) {
+  const trimmedLine = line.trim()
+  return (
+    /^(?:\+\+|--)\s*[A-Za-z_$][\w$.[\]]*;?$/.test(trimmedLine) ||
+    /^[A-Za-z_$][\w$.[\]]*\s*(?:\+\+|--);?$/.test(trimmedLine)
+  )
+}
+
 function looksLikeCodeLine(line: string) {
   const trimmedLine = line.trim()
   if (!trimmedLine) {
@@ -753,16 +794,14 @@ function looksLikeCodeLine(line: string) {
 
   return (
     looksLikeJavaScriptLine(trimmedLine) ||
+    looksLikeAssignmentStatement(trimmedLine) ||
+    looksLikeIncrementStatement(trimmedLine) ||
     trimmedLine.startsWith("//") ||
     trimmedLine.startsWith("/*") ||
     trimmedLine.endsWith(";") ||
     /[{}]/.test(trimmedLine) ||
     trimmedLine.includes("console.log(") ||
-    trimmedLine.includes("++") ||
-    trimmedLine.includes("--") ||
     trimmedLine.includes("?.") ||
-    trimmedLine.includes(" = ") ||
-    trimmedLine.includes("==") ||
     trimmedLine.includes("=>")
   )
 }
@@ -789,9 +828,10 @@ function splitLikelyInlineCodeParagraph(line: string) {
   const statementCueCount = (trimmedLine.match(/;/g) ?? []).length
   const hasCodeSignals =
     /(^|\s)(const|let|var|if|for|while|function|return)\b/.test(trimmedLine) ||
+    looksLikeAssignmentStatement(trimmedLine) ||
+    looksLikeIncrementStatement(trimmedLine) ||
     trimmedLine.includes("console.log(") ||
-    trimmedLine.includes("++") ||
-    trimmedLine.includes("--")
+    trimmedLine.includes("=>")
 
   if (!hasCodeSignals || statementCueCount < 2) {
     return null
@@ -968,18 +1008,44 @@ function normalizeImportedCode(value: string) {
   return (inlineCodeLines ? inlineCodeLines.join("\n") : strippedCode).trim()
 }
 
+function stripDuplicatedCodeFence(value: string, duplicatedCode?: string) {
+  if (!duplicatedCode?.trim()) {
+    return value
+  }
+
+  const normalizedDuplicatedCode = normalizeImportedCode(duplicatedCode)
+  const nextValue = value.replace(/```[\w-]*\n([\s\S]*?)```/g, (match, fencedCode: string) => {
+    return normalizeImportedCode(fencedCode) === normalizedDuplicatedCode ? "" : match
+  })
+
+  return collapseExtraBlankLines(nextValue).trim()
+}
+
 function normalizeImportedChallenge(manifest: ImportedChallengeManifest): ImportedChallengeManifest {
   const languageHint = manifest.kind === "code" ? manifest.language ?? null : null
+  const normalizedStarterCode = manifest.starterCode ? normalizeImportedCode(manifest.starterCode) : undefined
+  const normalizedSolutionCode = manifest.solutionCode ? normalizeImportedCode(manifest.solutionCode) : undefined
+  const normalizedHiddenTestCode = manifest.hiddenTestCode ? normalizeImportedCode(manifest.hiddenTestCode) : undefined
+  const normalizedReadingMdx = manifest.readingMdx
+    ? normalizeImportedRichText(manifest.readingMdx, { languageHint })
+    : undefined
+  const normalizedPromptMdx = normalizeImportedRichText(manifest.promptMdx, { languageHint })
 
   return {
     ...manifest,
     title: manifest.title?.trim() || undefined,
     slug: manifest.slug?.trim() || undefined,
-    readingMdx: manifest.readingMdx ? normalizeImportedRichText(manifest.readingMdx, { languageHint }) : undefined,
-    promptMdx: normalizeImportedRichText(manifest.promptMdx, { languageHint }),
-    starterCode: manifest.starterCode ? normalizeImportedCode(manifest.starterCode) : undefined,
-    solutionCode: manifest.solutionCode ? normalizeImportedCode(manifest.solutionCode) : undefined,
-    hiddenTestCode: manifest.hiddenTestCode ? normalizeImportedCode(manifest.hiddenTestCode) : undefined,
+    readingMdx: normalizedReadingMdx,
+    promptMdx:
+      manifest.kind === "code"
+        ? stripDuplicatedCodeFence(
+            stripDuplicatedCodeFence(normalizedPromptMdx, normalizedStarterCode),
+            normalizedSolutionCode
+          )
+        : normalizedPromptMdx,
+    starterCode: normalizedStarterCode,
+    solutionCode: normalizedSolutionCode,
+    hiddenTestCode: normalizedHiddenTestCode,
     choiceExplanationMdx: manifest.choiceExplanationMdx
       ? normalizeImportedRichText(manifest.choiceExplanationMdx, { languageHint })
       : undefined
@@ -1044,5 +1110,36 @@ export function parseCatalogImportSource(source: string) {
 
       throw new Error("Import content could not be parsed.")
     }
+  }
+}
+
+/**
+ * Extracts the first lesson and assignment from an import source so the
+ * authoring editor can reuse the same parser as bulk import without re-creating
+ * catalog parsing in client components.
+ */
+export function extractAuthoringImportCandidate(source: string): AuthoringImportCandidate {
+  const courses = parseCatalogImportSource(source)
+  const course = courses[0]
+  const lesson = course?.lessons[0]
+  const challenge = lesson?.challenges[0]
+
+  if (!course || !lesson || !challenge) {
+    throw new Error("Paste an outline that includes at least one chapter and one assignment.")
+  }
+
+  const lessonCount = courses.reduce((count, currentCourse) => count + currentCourse.lessons.length, 0)
+  const challengeCount = courses.reduce(
+    (count, currentCourse) =>
+      count + currentCourse.lessons.reduce((lessonTotal, currentLesson) => lessonTotal + currentLesson.challenges.length, 0),
+    0
+  )
+
+  return {
+    course,
+    lesson,
+    challenge,
+    ignoredLessonCount: Math.max(0, lessonCount - 1),
+    ignoredChallengeCount: Math.max(0, challengeCount - 1)
   }
 }

@@ -72,6 +72,8 @@ export function CatalogImportPanel({
       : "new_course"
   const [destinationScope, setDestinationScope] = useState<DestinationScope>(initialDestinationScope)
   const [targetCourseSlug, setTargetCourseSlug] = useState(defaultCourseSlug ?? targets[0]?.slug ?? "")
+  const [authorNotes, setAuthorNotes] = useState("")
+  const [copied, setCopied] = useState(false)
   const lessonOptions = useMemo(
     () => targets.find((course) => course.slug === targetCourseSlug)?.lessons ?? [],
     [targetCourseSlug, targets]
@@ -90,9 +92,10 @@ export function CatalogImportPanel({
       buildBulkImportAiPrompt({
         destinationScope,
         targetCourseTitle: selectedCourse?.title ?? null,
-        targetLessonTitle: selectedLesson?.title ?? null
+        targetLessonTitle: selectedLesson?.title ?? null,
+        authorNotes
       }),
-    [destinationScope, selectedCourse?.title, selectedLesson?.title]
+    [authorNotes, destinationScope, selectedCourse?.title, selectedLesson?.title]
   )
   const importDisabled =
     pending ||
@@ -130,6 +133,16 @@ export function CatalogImportPanel({
     }
 
     return "A brand-new course, chapter, and assignment structure will be created from the pasted outline."
+  }
+
+  async function handleCopyPrompt() {
+    try {
+      await navigator.clipboard.writeText(aiPrompt)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      // Keep the prompt visible in the panel even if clipboard access is blocked.
+    }
   }
 
   return (
@@ -222,12 +235,25 @@ export function CatalogImportPanel({
             className="min-h-[24rem] font-mono text-xs leading-6"
           />
 
+          <label className="grid gap-2 text-sm text-[var(--ink)]">
+            <span className="font-medium text-[var(--ink-strong)]">AI notes for formatting prompt (optional)</span>
+            <Textarea
+              rows={3}
+              value={authorNotes}
+              onChange={(event) => setAuthorNotes(event.target.value)}
+              placeholder={"Add any extra guidance for the outside AI.\n\nExamples:\n- Correct answer: It is basically the only language that can run in a web browser.\n- Keep this as a multiple-choice question.\n- Do not put starter code inside PROMPT."}
+            />
+          </label>
+
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" name="saveMode" value="draft" disabled={importDisabled}>
               {pending ? "Importing..." : "Import as drafts"}
             </Button>
             <Button type="submit" name="saveMode" value="publish" variant="secondary" disabled={importDisabled}>
               {pending ? "Importing..." : "Import and publish"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={handleCopyPrompt}>
+              {copied ? "Prompt copied" : "Copy AI prompt"}
             </Button>
           </div>
 
