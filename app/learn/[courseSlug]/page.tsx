@@ -13,6 +13,8 @@ type CoursePageProps = {
   }>
 }
 
+export const dynamic = "force-dynamic"
+
 export default async function CoursePage({ params }: CoursePageProps) {
   const { courseSlug } = await params
   const [data, practice] = await Promise.all([getCoursePageData(courseSlug), getCoursePracticePageData(courseSlug)])

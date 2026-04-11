@@ -13,6 +13,8 @@ type PracticePageProps = {
   }>
 }
 
+export const dynamic = "force-dynamic"
+
 function getBucketLabel(bucket: string) {
   if (bucket === "learning") {
     return "Learning"

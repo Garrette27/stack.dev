@@ -134,6 +134,29 @@ EXPLANATION:
 JavaScript uses one \`number\` type for both whole numbers and decimals.
 <<<END`
 
+export const BULK_IMPORT_AI_PROMPT_TEMPLATE = `Format the source material below into the Stack.dev bulk import outline.
+
+Return only the formatted outline.
+Do not explain anything before or after it.
+
+Rules:
+- Use this structure: COURSE, SUMMARY, DIFFICULTY, ACCENT, CHAPTER, MINUTES, BODY, ASSIGNMENT, KIND, LANGUAGE, READING, PROMPT, STARTER CODE, SOLUTION, HIDDEN TESTS, CHOICES, EXPLANATION.
+- End every multiline field with <<<END.
+- Preserve Markdown and fenced code blocks when the source includes reading content or code examples.
+- Use KIND: code for coding assignments.
+- Use KIND: multiple_choice for quiz assignments.
+- For multiple choice, list one correct answer as [correct] inside CHOICES.
+- If the source does not include a field, omit it instead of inventing content.
+- Keep code exactly as provided unless the source clearly includes a corrected solution or checker.
+- If a language is clear, include LANGUAGE.
+- If the source contains one chapter only, still include COURSE and CHAPTER blocks.
+
+Use this output style:
+${BULK_IMPORT_OUTLINE_EXAMPLE}
+
+Source material:
+[PASTE SOURCE HERE]`
+
 type PlainTextFieldTarget =
   | "courseSummary"
   | "lessonSummary"

@@ -24,6 +24,8 @@ type AdminPageProps = {
   }>
 }
 
+export const dynamic = "force-dynamic"
+
 function firstQueryValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
