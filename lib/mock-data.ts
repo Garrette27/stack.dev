@@ -8,7 +8,13 @@ const course: Course = {
     "A text-first path for backend thinking: data flow, functions, and practical code checks.",
   difficulty: "Beginner",
   accent: "#c96f36",
-  published: true
+  versionId: "course-backend-foundations-v1",
+  versionNumber: 1,
+  publishedVersionId: "course-backend-foundations-v1",
+  draftVersionId: null,
+  publicationState: "published",
+  published: true,
+  updatedAt: new Date("2026-03-09T08:00:00.000Z").toISOString()
 }
 
 const challenge: Challenge = {
@@ -47,7 +53,8 @@ if (greet("Rico") !== "Hello, Rico!") {
   choiceOptions: [],
   correctChoiceKey: null,
   choiceExplanationMdx: "",
-  published: true
+  published: true,
+  updatedAt: new Date("2026-03-09T08:00:00.000Z").toISOString()
 }
 
 const lesson: Lesson = {
@@ -59,6 +66,11 @@ const lesson: Lesson = {
   summary:
     "Learn why tiny functions, fast checks, and visible progress are enough to build momentum every day.",
   estimatedMinutes: 12,
+  versionId: "lesson-python-greet-v1",
+  versionNumber: 1,
+  publishedVersionId: "lesson-python-greet-v1",
+  draftVersionId: null,
+  publicationState: "published",
   bodyMdx: `# Build small loops that compound
 
 Short practice sessions are easier to repeat than long study blocks.
@@ -74,7 +86,8 @@ Short practice sessions are easier to repeat than long study blocks.
 Consistent repetition matters more than one perfect study day. This lesson keeps the task small so you can finish it and move to the next step.`,
   challengeIds: [challenge.id],
   orderIndex: 1,
-  published: true
+  published: true,
+  updatedAt: new Date("2026-03-09T08:00:00.000Z").toISOString()
 }
 
 export const mockContent: ContentSnapshot = {

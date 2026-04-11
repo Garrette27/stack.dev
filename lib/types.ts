@@ -1,7 +1,8 @@
 export type CodeChallengeLanguage = "python" | "javascript" | "typescript" | "go" | "sqlite"
 
 export type ChallengeKind = "code" | "multiple_choice" | "local_lab"
-export type ChallengePublicationState = "draft" | "published" | "archived"
+export type PublicationState = "draft" | "published" | "archived"
+export type ChallengePublicationState = PublicationState
 
 export type MultipleChoiceOption = {
   key: string
@@ -11,11 +12,17 @@ export type MultipleChoiceOption = {
 export type Course = {
   id: string
   slug: string
+  versionId: string | null
+  versionNumber: number | null
+  publishedVersionId: string | null
+  draftVersionId: string | null
+  publicationState: PublicationState
   title: string
   summary: string
   difficulty: string
   accent: string
   published: boolean
+  updatedAt: string | null
 }
 
 export type Lesson = {
@@ -23,6 +30,11 @@ export type Lesson = {
   courseId: string
   courseSlug: string
   slug: string
+  versionId: string | null
+  versionNumber: number | null
+  publishedVersionId: string | null
+  draftVersionId: string | null
+  publicationState: PublicationState
   title: string
   summary: string
   estimatedMinutes: number
@@ -30,6 +42,7 @@ export type Lesson = {
   challengeIds: string[]
   orderIndex: number
   published: boolean
+  updatedAt: string | null
 }
 
 export type ChallengeBase = {
@@ -44,6 +57,7 @@ export type ChallengeBase = {
   readingMdx: string
   promptMdx: string
   published: boolean
+  updatedAt: string | null
 }
 
 export type CodeChallenge = ChallengeBase & {

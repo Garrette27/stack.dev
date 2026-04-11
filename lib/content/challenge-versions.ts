@@ -4,8 +4,9 @@ import {
   normalizeChallengePublicationState
 } from "@/lib/challenges/model"
 import type { Challenge } from "@/lib/types"
+import type { CatalogVersionLoadMode } from "./catalog-versions"
 
-export type ChallengeVersionLoadMode = "published" | "draft_or_published"
+export type ChallengeVersionLoadMode = CatalogVersionLoadMode
 
 type ChallengeContentRow = Record<string, unknown>
 
@@ -81,7 +82,12 @@ function mapChallengeFromContentRows(challengeRow: Record<string, unknown>, cont
         ? String(challengeRow.choice_correct_key)
         : null,
     choiceExplanationMdx: String(contentRow?.choice_explanation_mdx ?? challengeRow.choice_explanation_mdx ?? ""),
-    published
+    published,
+    updatedAt: contentRow?.updated_at
+      ? String(contentRow.updated_at)
+      : challengeRow.updated_at
+        ? String(challengeRow.updated_at)
+        : null
   })
 }
 
@@ -93,7 +99,7 @@ function mapChallengeFromContentRows(challengeRow: Record<string, unknown>, cont
 export function mapChallengesFromRows(
   challengeRows: Record<string, unknown>[],
   challengeVersionRows: Record<string, unknown>[] | null | undefined,
-  mode: ChallengeVersionLoadMode
+  mode: CatalogVersionLoadMode
 ) {
   const versionById = getVersionLookup(challengeVersionRows)
 

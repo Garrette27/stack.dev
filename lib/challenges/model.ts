@@ -8,7 +8,8 @@ import type {
   CodeChallenge,
   CodeChallengeLanguage,
   LocalLabChallenge,
-  MultipleChoiceChallenge
+  MultipleChoiceChallenge,
+  PublicationState
 } from "@/lib/types"
 
 type ChallengeRecordInput = ChallengeBase & {
@@ -99,10 +100,10 @@ export function normalizeChallengeKind(value: unknown): ChallengeKind {
   return "code"
 }
 
-export function normalizeChallengePublicationState(
+export function normalizePublicationState(
   value: unknown,
   published: boolean
-): ChallengePublicationState {
+): PublicationState {
   const normalizedValue = String(value ?? "")
   if (normalizedValue === "draft" || normalizedValue === "published" || normalizedValue === "archived") {
     return normalizedValue
@@ -110,6 +111,8 @@ export function normalizeChallengePublicationState(
 
   return published ? "published" : "draft"
 }
+
+export const normalizeChallengePublicationState = normalizePublicationState
 
 export function normalizeCodeChallengeLanguage(value: unknown): CodeChallengeLanguage {
   const normalizedValue = value == null ? null : String(value)

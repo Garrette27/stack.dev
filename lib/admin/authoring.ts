@@ -4,6 +4,11 @@ import { z } from "zod"
 
 import { normalizeMultipleChoiceOptions } from "@/lib/challenges/multiple-choice"
 import { getCurrentUser, isCurrentUserAdmin } from "@/lib/auth"
+import {
+  saveChallengeVersion,
+  saveCourseVersion,
+  saveLessonVersion
+} from "@/lib/admin/catalog-versioning"
 import { hasSupabaseAdminEnv } from "@/lib/env"
 import { isSupportedChallengeLanguage } from "@/lib/judge0/languages"
 import {
@@ -976,59 +981,54 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   // adds one. Blank input means the assignment should fall back to its own
   // prompt, with the chapter guide remaining optional.
   const normalizedReadingMdx = payload.readingMdx?.trim() ? payload.readingMdx.trim() : null
-  const { data: existingCourse, error: existingCourseError } = await admin!
-    .from("courses")
-    .select("id,published")
-    .eq("slug", payload.courseSlug)
-    .maybeSingle()
+  let courseId = ""
+  try {
+    const courseResult = await saveCourseVersion(admin!, {
+      userId: user.id,
+      actorEmail: user.email ?? null
+    }, {
+      slug: payload.courseSlug,
+      title: payload.courseTitle,
+      summary: `A practical path into software with ${payload.courseTitle.toLowerCase()}.`,
+      difficulty: "Beginner",
+      accent: "#c96f36",
+      saveMode: payload.saveMode
+    })
 
-  if (existingCourseError) {
+    courseId = courseResult.stableRow.id
+  } catch (error) {
     return {
       success: false,
-      message: existingCourseError.message
-    }
-  }
-
-  const shouldPublishCourse = payload.saveMode === "publish" ? true : Boolean(existingCourse?.published ?? false)
-  const { data: courseRow, error: courseError } = await admin!
-    .from("courses")
-    .upsert(
-      {
-        slug: payload.courseSlug,
-        title: payload.courseTitle,
-        summary: `A practical path into software with ${payload.courseTitle.toLowerCase()}.`,
-        difficulty: "Beginner",
-        accent: "#c96f36",
-        published: shouldPublishCourse
-      },
-      {
-        onConflict: "slug"
-      }
-    )
-    .select("id")
-    .single()
-
-  if (courseError) {
-    return {
-      success: false,
-      message: courseError.message
+      message: error instanceof Error ? error.message : "Unable to save the course."
     }
   }
 
   const challengeSlug = await resolveChallengeSlug(admin!, payload.lessonSlug, payload.challengeSlug)
-  const { data: challengeRow, error: challengeError } = await upsertChallengeRecord(
-    admin!,
-    user.id,
-    payload,
-    challengeSlug,
-    challengeTitle,
-    normalizedReadingMdx
-  )
+  let challengeId = ""
+  try {
+    const challengeResult = await saveChallengeVersion(admin!, {
+      userId: user.id,
+      actorEmail: user.email ?? null
+    }, {
+      slug: challengeSlug,
+      title: challengeTitle,
+      kind: payload.kind,
+      language: payload.language,
+      judge0LanguageId: payload.judge0LanguageId,
+      readingMdx: normalizedReadingMdx,
+      promptMdx: payload.promptMdx,
+      storageFields: getChallengeStorageFields(payload),
+      choiceOptions: payload.kind === "multiple_choice" ? payload.choiceOptions : [],
+      correctChoiceKey: payload.kind === "multiple_choice" ? payload.correctChoiceKey : null,
+      choiceExplanationMdx: payload.kind === "multiple_choice" ? payload.choiceExplanationMdx : "",
+      saveMode: payload.saveMode
+    })
 
-  if (challengeError) {
+    challengeId = challengeResult.stableRow.id
+  } catch (error) {
     return {
       success: false,
-      message: challengeError.message
+      message: error instanceof Error ? error.message : "Unable to save the assignment."
     }
   }
 
@@ -1036,41 +1036,40 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
     admin!
       .from("lessons")
       .select("id, order_index, challenge_slug, estimated_minutes, published")
-      .eq("course_id", courseRow.id)
+      .eq("course_id", courseId)
       .eq("slug", payload.lessonSlug)
       .maybeSingle(),
-    admin!.from("lessons").select("id", { count: "exact", head: true }).eq("course_id", courseRow.id)
+    admin!.from("lessons").select("id", { count: "exact", head: true }).eq("course_id", courseId)
   ])
 
-  const shouldPublishLesson = payload.saveMode === "publish" ? true : Boolean(existingLesson?.published ?? false)
-
-  const { data: lessonRow, error: lessonError } = await admin!.from("lessons").upsert(
-    {
-      course_id: courseRow.id,
+  let lessonId = ""
+  try {
+    const lessonResult = await saveLessonVersion(admin!, {
+      userId: user.id,
+      actorEmail: user.email ?? null
+    }, {
+      courseId,
+      courseSlug: payload.courseSlug,
       slug: payload.lessonSlug,
       title: payload.lessonTitle,
       summary: lessonSummary,
-      estimated_minutes: existingLesson?.estimated_minutes ?? 10,
-      body_mdx: payload.bodyMdx,
-      challenge_slug: existingLesson?.challenge_slug ?? challengeSlug,
-      order_index: existingLesson?.order_index ?? (lessonCount ?? 0) + 1,
-      published: shouldPublishLesson
-    },
-    {
-      onConflict: "course_id,slug"
-    }
-  ).select("id")
-   .single()
+      estimatedMinutes: existingLesson?.estimated_minutes ?? 10,
+      bodyMdx: payload.bodyMdx,
+      orderIndex: existingLesson?.order_index ?? (lessonCount ?? 0) + 1,
+      challengeSlug: existingLesson?.challenge_slug ?? challengeSlug,
+      saveMode: payload.saveMode
+    })
 
-  if (lessonError) {
+    lessonId = lessonResult.stableRow.id
+  } catch (error) {
     return {
       success: false,
-      message: lessonError.message
+      message: error instanceof Error ? error.message : "Unable to save the chapter."
     }
   }
 
   try {
-    const relationResult = await attachChallengeToLesson(admin!, lessonRow.id, challengeRow.id)
+    const relationResult = await attachChallengeToLesson(admin!, lessonId, challengeId)
 
     if (!relationResult.tableAvailable && existingLesson?.challenge_slug && existingLesson.challenge_slug !== challengeSlug) {
       return {
@@ -1083,7 +1082,7 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
       const { error: legacyLessonError } = await admin!
         .from("lessons")
         .update({ challenge_slug: challengeSlug })
-        .eq("id", lessonRow.id)
+        .eq("id", lessonId)
 
       if (legacyLessonError) {
         return {

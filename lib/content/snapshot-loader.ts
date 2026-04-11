@@ -1,11 +1,14 @@
 import type { ContentSnapshot } from "@/lib/types"
 
 import { mapChallengesFromRows, type ChallengeVersionLoadMode } from "./challenge-versions"
+import { mapCoursesFromRows, mapLessonsFromRows, type CatalogVersionLoadMode } from "./catalog-versions"
 import { createMockSnapshot, mapChallenge, mapCourse, mapLesson } from "./shared"
 
 type SnapshotRows = {
   courseRows?: Record<string, unknown>[] | null
+  courseVersionRows?: Record<string, unknown>[] | null
   lessonRows?: Record<string, unknown>[] | null
+  lessonVersionRows?: Record<string, unknown>[] | null
   challengeRows?: Record<string, unknown>[] | null
   challengeVersionRows?: Record<string, unknown>[] | null
   lessonChallengeRows?: Record<string, unknown>[] | null
@@ -21,7 +24,8 @@ type SnapshotLoaderOptions = {
   contentSourceReason: string
   emptyContentReason: string
   emptyMode: "mock" | "database"
-  challengeVersionMode?: ChallengeVersionLoadMode
+  challengeVersionMode?: CatalogVersionLoadMode
+  catalogVersionMode?: CatalogVersionLoadMode
 }
 
 type OptionalRowsResult = {
@@ -58,22 +62,33 @@ function buildLessonChallengeIdsByLessonId(rows: SnapshotRows, challengeIdBySlug
 function buildDatabaseSnapshot(
   rows: SnapshotRows,
   contentSourceReason: string,
-  challengeVersionMode: ChallengeVersionLoadMode
+  challengeVersionMode: CatalogVersionLoadMode,
+  catalogVersionMode: CatalogVersionLoadMode
 ): ContentSnapshot {
   const challenges = rows.challengeVersionRows
     ? mapChallengesFromRows(rows.challengeRows ?? [], rows.challengeVersionRows, challengeVersionMode)
     : (rows.challengeRows ?? []).map((row) => mapChallenge(row))
   const challengeIdBySlug = new Map(challenges.map((challenge) => [challenge.slug, challenge.id]))
   const lessonChallengeIdsByLessonId = buildLessonChallengeIdsByLessonId(rows, challengeIdBySlug)
-  const courses = (rows.courseRows ?? []).map((row) => mapCourse(row))
+  const courses = rows.courseVersionRows
+    ? mapCoursesFromRows(rows.courseRows ?? [], rows.courseVersionRows, catalogVersionMode)
+    : (rows.courseRows ?? []).map((row) => mapCourse(row))
   const courseSlugById = new Map(courses.map((course) => [course.id, course.slug]))
-  const lessons = (rows.lessonRows ?? []).map((row) =>
-    mapLesson(
-      row,
-      courseSlugById.get(String(row.course_id)) ?? "",
-      lessonChallengeIdsByLessonId.get(String(row.id)) ?? []
-    )
-  )
+  const lessons = rows.lessonVersionRows
+    ? mapLessonsFromRows(
+        rows.lessonRows ?? [],
+        rows.lessonVersionRows,
+        catalogVersionMode,
+        courseSlugById,
+        lessonChallengeIdsByLessonId
+      )
+    : (rows.lessonRows ?? []).map((row) =>
+        mapLesson(
+          row,
+          courseSlugById.get(String(row.course_id)) ?? "",
+          lessonChallengeIdsByLessonId.get(String(row.id)) ?? []
+        )
+      )
 
   return {
     courses,
@@ -95,7 +110,12 @@ export async function loadSnapshotFromRows(options: SnapshotLoaderOptions): Prom
     return createMockSnapshot(fallbackReason)
   }
 
-  const snapshot = buildDatabaseSnapshot(rows, options.contentSourceReason, options.challengeVersionMode ?? "published")
+  const snapshot = buildDatabaseSnapshot(
+    rows,
+    options.contentSourceReason,
+    options.challengeVersionMode ?? "published",
+    options.catalogVersionMode ?? options.challengeVersionMode ?? "published"
+  )
   const hasLessonStructure = snapshot.courses.length > 0 && snapshot.lessons.length > 0
   const hasAnyRows = snapshot.courses.length > 0 || snapshot.lessons.length > 0 || snapshot.challenges.length > 0
 
@@ -131,6 +151,26 @@ export async function loadOptionalChallengeVersionRows(
   }
 
   throw new Error(error.message ?? "Unable to load challenge version rows.")
+}
+
+/**
+ * Reads course or lesson version rows when versioning has been migrated and
+ * silently falls back to direct stable rows while older databases catch up.
+ */
+export async function loadOptionalCatalogVersionRows(
+  loadRows: () => Promise<OptionalRowsResult>
+): Promise<Record<string, unknown>[] | null> {
+  const { data, error } = await loadRows()
+
+  if (!error) {
+    return data ?? []
+  }
+
+  if (error.code === "42P01" || error.code === "PGRST205" || error.code === "42703" || error.code === "PGRST204") {
+    return null
+  }
+
+  throw new Error(error.message ?? "Unable to load catalog version rows.")
 }
 
 /**

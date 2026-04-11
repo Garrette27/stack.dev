@@ -4,7 +4,12 @@ import { hasSupabaseEnv } from "@/lib/env"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import type { CourseReadingEntry, CourseWithLessons, LessonBundle } from "@/lib/types"
 
-import { loadOptionalChallengeVersionRows, loadOptionalLessonChallengeRows, loadSnapshotFromRows } from "./snapshot-loader"
+import {
+  loadOptionalCatalogVersionRows,
+  loadOptionalChallengeVersionRows,
+  loadOptionalLessonChallengeRows,
+  loadSnapshotFromRows
+} from "./snapshot-loader"
 import { sortLessons } from "./shared"
 
 async function getSupabaseContent() {
@@ -28,10 +33,42 @@ async function getSupabaseContent() {
         }
       }
 
-      const [{ data: courseRows }, { data: lessonRows }, { data: challengeRows }, challengeVersionRows, lessonChallengeRows] = await Promise.all([
+      const [
+        { data: courseRows },
+        { data: lessonRows },
+        { data: challengeRows },
+        courseVersionRows,
+        lessonVersionRows,
+        challengeVersionRows,
+        lessonChallengeRows
+      ] = await Promise.all([
         supabase.from("courses").select("*").eq("published", true).order("title"),
         supabase.from("lessons").select("*").eq("published", true).order("order_index"),
         supabase.from("challenges").select("*").eq("published", true).order("title"),
+        loadOptionalCatalogVersionRows(async () => {
+          const result = await supabase
+            .from("course_versions")
+            .select("*")
+            .order("course_id")
+            .order("version_number", { ascending: false })
+
+          return {
+            data: (result.data ?? null) as Record<string, unknown>[] | null,
+            error: result.error ? { code: result.error.code, message: result.error.message } : null
+          }
+        }),
+        loadOptionalCatalogVersionRows(async () => {
+          const result = await supabase
+            .from("lesson_versions")
+            .select("*")
+            .order("lesson_id")
+            .order("version_number", { ascending: false })
+
+          return {
+            data: (result.data ?? null) as Record<string, unknown>[] | null,
+            error: result.error ? { code: result.error.code, message: result.error.message } : null
+          }
+        }),
         loadOptionalChallengeVersionRows(async () => {
           const result = await supabase
             .from("challenge_versions")
@@ -61,13 +98,16 @@ async function getSupabaseContent() {
       return {
         rows: {
           courseRows: (courseRows ?? []) as Record<string, unknown>[],
+          courseVersionRows,
           lessonRows: (lessonRows ?? []) as Record<string, unknown>[],
+          lessonVersionRows,
           challengeRows: (challengeRows ?? []) as Record<string, unknown>[],
           challengeVersionRows,
           lessonChallengeRows
         }
       }
-    }
+    },
+    catalogVersionMode: "published"
   })
 }
 

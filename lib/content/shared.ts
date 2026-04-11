@@ -22,11 +22,17 @@ export function mapCourse(row: Record<string, unknown>): Course {
   return {
     id: String(row.id),
     slug: String(row.slug),
+    versionId: row.id ? String(row.id) : null,
+    versionNumber: null,
+    publishedVersionId: row.current_published_version_id ? String(row.current_published_version_id) : null,
+    draftVersionId: row.current_draft_version_id ? String(row.current_draft_version_id) : null,
+    publicationState: normalizeChallengePublicationState(row.status, Boolean(row.published ?? true)),
     title: String(row.title),
     summary: String(row.summary ?? ""),
     difficulty: String(row.difficulty ?? "Beginner"),
     accent: String(row.accent ?? "#c96f36"),
-    published: Boolean(row.published ?? true)
+    published: Boolean(row.published ?? true),
+    updatedAt: row.updated_at ? String(row.updated_at) : null
   }
 }
 
@@ -36,13 +42,19 @@ export function mapLesson(row: Record<string, unknown>, courseSlug: string, chal
     courseId: String(row.course_id),
     courseSlug,
     slug: String(row.slug),
+    versionId: row.id ? String(row.id) : null,
+    versionNumber: null,
+    publishedVersionId: row.current_published_version_id ? String(row.current_published_version_id) : null,
+    draftVersionId: row.current_draft_version_id ? String(row.current_draft_version_id) : null,
+    publicationState: normalizeChallengePublicationState(row.status, Boolean(row.published ?? true)),
     title: String(row.title),
     summary: String(row.summary ?? ""),
     estimatedMinutes: Number(row.estimated_minutes ?? 10),
     bodyMdx: String(row.body_mdx ?? ""),
     challengeIds,
     orderIndex: Number(row.order_index ?? 1),
-    published: Boolean(row.published ?? true)
+    published: Boolean(row.published ?? true),
+    updatedAt: row.updated_at ? String(row.updated_at) : null
   }
 }
 
@@ -69,6 +81,7 @@ export function mapChallenge(row: Record<string, unknown>): Challenge {
     choiceOptions: row.choice_options,
     correctChoiceKey: row.choice_correct_key ? String(row.choice_correct_key) : null,
     choiceExplanationMdx: String(row.choice_explanation_mdx ?? ""),
-    published: Boolean(row.published ?? true)
+    published: Boolean(row.published ?? true),
+    updatedAt: row.updated_at ? String(row.updated_at) : null
   })
 }

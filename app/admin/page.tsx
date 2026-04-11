@@ -1,14 +1,17 @@
-import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { AnalyticsOverview } from "@/components/admin/analytics-overview"
 import { AuthoringForm } from "@/components/admin/authoring-form"
-import { Button } from "@/components/ui/button"
+import { CatalogContentTree } from "@/components/admin/catalog-content-tree"
+import { CatalogHistoryPanel } from "@/components/admin/catalog-history-panel"
+import { CatalogImportPanel } from "@/components/admin/catalog-import-panel"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAdminPageState } from "@/lib/admin"
+import { getAdminCatalogHistorySnapshot } from "@/lib/admin/catalog-history"
+import type { PersistedAuthoringSelection } from "@/lib/admin/authoring-session"
 import { getAdminAnalyticsSnapshot, normalizeAnalyticsAudience, normalizeAnalyticsRange } from "@/lib/analytics"
-import { setChallengeVisibilityAction, setCourseVisibilityAction, setLessonVisibilityAction } from "./actions"
+import type { Challenge, ContentSnapshot, Lesson } from "@/lib/types"
 
 type AdminPageProps = {
   searchParams?: Promise<{
@@ -24,39 +27,73 @@ function firstQueryValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
 
-function getVisibilityLabel(published: boolean) {
-  return published ? "Live" : "Hidden"
+function getLessonsForCourse(snapshot: ContentSnapshot, courseId: string) {
+  return snapshot.lessons.filter((lesson) => lesson.courseId === courseId).sort((left, right) => left.orderIndex - right.orderIndex)
 }
 
-function getChallengeStatusLabel(challenge: { published: boolean; publicationState: string }) {
-  if (!challenge.published || challenge.publicationState === "archived") {
-    return "Hidden"
+function getChallengesForLesson(snapshot: ContentSnapshot, lesson: Lesson) {
+  return lesson.challengeIds
+    .map((challengeId) => snapshot.challenges.find((challenge) => challenge.id === challengeId) ?? null)
+    .filter((challenge): challenge is Challenge => Boolean(challenge))
+}
+
+function resolveInitialAuthoringSelection(
+  snapshot: ContentSnapshot,
+  selection: {
+    courseSlug?: string | null
+    lessonSlug?: string | null
+    challengeSlug?: string | null
+  }
+): PersistedAuthoringSelection | null {
+  const course =
+    (selection.courseSlug ? snapshot.courses.find((candidate) => candidate.slug === selection.courseSlug) : null) ??
+    snapshot.courses[0] ??
+    null
+
+  if (!course) {
+    return null
   }
 
-  if (challenge.publicationState === "draft") {
-    return "Draft"
+  const lessons = getLessonsForCourse(snapshot, course.id)
+  const lesson =
+    (selection.lessonSlug ? lessons.find((candidate) => candidate.slug === selection.lessonSlug) : null) ??
+    lessons[0] ??
+    null
+
+  if (!lesson) {
+    return null
   }
 
-  return "Published"
+  const challenges = getChallengesForLesson(snapshot, lesson)
+  const challenge =
+    (selection.challengeSlug ? challenges.find((candidate) => candidate.slug === selection.challengeSlug) : null) ??
+    challenges[0] ??
+    null
+
+  if (!challenge) {
+    return null
+  }
+
+  return {
+    courseSlug: course.slug,
+    lessonSlug: lesson.slug,
+    challengeSlug: challenge.slug
+  }
 }
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const resolvedSearchParams = (await searchParams) ?? {}
   const analyticsRange = normalizeAnalyticsRange(firstQueryValue(resolvedSearchParams.analyticsRange))
   const analyticsAudience = normalizeAnalyticsAudience(firstQueryValue(resolvedSearchParams.analyticsAudience))
-  const initialSelection =
-    firstQueryValue(resolvedSearchParams.authorCourse) &&
-    firstQueryValue(resolvedSearchParams.authorLesson) &&
-    firstQueryValue(resolvedSearchParams.authorAssignment)
-      ? {
-          courseSlug: firstQueryValue(resolvedSearchParams.authorCourse) as string,
-          lessonSlug: firstQueryValue(resolvedSearchParams.authorLesson) as string,
-          challengeSlug: firstQueryValue(resolvedSearchParams.authorAssignment) as string
-        }
-      : null
+  const historySelection = {
+    courseSlug: firstQueryValue(resolvedSearchParams.authorCourse) ?? null,
+    lessonSlug: firstQueryValue(resolvedSearchParams.authorLesson) ?? null,
+    challengeSlug: firstQueryValue(resolvedSearchParams.authorAssignment) ?? null
+  }
 
-  const [{ user, isAdmin, snapshot }, analytics] = await Promise.all([
+  const [{ user, isAdmin, snapshot }, history, analytics] = await Promise.all([
     getAdminPageState(),
+    getAdminCatalogHistorySnapshot(historySelection),
     getAdminAnalyticsSnapshot({
       range: analyticsRange,
       audience: analyticsAudience
@@ -66,6 +103,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   if (!user || !isAdmin) {
     notFound()
   }
+
+  const initialSelection = resolveInitialAuthoringSelection(snapshot, historySelection)
 
   return (
     <div className="mx-auto grid w-full max-w-[1880px] gap-8 px-4 py-12 sm:px-6 xl:px-10">
@@ -108,132 +147,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
       <AuthoringForm snapshot={snapshot} initialSelection={initialSelection} />
 
-      <AnalyticsOverview snapshot={analytics} />
-
-      <section className="grid gap-5">
-        <Card>
-          <CardHeader>
-            <CardTitle>Current content</CardTitle>
-            <CardDescription>
-              Review, open, hide, or restore existing catalog content. Authored courses, chapters, and assignments stay in admin instead of being hard-deleted.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3">
-            {snapshot.courses.length ? (
-              snapshot.courses.map((course, courseIndex) => {
-                const lessons = snapshot.lessons
-                  .filter((lesson) => lesson.courseId === course.id)
-                  .sort((left, right) => left.orderIndex - right.orderIndex)
-
-                return (
-                  <div key={course.id} className="rounded-[1.5rem] bg-[var(--showcase-surface-soft)] p-4 ring-1 ring-[var(--border-subtle)]">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`L${courseIndex + 1}`}</p>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <p className="text-lg font-semibold text-[var(--ink-strong)]">{course.title}</p>
-                          <Badge className="bg-[var(--surface-strong)] text-[var(--ink-muted)] ring-1 ring-[var(--border-subtle)]">
-                            {getVisibilityLabel(course.published)}
-                          </Badge>
-                        </div>
-                        <p className="mt-1 text-sm leading-6 text-[var(--ink)]">{course.summary}</p>
-                      </div>
-                      <form action={setCourseVisibilityAction}>
-                        <input type="hidden" name="courseSlug" value={course.slug} />
-                        <input type="hidden" name="visibility" value={course.published ? "hidden" : "visible"} />
-                        <Button type="submit" variant="secondary" size="sm">
-                          {course.published ? "Hide course" : "Restore course"}
-                        </Button>
-                      </form>
-                    </div>
-
-                    <div className="mt-4 grid gap-3">
-                      {lessons.map((lesson, lessonIndex) => (
-                        <div key={lesson.id} className="rounded-[1.25rem] bg-[var(--surface-hover)] px-4 py-3">
-                          <div className="flex flex-wrap items-start justify-between gap-4">
-                            <div>
-                              <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`CH${lessonIndex + 1}`}</p>
-                              <div className="mt-1 flex flex-wrap items-center gap-2">
-                                <p className="text-base font-semibold text-[var(--ink-strong)]">{lesson.title}</p>
-                                <Badge className="bg-[var(--surface-strong)] text-[var(--ink-muted)] ring-1 ring-[var(--border-subtle)]">
-                                  {getVisibilityLabel(lesson.published)}
-                                </Badge>
-                              </div>
-                              <p className="mt-1 text-sm leading-6 text-[var(--ink)]">{lesson.summary}</p>
-                            </div>
-                            <div className="flex flex-col items-end gap-2 text-right">
-                              <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">
-                                {lesson.challengeIds.length} assignment{lesson.challengeIds.length === 1 ? "" : "s"}
-                              </p>
-                              {course.published && lesson.published ? (
-                                <Link
-                                  href={`/learn/${lesson.courseSlug}/${lesson.slug}`}
-                                  className="inline-flex text-sm font-medium text-[var(--ink-strong)] underline decoration-[var(--accent)]"
-                                >
-                                  Open learner view
-                                </Link>
-                              ) : (
-                                <p className="text-sm text-[var(--ink-muted)]">Hidden from learners</p>
-                              )}
-                              <form action={setLessonVisibilityAction}>
-                                <input type="hidden" name="courseSlug" value={lesson.courseSlug} />
-                                <input type="hidden" name="lessonSlug" value={lesson.slug} />
-                                <input type="hidden" name="visibility" value={lesson.published ? "hidden" : "visible"} />
-                                <Button type="submit" variant="secondary" size="sm">
-                                  {lesson.published ? "Hide chapter" : "Restore chapter"}
-                                </Button>
-                              </form>
-                            </div>
-                          </div>
-
-                          {lesson.challengeIds.length ? (
-                            <div className="mt-4 grid gap-2">
-                              {lesson.challengeIds.map((challengeId, challengeIndex) => {
-                                const challenge = snapshot.challenges.find((item) => item.id === challengeId)
-                                if (!challenge) {
-                                  return null
-                                }
-
-                                return (
-                                  <div
-                                    key={challenge.id}
-                                    className="flex flex-wrap items-center justify-between gap-3 rounded-[1rem] bg-[var(--showcase-surface-soft)] px-3 py-2 ring-1 ring-[var(--border-subtle)]"
-                                  >
-                                    <div className="min-w-0">
-                                      <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`A${challengeIndex + 1}`}</p>
-                                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                                        <p className="truncate text-sm font-semibold text-[var(--ink-strong)]">{challenge.title}</p>
-                                        <Badge className="bg-[var(--surface-strong)] text-[var(--ink-muted)] ring-1 ring-[var(--border-subtle)]">
-                                          {getChallengeStatusLabel(challenge)}
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                    <form action={setChallengeVisibilityAction}>
-                                      <input type="hidden" name="courseSlug" value={lesson.courseSlug} />
-                                      <input type="hidden" name="lessonSlug" value={lesson.slug} />
-                                      <input type="hidden" name="challengeSlug" value={challenge.slug} />
-                                      <input type="hidden" name="visibility" value={challenge.published ? "hidden" : "visible"} />
-                                      <Button type="submit" variant="secondary" size="sm">
-                                        {challenge.published ? "Hide assignment" : "Restore assignment"}
-                                      </Button>
-                                    </form>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })
-            ) : (
-              <p className="text-sm leading-7 text-[var(--ink-muted)]">No lessons have been created yet.</p>
-            )}
-          </CardContent>
-        </Card>
+      <section className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
+        <CatalogContentTree snapshot={snapshot} selection={historySelection} />
+        <div className="grid gap-6">
+          <CatalogHistoryPanel history={history} selection={historySelection} />
+          <CatalogImportPanel />
+        </div>
       </section>
+
+      <AnalyticsOverview snapshot={analytics} />
     </div>
   )
 }
