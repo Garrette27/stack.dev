@@ -25,6 +25,7 @@ import {
   setLessonTreeVisibilityForCurrentUser,
   setLessonVisibilityForCurrentUser
 } from "@/lib/admin/catalog-workflows"
+import { buildAdminSelectionHref } from "@/lib/admin/selection"
 
 export type AuthoringActionState = {
   success: boolean
@@ -104,29 +105,6 @@ function resolveCatalogImportDestination(formData: FormData):
       scope: "new_course"
     }
   }
-}
-
-function buildAdminSelectionHref(selection: {
-  courseSlug?: string
-  lessonSlug?: string
-  challengeSlug?: string
-}) {
-  const params = new URLSearchParams()
-
-  if (selection.courseSlug) {
-    params.set("authorCourse", selection.courseSlug)
-  }
-
-  if (selection.lessonSlug) {
-    params.set("authorLesson", selection.lessonSlug)
-  }
-
-  if (selection.challengeSlug) {
-    params.set("authorAssignment", selection.challengeSlug)
-  }
-
-  const query = params.toString()
-  return query ? `/admin?${query}` : "/admin"
 }
 
 export async function claimAdminAccessAction(

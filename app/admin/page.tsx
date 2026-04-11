@@ -11,7 +11,7 @@ import { getAdminPageState } from "@/lib/admin"
 import { getAdminCatalogHistorySnapshot } from "@/lib/admin/catalog-history"
 import type { PersistedAuthoringSelection } from "@/lib/admin/authoring-session"
 import { getAdminAnalyticsSnapshot, normalizeAnalyticsAudience, normalizeAnalyticsRange } from "@/lib/analytics"
-import { getLessonChallenges } from "@/lib/content/shared"
+import { getCourseLessons, getLessonChallenges } from "@/lib/content/shared"
 import type { Challenge, ContentSnapshot, Lesson } from "@/lib/types"
 
 type AdminPageProps = {
@@ -30,10 +30,6 @@ function firstQueryValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
 
-function getLessonsForCourse(snapshot: ContentSnapshot, courseId: string) {
-  return snapshot.lessons.filter((lesson) => lesson.courseId === courseId).sort((left, right) => left.orderIndex - right.orderIndex)
-}
-
 function getChallengesForLesson(snapshot: ContentSnapshot, lesson: Lesson) {
   return getLessonChallenges(lesson, snapshot.challenges, { includeHidden: true }) as Challenge[]
 }
@@ -42,7 +38,7 @@ function buildCatalogImportTargets(snapshot: ContentSnapshot) {
   return snapshot.courses.map((course) => ({
     slug: course.slug,
     title: course.title,
-    lessons: getLessonsForCourse(snapshot, course.id).map((lesson) => ({
+    lessons: getCourseLessons(snapshot, course.id).map((lesson) => ({
       slug: lesson.slug,
       title: lesson.title
     }))
@@ -66,7 +62,7 @@ function resolveInitialAuthoringSelection(
     return null
   }
 
-  const lessons = getLessonsForCourse(snapshot, course.id)
+  const lessons = getCourseLessons(snapshot, course.id)
   const lesson =
     (selection.lessonSlug ? lessons.find((candidate) => candidate.slug === selection.lessonSlug) : null) ??
     lessons[0] ??

@@ -15,7 +15,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { getLessonChallenges } from "@/lib/content/shared"
+import { buildAdminSelectionHref } from "@/lib/admin/selection"
+import { getCourseLessons, getLessonChallenges } from "@/lib/content/shared"
 import type { Challenge, ContentSnapshot, Course, Lesson } from "@/lib/types"
 
 type CatalogContentTreeProps = {
@@ -43,26 +44,12 @@ function getChallengeStatusLabel(challenge: { published: boolean; publicationSta
   return "Published"
 }
 
-function getLessonsForCourse(snapshot: ContentSnapshot, courseId: string) {
-  return snapshot.lessons.filter((lesson) => lesson.courseId === courseId).sort((left, right) => left.orderIndex - right.orderIndex)
-}
-
 function getChallengesForLesson(snapshot: ContentSnapshot, lesson: Lesson) {
   return getLessonChallenges(lesson, snapshot.challenges, { includeHidden: true }) as Challenge[]
 }
 
-function buildAuthoringHref(courseSlug: string, lessonSlug: string, challengeSlug: string) {
-  const params = new URLSearchParams({
-    authorCourse: courseSlug,
-    authorLesson: lessonSlug,
-    authorAssignment: challengeSlug
-  })
-
-  return `/admin?${params.toString()}`
-}
-
 function getCourseSelection(snapshot: ContentSnapshot, course: Course) {
-  const lesson = getLessonsForCourse(snapshot, course.id)[0] ?? null
+  const lesson = getCourseLessons(snapshot, course.id)[0] ?? null
   if (!lesson) {
     return null
   }
@@ -130,7 +117,7 @@ export function CatalogContentTree({ snapshot, selection }: CatalogContentTreePr
       <CardContent className="grid gap-3">
         {snapshot.courses.length ? (
           snapshot.courses.map((course, courseIndex) => {
-            const lessons = getLessonsForCourse(snapshot, course.id)
+            const lessons = getCourseLessons(snapshot, course.id)
             const courseSelection = getCourseSelection(snapshot, course)
             const courseIsSelected = selection.courseSlug === course.slug
 
@@ -156,7 +143,7 @@ export function CatalogContentTree({ snapshot, selection }: CatalogContentTreePr
                       label="Edit in authoring"
                       href={
                         courseSelection
-                          ? buildAuthoringHref(courseSelection.courseSlug, courseSelection.lessonSlug, courseSelection.challengeSlug)
+                          ? buildAdminSelectionHref(courseSelection)
                           : null
                       }
                     />
@@ -211,7 +198,7 @@ export function CatalogContentTree({ snapshot, selection }: CatalogContentTreePr
                               label="Edit chapter"
                               href={
                                 lessonSelection
-                                  ? buildAuthoringHref(lessonSelection.courseSlug, lessonSelection.lessonSlug, lessonSelection.challengeSlug)
+                                  ? buildAdminSelectionHref(lessonSelection)
                                   : null
                               }
                             />
@@ -300,7 +287,11 @@ export function CatalogContentTree({ snapshot, selection }: CatalogContentTreePr
                                   <div className="flex flex-wrap items-center justify-end gap-2">
                                     <AdminSelectionLink
                                       label="Edit assignment"
-                                      href={buildAuthoringHref(lesson.courseSlug, lesson.slug, challenge.slug)}
+                                      href={buildAdminSelectionHref({
+                                        courseSlug: lesson.courseSlug,
+                                        lessonSlug: lesson.slug,
+                                        challengeSlug: challenge.slug
+                                      })}
                                     />
                                     <form action={reorderAssignmentAction}>
                                       <input type="hidden" name="courseSlug" value={lesson.courseSlug} />

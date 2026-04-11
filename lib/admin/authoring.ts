@@ -2,6 +2,7 @@ import "server-only"
 
 import { z } from "zod"
 
+import { deriveCatalogChallengeTitle, deriveCatalogLessonSummary } from "@/lib/admin/catalog-copy"
 import { normalizeMultipleChoiceOptions } from "@/lib/challenges/multiple-choice"
 import { getCurrentUser, isCurrentUserAdmin } from "@/lib/auth"
 import {
@@ -373,45 +374,6 @@ async function attachChallengeToLesson(
 }
 
 /**
- * Derives a compact internal challenge title from the public assignment prompt.
- * This keeps the authoring form focused on chapter and assignment content.
- */
-function deriveChallengeTitle(promptMdx: string) {
-  const firstMeaningfulLine = promptMdx
-    .split(/\r?\n/)
-    .map((line) => line.replace(/^#+\s*/, "").replace(/^[-*]\s*/, "").trim())
-    .find(Boolean)
-
-  if (!firstMeaningfulLine) {
-    return "Assignment"
-  }
-
-  return firstMeaningfulLine.length > 96
-    ? `${firstMeaningfulLine.slice(0, 93).trimEnd()}...`
-    : firstMeaningfulLine
-}
-
-/**
- * Derives a compact chapter summary from the optional guide text when present.
- * Blank chapter guides fall back to the lesson title so authors can leave the
- * guide empty without degrading the lesson card copy.
- */
-function deriveLessonSummary(bodyMdx: string, lessonTitle: string) {
-  const firstMeaningfulLine = bodyMdx
-    .split(/\r?\n/)
-    .map((line) => line.replace(/^#+\s*/, "").replace(/^[-*]\s*/, "").trim())
-    .find(Boolean)
-
-  if (!firstMeaningfulLine) {
-    return `${lessonTitle} practice and assignments.`
-  }
-
-  return firstMeaningfulLine.length > 120
-    ? `${firstMeaningfulLine.slice(0, 117).trimEnd()}...`
-    : firstMeaningfulLine
-}
-
-/**
  * Allocates a stable internal slug for a new assignment inside the lesson.
  * Existing assignments keep their slug so edits remain idempotent.
  */
@@ -476,8 +438,8 @@ export async function saveAuthoringBundleForCurrentUser(payload: AuthoringBundle
   }
 
   const admin = createAdminClient()
-  const challengeTitle = deriveChallengeTitle(payload.promptMdx)
-  const lessonSummary = deriveLessonSummary(payload.bodyMdx, payload.lessonTitle)
+  const challengeTitle = deriveCatalogChallengeTitle(payload.promptMdx)
+  const lessonSummary = deriveCatalogLessonSummary(payload.bodyMdx, payload.lessonTitle)
   // Only persist a challenge-level reading override when the author explicitly
   // adds one. Blank input means the assignment should fall back to its own
   // prompt, with the chapter guide remaining optional.

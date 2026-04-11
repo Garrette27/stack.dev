@@ -18,6 +18,14 @@ export function sortLessons(lessons: Lesson[]) {
   return [...lessons].sort((a, b) => a.orderIndex - b.orderIndex)
 }
 
+export function getCourseLessons(snapshot: Pick<ContentSnapshot, "lessons">, courseId: string | null) {
+  if (!courseId) {
+    return []
+  }
+
+  return sortLessons(snapshot.lessons.filter((lesson) => lesson.courseId === courseId))
+}
+
 /**
  * Resolves one lesson's assignments from the shared challenge collection so
  * learner, practice, and admin surfaces can agree on visibility rules.

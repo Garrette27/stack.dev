@@ -29,6 +29,7 @@ import {
   getEffectiveAssignmentReadingLabel,
   getChapterGuideReading
 } from "@/lib/content/reading"
+import { getCourseLessons } from "@/lib/content/shared"
 import {
   getDefaultJudge0LanguageId,
   getHiddenTestTemplate,
@@ -186,14 +187,6 @@ function getAssignmentLabel(challenge: Challenge, index: number) {
   return `A${index + 1}: ${shortTitle}`
 }
 
-function getLessonsForCourse(snapshot: ContentSnapshot, courseId: string | null) {
-  if (!courseId) {
-    return []
-  }
-
-  return snapshot.lessons.filter((lesson) => lesson.courseId === courseId).sort((left, right) => left.orderIndex - right.orderIndex)
-}
-
 function getChallengesForLesson(snapshot: ContentSnapshot, lesson: Lesson | null) {
   if (!lesson) {
     return []
@@ -212,7 +205,7 @@ function resolveAuthoringTarget(
   const course = selection?.courseSlug
     ? snapshot.courses.find((candidate) => candidate.slug === selection.courseSlug) ?? defaultCourse
     : defaultCourse
-  const courseLessons = getLessonsForCourse(snapshot, course?.id ?? null)
+  const courseLessons = getCourseLessons(snapshot, course?.id ?? null)
   const defaultLesson = courseLessons[0] ?? null
   const lesson = selection?.lessonSlug
     ? courseLessons.find((candidate) => candidate.slug === selection.lessonSlug) ?? defaultLesson
@@ -380,7 +373,7 @@ export function useAuthoringFormController({
     [courseSelection, snapshot.courses]
   )
   const courseLessons = useMemo(
-    () => getLessonsForCourse(snapshot, selectedCourse?.id ?? null),
+    () => getCourseLessons(snapshot, selectedCourse?.id ?? null),
     [selectedCourse?.id, snapshot]
   )
   const selectedLesson = useMemo(
@@ -901,7 +894,7 @@ export function useAuthoringFormController({
     }
 
     const storedCourse = snapshot.courses.find((course) => course.slug === storedSelection.courseSlug) ?? null
-    const storedLessons = getLessonsForCourse(snapshot, storedCourse?.id ?? null)
+    const storedLessons = getCourseLessons(snapshot, storedCourse?.id ?? null)
     const storedLesson = storedLessons.find((lesson) => lesson.slug === storedSelection.lessonSlug) ?? null
     const storedAssignments = getChallengesForLesson(snapshot, storedLesson)
     const storedAssignment = storedAssignments.find((challenge) => challenge.slug === storedSelection.challengeSlug) ?? null

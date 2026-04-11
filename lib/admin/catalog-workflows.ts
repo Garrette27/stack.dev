@@ -6,6 +6,7 @@ import {
   type ImportedLessonManifest,
   parseCatalogImportSource
 } from "@/lib/admin/catalog-import"
+import { deriveCatalogChallengeTitle, deriveCatalogLessonSummary } from "@/lib/admin/catalog-copy"
 import {
   type ChallengeVersionInput,
   type AuthorizedCatalogContext,
@@ -67,35 +68,6 @@ function buildSuccess(message: string): AdminCatalogOperationResult {
 
 function buildFailure(message: string): AdminCatalogOperationResult {
   return { success: false, message }
-}
-
-function firstMeaningfulLine(value: string) {
-  return value
-    .split(/\r?\n/)
-    .map((line) => line.replace(/^#+\s*/, "").replace(/^[-*]\s*/, "").trim())
-    .find(Boolean)
-}
-
-function deriveChallengeTitle(promptMdx: string) {
-  const firstLine = firstMeaningfulLine(promptMdx)
-  if (!firstLine) {
-    return "Assignment"
-  }
-
-  return firstLine.length > 96 ? `${firstLine.slice(0, 93).trimEnd()}...` : firstLine
-}
-
-function deriveLessonSummary(bodyMdx: string, lessonTitle: string, providedSummary?: string) {
-  if (providedSummary?.trim()) {
-    return providedSummary.trim()
-  }
-
-  const firstLine = firstMeaningfulLine(bodyMdx)
-  if (!firstLine) {
-    return `${lessonTitle} practice and assignments.`
-  }
-
-  return firstLine.length > 120 ? `${firstLine.slice(0, 117).trimEnd()}...` : firstLine
 }
 
 async function getCourseRowBySlug(admin: AdminClient, courseSlug: string) {
@@ -1021,7 +993,7 @@ async function importChallengeIntoLesson(
   const choiceOptions = normalizeMultipleChoiceOptions(manifest.choiceOptions ?? [])
   const challengeResult = await saveChallengeVersion(admin, actor, {
     slug: nextSlug,
-    title: manifest.title?.trim() || deriveChallengeTitle(manifest.promptMdx),
+    title: manifest.title?.trim() || deriveCatalogChallengeTitle(manifest.promptMdx),
     kind: manifest.kind,
     language: manifest.language ? (String(manifest.language) as CodeChallengeLanguage) : null,
     judge0LanguageId: typeof manifest.judge0LanguageId === "number" ? manifest.judge0LanguageId : null,
@@ -1072,7 +1044,7 @@ async function importLessonIntoCourse(
     courseSlug,
     slug: nextLessonSlug,
     title: manifest.title,
-    summary: deriveLessonSummary(manifest.bodyMdx ?? "", manifest.title, manifest.summary),
+    summary: deriveCatalogLessonSummary(manifest.bodyMdx ?? "", manifest.title, manifest.summary),
     estimatedMinutes: manifest.estimatedMinutes ?? 10,
     bodyMdx: manifest.bodyMdx ?? "",
     orderIndex: lessonOrderIndex,
