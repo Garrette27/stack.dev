@@ -3,7 +3,7 @@ import "server-only"
 import { hasSupabaseEnv } from "@/lib/env"
 import { getCurrentUser } from "@/lib/auth"
 import { getContentSnapshot } from "@/lib/content"
-import { sortLessons } from "@/lib/content/shared"
+import { getLessonChallenges, sortLessons } from "@/lib/content/shared"
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import type { Challenge, Course, Lesson } from "@/lib/types"
 
@@ -167,21 +167,14 @@ function buildPracticeAssignmentHref(
 
 function getCoursePracticeChallenges(course: Course, lessons: Lesson[], challenges: Challenge[]) {
   return lessons.flatMap((lesson, lessonIndex) =>
-    lesson.challengeIds.flatMap((challengeId, challengeIndex) => {
-      const challenge = challenges.find((item) => item.id === challengeId && item.published) ?? null
+    getLessonChallenges(lesson, challenges).flatMap((challenge, challengeIndex) => {
 
-      if (!challenge) {
-        return []
-      }
-
-      return [
-        {
-          challenge,
-          lesson,
-          lessonIndex,
-          challengeIndex
-        } satisfies CoursePracticeChallenge
-      ]
+      return [{
+        challenge,
+        lesson,
+        lessonIndex,
+        challengeIndex
+      } satisfies CoursePracticeChallenge]
     })
   )
 }

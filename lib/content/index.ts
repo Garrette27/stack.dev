@@ -10,7 +10,7 @@ import {
   loadOptionalLessonChallengeRows,
   loadSnapshotFromRows
 } from "./snapshot-loader"
-import { sortLessons } from "./shared"
+import { getLessonChallenges, sortLessons } from "./shared"
 
 async function getSupabaseContent() {
   return loadSnapshotFromRows({
@@ -164,9 +164,7 @@ function buildCourseReadingEntries(
       })
     }
 
-    const lessonChallenges = lesson.challengeIds
-      .map((challengeId) => snapshotChallenges.find((challenge) => challenge.id === challengeId && challenge.published) ?? null)
-      .filter((challenge): challenge is NonNullable<typeof challenge> => Boolean(challenge))
+    const lessonChallenges = getLessonChallenges(lesson, snapshotChallenges)
 
     lessonChallenges.forEach((challenge, challengeIndex) => {
       const assignmentReading = challenge.readingMdx.trim() || challenge.promptMdx.trim()
@@ -206,9 +204,7 @@ export const getLessonPageData = cache(async (courseSlug: string, lessonSlug: st
   const courseLessons = sortLessons(snapshot.lessons.filter((item) => item.courseId === course.id && item.published))
   const currentLessonIndex = courseLessons.findIndex((item) => item.id === lesson.id)
   const safeCurrentLessonIndex = currentLessonIndex >= 0 ? currentLessonIndex : 0
-  const challenges = lesson.challengeIds
-    .map((challengeId) => snapshot.challenges.find((item) => item.id === challengeId && item.published) ?? null)
-    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+  const challenges = getLessonChallenges(lesson, snapshot.challenges)
   const courseReadingEntries = buildCourseReadingEntries(courseSlug, courseLessons, snapshot.challenges)
 
   return {

@@ -1,7 +1,11 @@
 import "server-only"
 
-import { z } from "zod"
-
+import {
+  type ImportedChallengeManifest,
+  type ImportedCourseManifest,
+  type ImportedLessonManifest,
+  parseCatalogImportSource
+} from "@/lib/admin/catalog-import"
 import {
   type ChallengeVersionInput,
   type AuthorizedCatalogContext,
@@ -30,79 +34,6 @@ type LessonChallengeRelation = {
 }
 
 type Direction = "up" | "down"
-
-type ImportedChallengeManifest = {
-  kind: "code" | "multiple_choice" | "local_lab"
-  title?: string
-  slug?: string
-  readingMdx?: string
-  promptMdx: string
-  language?: string | null
-  judge0LanguageId?: number | null
-  starterCode?: string
-  solutionCode?: string
-  hiddenTestCode?: string
-  choiceOptions?: Array<{ key?: string; label: string }>
-  correctChoiceKey?: string | null
-  choiceExplanationMdx?: string
-}
-
-type ImportedLessonManifest = {
-  title: string
-  slug?: string
-  summary?: string
-  estimatedMinutes?: number
-  bodyMdx?: string
-  challenges: ImportedChallengeManifest[]
-}
-
-type ImportedCourseManifest = {
-  title: string
-  slug?: string
-  summary?: string
-  difficulty?: string
-  accent?: string
-  lessons: ImportedLessonManifest[]
-}
-
-const importedChallengeSchema = z.object({
-  kind: z.enum(["code", "multiple_choice", "local_lab"]).default("code"),
-  title: z.string().min(1).optional(),
-  slug: z.string().min(1).optional(),
-  readingMdx: z.string().optional(),
-  promptMdx: z.string().min(1),
-  language: z.string().optional().nullable(),
-  judge0LanguageId: z.number().int().positive().optional().nullable(),
-  starterCode: z.string().optional(),
-  solutionCode: z.string().optional(),
-  hiddenTestCode: z.string().optional(),
-  choiceOptions: z.array(z.object({ key: z.string().optional(), label: z.string().min(1) })).optional(),
-  correctChoiceKey: z.string().optional().nullable(),
-  choiceExplanationMdx: z.string().optional()
-})
-
-const importedLessonSchema = z.object({
-  title: z.string().min(1),
-  slug: z.string().min(1).optional(),
-  summary: z.string().optional(),
-  estimatedMinutes: z.number().int().positive().optional(),
-  bodyMdx: z.string().optional(),
-  challenges: z.array(importedChallengeSchema).min(1)
-})
-
-const importedCourseSchema = z.object({
-  title: z.string().min(1),
-  slug: z.string().min(1).optional(),
-  summary: z.string().optional(),
-  difficulty: z.string().optional(),
-  accent: z.string().optional(),
-  lessons: z.array(importedLessonSchema).min(1)
-})
-
-const importedCatalogSchema = z.union([
-  z.object({ course: importedCourseSchema }),
-  z.object({ courses: z.array(importedCourseSchema).min(1) })
-])
 
 function buildSuccess(message: string): AdminCatalogOperationResult {
   return { success: true, message }
@@ -312,10 +243,98 @@ async function resolveLessonNextOrderIndex(admin: AdminClient, courseId: string)
   return (count ?? 0) + 1
 }
 
-function normalizeImportedCourses(source: string) {
-  const parsed = JSON.parse(source) as unknown
-  const normalized = importedCatalogSchema.parse(parsed)
-  return "course" in normalized ? [normalized.course] : normalized.courses
+function moveRowIndex(currentIndex: number, direction: Direction, rowCount: number) {
+  const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1
+
+  if (targetIndex < 0 || targetIndex >= rowCount) {
+    return null
+  }
+
+  return targetIndex
+}
+
+function reorderRows<T>(rows: T[], currentIndex: number, targetIndex: number) {
+  const nextRows = [...rows]
+  const [movedRow] = nextRows.splice(currentIndex, 1)
+
+  if (!movedRow) {
+    return rows
+  }
+
+  nextRows.splice(targetIndex, 0, movedRow)
+  return nextRows
+}
+
+/**
+ * Persists a normalized lesson order so the UI never has to care about how
+ * storage handles swaps or duplicate order indexes.
+ */
+async function persistLessonOrder(admin: AdminClient, lessonRows: Array<{ id: string; orderIndex: number }>) {
+  const changedRows = lessonRows.filter((row, index) => row.orderIndex !== index + 1)
+  if (!changedRows.length) {
+    return
+  }
+
+  const now = new Date().toISOString()
+  for (const [index, row] of lessonRows.entries()) {
+    if (row.orderIndex === index + 1) {
+      continue
+    }
+
+    const { error } = await admin
+      .from("lessons")
+      .update({
+        order_index: index + 1,
+        updated_at: now
+      })
+      .eq("id", row.id)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+  }
+}
+
+/**
+ * Reindexes one lesson's assignment relations in two phases so the
+ * `(lesson_id, order_index)` uniqueness rule cannot block visible reordering.
+ */
+async function persistLessonChallengeOrder(admin: AdminClient, lessonId: string, relations: LessonChallengeRelation[]) {
+  const changedRelations = relations.filter((relation, index) => relation.orderIndex !== index + 1)
+  if (!changedRelations.length) {
+    return
+  }
+
+  for (const [index, relation] of changedRelations.entries()) {
+    const temporaryOrderIndex = -1 * (index + 1)
+    const { error } = await admin
+      .from("lesson_challenges")
+      .update({ order_index: temporaryOrderIndex })
+      .eq("lesson_id", lessonId)
+      .eq("challenge_id", relation.challengeId)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+  }
+
+  for (const [index, relation] of relations.entries()) {
+    const nextOrderIndex = index + 1
+
+    if (relation.orderIndex === nextOrderIndex) {
+      continue
+    }
+
+    const { error } = await admin
+      .from("lesson_challenges")
+      .update({ order_index: nextOrderIndex })
+      .eq("lesson_id", lessonId)
+      .eq("challenge_id", relation.challengeId)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+  }
 }
 
 export async function setCourseVisibilityForCurrentUser(
@@ -864,20 +883,17 @@ export async function moveLessonForCurrentUser(
     return buildFailure("Chapter not found.")
   }
 
-  const swapIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1
-  if (swapIndex < 0 || swapIndex >= lessonRows.length) {
+  const targetIndex = moveRowIndex(currentIndex, direction, lessonRows.length)
+  if (targetIndex === null) {
     return buildFailure("That chapter cannot move further.")
   }
 
   const currentRow = lessonRows[currentIndex]
-  const swapRow = lessonRows[swapIndex]
-  const updates = await Promise.all([
-    admin.from("lessons").update({ order_index: swapRow.orderIndex, updated_at: new Date().toISOString() }).eq("id", currentRow.id),
-    admin.from("lessons").update({ order_index: currentRow.orderIndex, updated_at: new Date().toISOString() }).eq("id", swapRow.id)
-  ])
-  const failedUpdate = updates.find((result) => result.error)
-  if (failedUpdate?.error) {
-    return buildFailure(failedUpdate.error.message)
+
+  try {
+    await persistLessonOrder(admin, reorderRows(lessonRows, currentIndex, targetIndex))
+  } catch (error) {
+    return buildFailure(error instanceof Error ? error.message : "Unable to move the chapter.")
   }
 
   await recordContentEvent(admin, {
@@ -930,28 +946,15 @@ export async function moveChallengeForCurrentUser(
     return buildFailure("Assignment not found in this chapter.")
   }
 
-  const swapIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1
-  if (swapIndex < 0 || swapIndex >= relations.length) {
+  const targetIndex = moveRowIndex(currentIndex, direction, relations.length)
+  if (targetIndex === null) {
     return buildFailure("That assignment cannot move further.")
   }
 
-  const currentRow = relations[currentIndex]
-  const swapRow = relations[swapIndex]
-  const updates = await Promise.all([
-    admin
-      .from("lesson_challenges")
-      .update({ order_index: swapRow.orderIndex })
-      .eq("lesson_id", lesson.id)
-      .eq("challenge_id", currentRow.challengeId),
-    admin
-      .from("lesson_challenges")
-      .update({ order_index: currentRow.orderIndex })
-      .eq("lesson_id", lesson.id)
-      .eq("challenge_id", swapRow.challengeId)
-  ])
-  const failedUpdate = updates.find((result) => result.error)
-  if (failedUpdate?.error) {
-    return buildFailure(failedUpdate.error.message)
+  try {
+    await persistLessonChallengeOrder(admin, String(lesson.id), reorderRows(relations, currentIndex, targetIndex))
+  } catch (error) {
+    return buildFailure(error instanceof Error ? error.message : "Unable to move the assignment.")
   }
 
   await recordContentEvent(admin, {
@@ -1131,14 +1134,14 @@ export async function importCatalogManifestForCurrentUser(
   }
 
   try {
-    const manifests = normalizeImportedCourses(manifestSource)
+    const manifests = parseCatalogImportSource(manifestSource)
     const importedCourseSlugs = await importCourses(
       authorized.context.admin,
       {
         userId: authorized.context.userId,
         actorEmail: authorized.context.actorEmail
       },
-      manifests as ImportedCourseManifest[],
+      manifests,
       saveMode
     )
 
@@ -1148,10 +1151,6 @@ export async function importCatalogManifestForCurrentUser(
         : `Imported ${importedCourseSlugs.length} course draft${importedCourseSlugs.length === 1 ? "" : "s"}.`
     )
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return buildFailure(error.issues[0]?.message ?? "Manifest could not be parsed.")
-    }
-
     return buildFailure(error instanceof Error ? error.message : "Manifest import failed.")
   }
 }

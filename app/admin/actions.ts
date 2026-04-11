@@ -47,6 +47,7 @@ async function revalidateContentPaths(courseSlug: string, lessonSlug?: string) {
   revalidatePath("/dashboard")
   revalidatePath("/learn")
   revalidatePath(`/learn/${courseSlug}`)
+  revalidatePath(`/learn/${courseSlug}/practice`)
   if (lessonSlug) {
     revalidatePath(`/learn/${courseSlug}/${lessonSlug}`)
   }

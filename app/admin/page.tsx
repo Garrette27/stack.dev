@@ -11,6 +11,7 @@ import { getAdminPageState } from "@/lib/admin"
 import { getAdminCatalogHistorySnapshot } from "@/lib/admin/catalog-history"
 import type { PersistedAuthoringSelection } from "@/lib/admin/authoring-session"
 import { getAdminAnalyticsSnapshot, normalizeAnalyticsAudience, normalizeAnalyticsRange } from "@/lib/analytics"
+import { getLessonChallenges } from "@/lib/content/shared"
 import type { Challenge, ContentSnapshot, Lesson } from "@/lib/types"
 
 type AdminPageProps = {
@@ -32,9 +33,7 @@ function getLessonsForCourse(snapshot: ContentSnapshot, courseId: string) {
 }
 
 function getChallengesForLesson(snapshot: ContentSnapshot, lesson: Lesson) {
-  return lesson.challengeIds
-    .map((challengeId) => snapshot.challenges.find((challenge) => challenge.id === challengeId) ?? null)
-    .filter((challenge): challenge is Challenge => Boolean(challenge))
+  return getLessonChallenges(lesson, snapshot.challenges, { includeHidden: true }) as Challenge[]
 }
 
 function resolveInitialAuthoringSelection(

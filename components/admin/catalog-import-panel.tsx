@@ -5,6 +5,7 @@ import { useActionState } from "react"
 import { importCatalogManifestAction, type AdminImportActionState } from "@/app/admin/actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { BULK_IMPORT_OUTLINE_EXAMPLE } from "@/lib/admin/catalog-import"
 import { Textarea } from "@/components/ui/textarea"
 
 const initialImportState: AdminImportActionState = {
@@ -51,7 +52,7 @@ export function CatalogImportPanel() {
       <CardHeader>
         <CardTitle>Bulk import</CardTitle>
         <CardDescription>
-          Paste a JSON manifest with MDX fields to create courses, chapters, and assignments in one pass.
+          Paste either a JSON manifest or a structured bulk-authoring outline to create courses, chapters, and assignments in one pass.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -60,7 +61,7 @@ export function CatalogImportPanel() {
             name="manifestSource"
             rows={18}
             required
-            placeholder={manifestExample}
+            placeholder={BULK_IMPORT_OUTLINE_EXAMPLE}
             className="min-h-[24rem] font-mono text-xs leading-6"
           />
 
@@ -82,7 +83,22 @@ export function CatalogImportPanel() {
           <p className="font-semibold text-[var(--ink-strong)]">Import notes</p>
           <p>The importer creates stable catalog rows and append-only versions, so the new content is restorable from the first import onward.</p>
           <p>Use draft mode when you are loading a large course and want to review it before learners see it.</p>
+          <p>Structured outline mode supports fenced MDX code blocks directly, so you do not need to use the insert-code buttons for bulk imports.</p>
         </div>
+
+        <details className="rounded-[1.5rem] bg-[var(--showcase-surface-soft)] p-4 text-sm leading-7 text-[var(--ink-muted)]">
+          <summary className="cursor-pointer font-semibold text-[var(--ink-strong)]">JSON example</summary>
+          <pre className="mt-3 overflow-x-auto rounded-[1rem] bg-[var(--card-surface)] p-4 text-xs leading-6 text-[var(--ink)]">
+            {manifestExample}
+          </pre>
+        </details>
+
+        <details className="rounded-[1.5rem] bg-[var(--showcase-surface-soft)] p-4 text-sm leading-7 text-[var(--ink-muted)]">
+          <summary className="cursor-pointer font-semibold text-[var(--ink-strong)]">Structured outline example</summary>
+          <pre className="mt-3 overflow-x-auto rounded-[1rem] bg-[var(--card-surface)] p-4 text-xs leading-6 text-[var(--ink)]">
+            {BULK_IMPORT_OUTLINE_EXAMPLE}
+          </pre>
+        </details>
       </CardContent>
     </Card>
   )

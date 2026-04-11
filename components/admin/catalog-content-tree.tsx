@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { getLessonChallenges } from "@/lib/content/shared"
 import type { Challenge, ContentSnapshot, Course, Lesson } from "@/lib/types"
 
 type CatalogContentTreeProps = {
@@ -47,9 +48,7 @@ function getLessonsForCourse(snapshot: ContentSnapshot, courseId: string) {
 }
 
 function getChallengesForLesson(snapshot: ContentSnapshot, lesson: Lesson) {
-  return lesson.challengeIds
-    .map((challengeId) => snapshot.challenges.find((item) => item.id === challengeId) ?? null)
-    .filter((challenge): challenge is Challenge => Boolean(challenge))
+  return getLessonChallenges(lesson, snapshot.challenges, { includeHidden: true }) as Challenge[]
 }
 
 function buildAuthoringHref(courseSlug: string, lessonSlug: string, challengeSlug: string) {
@@ -272,11 +271,16 @@ export function CatalogContentTree({ snapshot, selection }: CatalogContentTreePr
                           <div className="mt-4 grid gap-2">
                             {challenges.map((challenge, challengeIndex) => {
                               const challengeIsSelected = selection.challengeSlug === challenge.slug
+                              const challengeIsVisible = challenge.published && challenge.publicationState !== "archived"
 
                               return (
                                 <div
                                   key={challenge.id}
-                                  className={`flex flex-wrap items-center justify-between gap-3 rounded-[1rem] bg-[var(--showcase-surface-soft)] px-3 py-2 ${getSelectionRing(challengeIsSelected)}`}
+                                  className={`flex flex-wrap items-center justify-between gap-3 rounded-[1rem] px-3 py-2 ${getSelectionRing(challengeIsSelected)} ${
+                                    challengeIsVisible
+                                      ? "bg-[var(--showcase-surface-soft)]"
+                                      : "bg-[var(--surface-hover)] opacity-80"
+                                  }`}
                                 >
                                   <div className="min-w-0">
                                     <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`A${challengeIndex + 1}`}</p>
@@ -286,6 +290,11 @@ export function CatalogContentTree({ snapshot, selection }: CatalogContentTreePr
                                         {getChallengeStatusLabel(challenge)}
                                       </Badge>
                                     </div>
+                                    {!challengeIsVisible ? (
+                                      <p className="mt-1 text-xs leading-6 text-[var(--ink-muted)]">
+                                        Hidden from learner routes. It stays here so you can restore it safely later.
+                                      </p>
+                                    ) : null}
                                   </div>
 
                                   <div className="flex flex-wrap items-center justify-end gap-2">

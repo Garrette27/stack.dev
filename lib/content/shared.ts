@@ -18,6 +18,34 @@ export function sortLessons(lessons: Lesson[]) {
   return [...lessons].sort((a, b) => a.orderIndex - b.orderIndex)
 }
 
+/**
+ * Resolves one lesson's assignments from the shared challenge collection so
+ * learner, practice, and admin surfaces can agree on visibility rules.
+ */
+export function getLessonChallenges(
+  lesson: Lesson,
+  challenges: Challenge[],
+  options?: {
+    includeHidden?: boolean
+  }
+) {
+  const includeHidden = options?.includeHidden ?? false
+
+  return lesson.challengeIds
+    .map((challengeId) => challenges.find((challenge) => challenge.id === challengeId) ?? null)
+    .filter((challenge): challenge is Challenge => {
+      if (!challenge) {
+        return false
+      }
+
+      return includeHidden ? true : challenge.published
+    })
+}
+
+export function getVisibleChallengeCountForLesson(lesson: Lesson, challenges: Challenge[]) {
+  return getLessonChallenges(lesson, challenges).length
+}
+
 export function mapCourse(row: Record<string, unknown>): Course {
   return {
     id: String(row.id),
