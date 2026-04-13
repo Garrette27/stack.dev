@@ -26,6 +26,10 @@ export function getCourseLessons(snapshot: Pick<ContentSnapshot, "lessons">, cou
   return sortLessons(snapshot.lessons.filter((lesson) => lesson.courseId === courseId))
 }
 
+function isChallengeVisibleToLearner(challenge: Challenge) {
+  return challenge.published && challenge.publicationState !== "archived"
+}
+
 /**
  * Resolves one lesson's assignments from the shared challenge collection so
  * learner, practice, and admin surfaces can agree on visibility rules.
@@ -46,7 +50,7 @@ export function getLessonChallenges(
         return false
       }
 
-      return includeHidden ? true : challenge.published
+      return includeHidden ? true : isChallengeVisibleToLearner(challenge)
     })
 }
 

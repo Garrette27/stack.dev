@@ -1,7 +1,7 @@
 import { Fragment } from "react"
 
 type HighlightTone = "light" | "dark"
-type TokenKind = "plain" | "comment" | "string" | "keyword" | "number"
+type TokenKind = "plain" | "comment" | "string" | "keyword" | "number" | "identifier" | "function" | "operator"
 
 type Token = {
   kind: TokenKind
@@ -143,6 +143,12 @@ function getTokenClass(kind: TokenKind, tone: HighlightTone) {
         return "text-sky-300"
       case "number":
         return "text-fuchsia-300"
+      case "identifier":
+        return "text-cyan-100"
+      case "function":
+        return "text-indigo-200"
+      case "operator":
+        return "text-orange-200"
       default:
         return "text-slate-100"
     }
@@ -157,6 +163,12 @@ function getTokenClass(kind: TokenKind, tone: HighlightTone) {
       return "text-sky-700"
     case "number":
       return "text-fuchsia-700"
+    case "identifier":
+      return "text-cyan-700"
+    case "function":
+      return "text-indigo-700"
+    case "operator":
+      return "text-orange-700"
     default:
       return "text-[var(--ink-strong)]"
   }
@@ -218,6 +230,38 @@ function matchWordToken(source: string, start: number) {
   return match?.[0] ?? null
 }
 
+function matchOperatorToken(source: string, start: number) {
+  const match = source.slice(start).match(/^(?:===|!==|==|!=|<=|>=|\+\+|--|\+=|-=|\*=|\/=|%=|&&|\|\||=>|[=+\-*/%<>!&|?:])/)
+  return match?.[0] ?? null
+}
+
+function getNextNonWhitespaceCharacter(source: string, start: number) {
+  for (let index = start; index < source.length; index += 1) {
+    const character = source[index]
+    if (character && !/\s/.test(character)) {
+      return character
+    }
+  }
+
+  return null
+}
+
+function classifyWordToken(
+  line: string,
+  wordToken: string,
+  wordStart: number,
+  keywords: Set<string>,
+  normalizeWord?: (word: string) => string
+): TokenKind {
+  const normalizedWord = normalizeWord ? normalizeWord(wordToken) : wordToken
+  if (keywords.has(normalizedWord)) {
+    return "keyword"
+  }
+
+  const nextNonWhitespaceCharacter = getNextNonWhitespaceCharacter(line, wordStart + wordToken.length)
+  return nextNonWhitespaceCharacter === "(" ? "function" : "identifier"
+}
+
 function tokenizePlainLine(line: string, keywords: Set<string>, normalizeWord?: (word: string) => string) {
   const tokens: Token[] = []
   let index = 0
@@ -241,12 +285,18 @@ function tokenizePlainLine(line: string, keywords: Set<string>, normalizeWord?: 
 
     const wordToken = matchWordToken(line, index)
     if (wordToken) {
-      const normalizedWord = normalizeWord ? normalizeWord(wordToken) : wordToken
       tokens.push({
-        kind: keywords.has(normalizedWord) ? "keyword" : "plain",
+        kind: classifyWordToken(line, wordToken, index, keywords, normalizeWord),
         value: wordToken
       })
       index += wordToken.length
+      continue
+    }
+
+    const operatorToken = matchOperatorToken(line, index)
+    if (operatorToken) {
+      tokens.push({ kind: "operator", value: operatorToken })
+      index += operatorToken.length
       continue
     }
 
@@ -311,10 +361,17 @@ function tokenizeClikeLine(line: string, inBlockComment: boolean) {
     const wordToken = matchWordToken(line, index)
     if (wordToken) {
       tokens.push({
-        kind: C_LIKE_KEYWORDS.has(wordToken) ? "keyword" : "plain",
+        kind: classifyWordToken(line, wordToken, index, C_LIKE_KEYWORDS),
         value: wordToken
       })
       index += wordToken.length
+      continue
+    }
+
+    const operatorToken = matchOperatorToken(line, index)
+    if (operatorToken) {
+      tokens.push({ kind: "operator", value: operatorToken })
+      index += operatorToken.length
       continue
     }
 

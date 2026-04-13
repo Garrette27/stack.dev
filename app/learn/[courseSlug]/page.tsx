@@ -82,26 +82,30 @@ export default async function CoursePage({ params }: CoursePageProps) {
       </section>
 
       <section className="grid gap-4">
-        {data.lessons.map((lesson, index) => (
-          <Card key={lesson.id}>
-            <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
-              <div className="space-y-2">
-                <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`CH${index + 1}`}</p>
-                <p className="text-xl font-semibold text-[var(--ink-strong)]">{lesson.title}</p>
-                <p className="max-w-2xl text-sm leading-7 text-[var(--ink)]">{lesson.summary}</p>
-                <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">
-                  {lesson.challengeIds.length} assignment{lesson.challengeIds.length === 1 ? "" : "s"}
-                </p>
-              </div>
-              <Link href={`/learn/${lesson.courseSlug}/${lesson.slug}`}>
-                <Button>
-                  Start session
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ))}
+        {data.lessons.map((lesson, index) => {
+          const visibleChallengeCount = data.visibleChallengeCountByLessonId[lesson.id] ?? 0
+
+          return (
+            <Card key={lesson.id}>
+              <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">{`CH${index + 1}`}</p>
+                  <p className="text-xl font-semibold text-[var(--ink-strong)]">{lesson.title}</p>
+                  <p className="max-w-2xl text-sm leading-7 text-[var(--ink)]">{lesson.summary}</p>
+                  <p className="text-xs uppercase tracking-[0.22em] text-[var(--ink-muted)]">
+                    {visibleChallengeCount} assignment{visibleChallengeCount === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <Link href={`/learn/${lesson.courseSlug}/${lesson.slug}`}>
+                  <Button>
+                    Start session
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )
+        })}
       </section>
     </div>
   )

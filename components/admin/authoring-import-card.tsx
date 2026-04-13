@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
+import { flushSync } from "react-dom"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -30,6 +31,8 @@ export function AuthoringImportCard({
   const [authorNotes, setAuthorNotes] = useState("")
   const [feedback, setFeedback] = useState<{ success: boolean; message: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const publishSubmitRef = useRef<HTMLButtonElement | null>(null)
+  const draftSubmitRef = useRef<HTMLButtonElement | null>(null)
 
   const aiPrompt = useMemo(
     () =>
@@ -64,6 +67,37 @@ export function AuthoringImportCard({
     setFeedback(result)
   }
 
+  function handleApplyImportAndSubmit(saveMode: "draft" | "publish") {
+    let result: { success: boolean; message: string } = {
+      success: false,
+      message: ""
+    }
+
+    flushSync(() => {
+      result = onApplyImport(source)
+      setFeedback(result)
+    })
+
+    if (!result.success) {
+      return
+    }
+
+    const submitter = saveMode === "publish" ? publishSubmitRef.current : draftSubmitRef.current
+    const form = submitter?.form
+
+    if (!submitter || !form) {
+      setFeedback({
+        success: false,
+        message: "The authoring form could not be submitted automatically. The import is loaded, so you can still save below."
+      })
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      form.requestSubmit(submitter)
+    })
+  }
+
   return (
     <Card className="overflow-hidden bg-[linear-gradient(180deg,var(--showcase-surface),var(--surface))]">
       <CardHeader className="border-b border-[var(--border-soft)] bg-[var(--showcase-surface-soft)]">
@@ -74,7 +108,7 @@ export function AuthoringImportCard({
       </CardHeader>
       <CardContent className="grid gap-6 p-6">
         <p className="rounded-[1.5rem] bg-[var(--surface-hover)] px-4 py-3 text-sm leading-7 text-[var(--ink-muted)]">
-          Use this when another AI has already formatted your Boot.dev-style source. Load it here, review the editor fields, then use the publish or draft buttons below.
+          Use this when another AI has already formatted your Boot.dev-style source. You can load it into the current editor, or load and immediately save/publish the assignment you are revising.
         </p>
 
         <Field label="AI notes (optional)">
@@ -113,10 +147,19 @@ export function AuthoringImportCard({
           <Button type="button" onClick={handleApplyImport} disabled={!source.trim()}>
             Load into editor
           </Button>
+          <Button type="button" variant="secondary" onClick={() => handleApplyImportAndSubmit("draft")} disabled={!source.trim()}>
+            Load and save draft
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => handleApplyImportAndSubmit("publish")} disabled={!source.trim()}>
+            Load and publish
+          </Button>
           {feedback ? (
             <p className={feedback.success ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>{feedback.message}</p>
           ) : null}
         </div>
+
+        <button ref={draftSubmitRef} type="submit" name="saveMode" value="draft" className="hidden" aria-hidden="true" tabIndex={-1} />
+        <button ref={publishSubmitRef} type="submit" name="saveMode" value="publish" className="hidden" aria-hidden="true" tabIndex={-1} />
       </CardContent>
     </Card>
   )

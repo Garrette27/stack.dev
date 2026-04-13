@@ -10,7 +10,11 @@ import {
   loadOptionalLessonChallengeRows,
   loadSnapshotFromRows
 } from "./snapshot-loader"
-import { getLessonChallenges, sortLessons } from "./shared"
+import { getLessonChallenges, getVisibleChallengeCountForLesson, sortLessons } from "./shared"
+
+export type CoursePageData = CourseWithLessons & {
+  visibleChallengeCountByLessonId: Record<string, number>
+}
 
 async function getSupabaseContent() {
   return loadSnapshotFromRows({
@@ -126,7 +130,7 @@ export const getCatalog = cache(async (): Promise<CourseWithLessons[]> => {
   }))
 })
 
-export const getCoursePageData = cache(async (courseSlug: string): Promise<CourseWithLessons | null> => {
+export const getCoursePageData = cache(async (courseSlug: string): Promise<CoursePageData | null> => {
   const snapshot = await getContentSnapshot()
   const course = snapshot.courses.find((item) => item.slug === courseSlug)
 
@@ -134,12 +138,18 @@ export const getCoursePageData = cache(async (courseSlug: string): Promise<Cours
     return null
   }
 
+  const lessons = sortLessons(snapshot.lessons.filter((lesson) => lesson.courseId === course.id))
+  const visibleChallengeCountByLessonId = Object.fromEntries(
+    lessons.map((lesson) => [lesson.id, getVisibleChallengeCountForLesson(lesson, snapshot.challenges)])
+  )
+
   return {
     course,
-    lessons: sortLessons(snapshot.lessons.filter((lesson) => lesson.courseId === course.id)),
+    lessons,
+    visibleChallengeCountByLessonId,
     contentSource: snapshot.contentSource,
     contentSourceReason: snapshot.contentSourceReason
-  }
+  } satisfies CoursePageData
 })
 
 /**
